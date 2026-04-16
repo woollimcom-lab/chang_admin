@@ -1,0 +1,54 @@
+{
+  "defaults": {
+    "sshTarget": "ubuntu@43.202.209.122",
+    "sshKeyPath": "d:\\dev\\changarum.pem",
+    "serviceName": "mysite",
+    "remotePath": "/home/ubuntu/mysite",
+    "model": "gpt-5.4-mini",
+    "modelReasoningEffort": "medium",
+    "codexTimeoutSeconds": 180,
+    "maxAttempts": 2,
+    "maxChangedFiles": 3,
+    "allowNewFiles": false,
+    "requirePlanJson": true
+  },
+  "tasks": [
+    {
+      "task_id": "ui-location-picker-001",
+      "goal": "Improve the location picker UX within the existing structure.",
+      "target_files": [
+        "templates\\includes\\item_master.html",
+        "static\\js\\view_ui.js"
+      ],
+      "reuse_symbols": [
+        "#locPickerDisplay",
+        "#selLocation",
+        "#inpLocation",
+        "toggleLocation",
+        "syncLocationPickerLabel",
+        "openLocationPicker"
+      ],
+      "do_not_touch": [
+        "backend",
+        "DB schema",
+        "other templates"
+      ],
+      "acceptance": [
+        "#locPickerDisplay shows saved location options first",
+        "#inpLocation still allows direct input",
+        "existing select compatibility remains intact"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": false,
+        "steps": [
+          { "action": "waitFor", "selector": "body", "timeout": 15000 },
+          { "action": "screenshot" }
+        ]
+      },
+      "rollback_plan": "restore snapshot if non-target files change or verification fails",
+      "promotion_rule": "promote only after the same pattern passes again on a similar UI task"
+    }
+  ]
+}

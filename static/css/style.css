@@ -1,0 +1,277 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+
+/* 1. 기본 설정 및 폰트 적용 */
+body {
+    font-family: 'Noto Sans KR', sans-serif; /* 한국어에 최적화된 폰트 */
+    background-color: #f4f6f8; /* 눈이 편안한 밝은 회색 배경 */
+    margin: 0;
+    padding: 20px;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* 2. 전체 레이아웃 컨테이너 */
+.content {
+    max-width: 800px; /* 너무 퍼지지 않게 중앙 정렬 */
+    margin: 0 auto;
+    padding-bottom: 80px; /* 하단 여백 확보 */
+}
+
+/* 3. 검색 및 필터 박스 */
+.search-box {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.search-box input[type="text"] {
+    width: 60%;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+.search-box input[type="text"]:focus {
+    border-color: #4169E1;
+}
+
+.search-box button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    margin: 5px;
+    font-size: 14px;
+    transition: transform 0.1s, opacity 0.2s;
+}
+
+.search-box button:active {
+    transform: scale(0.98);
+}
+
+.search-box button:hover {
+    opacity: 0.9;
+}
+
+/* 4. 주문 카드 디자인 (핵심!) */
+.card {
+    background: #fff;
+    border-radius: 16px; /* 둥근 모서리 */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08); /* 부드러운 그림자 */
+    margin-bottom: 25px;
+    overflow: hidden; /* 내부 내용이 둥근 모서리를 넘지 않도록 */
+    border: 1px solid #eee;
+}
+
+/* 카드 상단 상태바 */
+.status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    font-weight: 500;
+}
+
+/* 카드 내부 컨텐츠 */
+.card-content {
+    padding: 20px;
+}
+
+.card-content h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.2rem;
+    color: #222;
+}
+
+.card-content p {
+    margin: 8px 0;
+    color: #555;
+    font-size: 15px;
+}
+
+.phone-number {
+    color: #4169E1;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+/* 5. 메모 영역 스타일 */
+.card-memo {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+    border: 1px solid #eee;
+}
+
+.card-memo hr {
+    border: 0;
+    border-top: 1px solid #e0e0e0;
+    margin: 10px 0;
+}
+
+/* 6. 액션 버튼 (수정, 삭제, 메모작성) */
+.card-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.card-actions button {
+    padding: 8px 16px;
+    border: 1px solid #ddd;
+    background-color: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #555;
+    transition: all 0.2s;
+}
+
+.card-actions button:hover {
+    background-color: #f0f0f0;
+    color: #000;
+}
+
+.card-actions .delete {
+    color: #e74c3c;
+    border-color: #ffcccc;
+}
+.card-actions .delete:hover {
+    background-color: #e74c3c;
+    color: #fff;
+}
+
+/* 7. 플로팅 추가 버튼 (+) */
+.add-order {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    background-color: #4169E1;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 30px;
+    box-shadow: 0 4px 15px rgba(65, 105, 225, 0.4);
+    cursor: pointer;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+
+.add-order:hover {
+    transform: scale(1.1) rotate(90deg);
+}
+
+/* 8. 페이지네이션 */
+.pagination {
+    text-align: center;
+    margin-top: 30px;
+}
+
+.pagination a {
+    display: inline-block;
+    padding: 8px 14px;
+    margin: 0 4px;
+    border-radius: 6px;
+    background-color: #fff;
+    color: #333;
+    text-decoration: none;
+    border: 1px solid #ddd;
+    transition: all 0.2s;
+}
+
+.pagination a.active, .pagination a:hover {
+    background-color: #4169E1;
+    color: white;
+    border-color: #4169E1;
+}
+
+/* 9. 모달 스타일 (입력 폼) */
+.modal {
+    display: none; 
+    position: fixed; 
+    z-index: 2000; 
+    left: 0;
+    top: 0;
+    width: 100%; 
+    height: 100%; 
+    background-color: rgba(0,0,0,0.6); /* 배경 더 어둡게 */
+    backdrop-filter: blur(3px); /* 배경 흐림 효과 */
+}
+
+.modal-content, .form-container {
+    background-color: #fff;
+    margin: 5% auto;
+    padding: 30px;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* 입력 폼 스타일 */
+.form-container label {
+    display: block;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #444;
+}
+
+.form-container input[type="text"],
+.form-container input[type="date"],
+.form-container input[type="number"],
+.form-container select,
+.form-container textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-sizing: border-box; /* 패딩 포함 크기 계산 */
+    font-size: 15px;
+}
+
+.form-buttons {
+    margin-top: 25px;
+    display: flex;
+    gap: 10px;
+}
+
+.form-buttons button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.form-buttons button:first-child {
+    background-color: #4169E1;
+    color: white;
+}
+.form-buttons button:last-child {
+    background-color: #eee;
+    color: #333;
+}
+.fa-phone { color: green; }
+
+.bg-light-gray { background-color: #e9ecef !important; }
+

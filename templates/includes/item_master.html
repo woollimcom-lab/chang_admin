@@ -1,0 +1,2415 @@
+<style>
+/* --- 커스텀 자동완성 & 마진 툴팁 CSS --- */
+.smart-dropdown { position: fixed; background: #fff; border: 1px solid #339af0; border-radius: 12px; box-shadow: 0 14px 28px rgba(0,0,0,0.14); max-height: 220px; overflow-y: auto; z-index: 100220; min-width: 280px; max-width: calc(100vw - 16px); box-sizing: border-box; left: 0; }
+.smart-dropdown-item { padding: 12px 14px; cursor: pointer; border-bottom: 1px solid #f1f3f5; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+.smart-dropdown-item:last-child { border-bottom: none; }
+.smart-dropdown-item:active, .smart-dropdown-item:hover { background: #e7f5ff; }
+.location-suggestion-dropdown {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 6px);
+    z-index: 100260;
+    min-width: 0;
+    width: 100%;
+    max-width: none;
+    max-height: 220px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    border: 1px solid #b6ccfe;
+    border-radius: 12px;
+    box-shadow: 0 14px 28px rgba(15,23,42,0.16);
+    background: #fff;
+}
+.location-suggestion-item {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: left;
+    justify-content: space-between;
+    background: #fff;
+    border: none;
+}
+.location-suggestion-item + .location-suggestion-item {
+    border-top: 1px solid #eef2f7;
+}
+.location-suggestion-item.is-selected {
+    background: #eef4ff;
+}
+.location-suggestion-text {
+    color: #1f2937;
+}
+.location-suggestion-check {
+    color: #4c6ef5;
+    font-size: 13px;
+    opacity: 0;
+}
+.location-suggestion-item.is-selected .location-suggestion-check {
+    opacity: 1;
+}
+.sd-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sd-sup { color: #fff; font-size: 11px; font-weight: bold; background: #845ef7; padding: 3px 8px; border-radius: 6px; }
+.sd-prod { font-weight: 900; color: #212529; font-size: 16px; }
+.sd-cost { color: #e03131; font-size: 13px; font-weight: 900; background: #fff5f5; padding: 3px 6px; border-radius: 6px;}
+.picker-launch-btn { width: 44px; height: 44px; border: 1px solid #ced4da; border-radius: 10px; background: #fff; color: #364fc7; font-size: 16px; font-weight: 900; cursor: pointer; flex-shrink: 0; }
+.picker-launch-btn:active { background: #eef2ff; }
+.hidden-picker-select { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; }
+.location-picker-row { display:flex; gap:8px; align-items:center; }
+.location-picker-row .f-input-compact { background:#fff; font-weight:800; }
+.mobile-inline-select {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 100320;
+    width: min(320px, calc(100vw - 16px));
+    max-height: min(56vh, 360px);
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #dbe4ff;
+    border-radius: 14px;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+    padding: 6px;
+    box-sizing: border-box;
+}
+.mobile-inline-select__item {
+    width: 100%;
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    border: none;
+    border-radius: 10px;
+    background: #fff;
+    color: #1f2937;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+}
+.mobile-inline-select__item + .mobile-inline-select__item { margin-top: 4px; }
+.mobile-inline-select__item.is-selected {
+    background: #eef2ff;
+    color: #364fc7;
+}
+.mobile-inline-select__item:active {
+    background: #e7f5ff;
+}
+.mobile-inline-select__scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 100319;
+    background: transparent;
+}
+
+/* 매입 원가 블라인드 효과 */
+.cost-blind { filter: blur(4px); transition: filter 0.3s; }
+.cost-blind:focus, .cost-blind:active { filter: none; }
+
+/* UI 통일성 - 콤팩트 인풋 */
+.f-input-compact { height: 44px !important; border-radius: 8px !important; border: 1px solid #ced4da !important; padding: 0 12px; font-size: 14px; background-color: #fff; color: #343a40; box-sizing: border-box; width: 100%; }
+.f-input-compact:focus { border-color: #339af0 !important; outline: none; box-shadow: 0 0 0 2px rgba(51, 154, 240, 0.2); }
+
+/* 신규 품목 감지 시 원가 입력 유도 하이라이트 애니메이션 */
+.pulse-highlight { animation: pulse-border 2s; }
+@keyframes pulse-border {
+    0% { box-shadow: 0 0 0 0 rgba(224,49,49,0.5); border-color: #e03131; }
+    70% { box-shadow: 0 0 0 10px rgba(224,49,49,0); border-color: #ced4da; }
+    100% { box-shadow: 0 0 0 0 rgba(224,49,49,0); border-color: #ced4da; }
+}
+
+.horizontal-scroll-group { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.horizontal-scroll-group::-webkit-scrollbar { display: none; }
+
+/* 모바일 바텀 시트 (Bottom Sheet) 개편 */
+@media (max-width: 768px) {
+    #manualModal { position: fixed !important; inset: 0 !important; z-index: 100120 !important; overscroll-behavior: none; background: rgba(15,23,42,0.52) !important; }
+    #manualModal[style*="block"], #manualModal[style*="display: block"], #manualModal[style*="display: flex"] { display: flex !important; flex-direction: column !important; align-items: stretch !important; justify-content: flex-start !important; padding: 0 !important; }
+    #manualModal .manual-con { width: 100vw !important; max-width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; border-radius: 0 !important; margin: 0 !important; padding: calc(10px + env(safe-area-inset-top)) 14px 0 14px !important; overflow-y: auto; animation: none; display: flex; flex-direction: column; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; box-sizing: border-box; background: #fff; font-size: 95%; }
+    #manualModal #dynamicArea { padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important; }
+    #manualModal .sticky-action-bar { flex-shrink: 0; padding: 12px 0 calc(18px + env(safe-area-inset-bottom)) 0; margin-top: 12px; gap: 8px; }
+    #manualModal .item-row-badge { min-width: 60px; min-height: 32px; padding: 0 9px; border-radius: 9px; font-size: 12px; font-weight: 900; }
+    #manualModal .f-input-compact { height: 42px !important; padding: 0 11px; font-size: 13.3px; }
+    #manualModal .picker-launch-btn { width: 42px; height: 42px; font-size: 15px; border-radius: 9px; }
+    #manualModal .smart-dropdown-item { padding: 11px 12px; font-size: 13px; }
+    #manualModal .sd-prod { font-size: 15px; }
+    #masterEditorModal { z-index: 100180 !important; }
+    .bs-handle { display: none !important; }
+}
+@keyframes slideUpBottomSheet { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.bs-handle { display: none; }
+
+/* Sticky 하단 고정 바 */
+.sticky-action-bar { position: sticky; bottom: 0; background: rgba(255,255,255,0.98); padding: 12px 0 max(16px, env(safe-area-inset-bottom)) 0; border-top: 1px solid #f1f3f5; box-shadow: 0 -16px 28px rgba(15,23,42,0.08); backdrop-filter: blur(10px); display: flex; gap: 10px; z-index: 100; margin-top: 10px; }
+/* 변경 이유(Reason): [UI/UX 최적화] 칩 버튼을 제거하고 필터->리스트->수정폼으로 이어지는 탑다운(Top-Down) 모바일 친화적 구조로 변경 */
+.master-modal-content { 
+    width: min(96vw, 650px) !important; 
+    max-height: 92vh !important; height: 92vh;
+    display: flex; flex-direction: column; 
+    padding: 0 !important; border-radius: 16px !important; 
+    background: #f8fafc; overflow: hidden;
+}
+.master-header { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: #fff; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 30; }
+.master-header h3 { margin: 0; font-size: 1.25rem; font-weight: 900; color: #1e293b; }
+
+.master-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+.master-mode-tabs { display: flex; background: #e2e8f0; border-radius: 10px; padding: 4px; gap: 4px; }
+.master-mode-tab { flex: 1; border: none; border-radius: 8px; background: transparent; color: #64748b; padding: 12px; font-size: 14px; font-weight: 800; cursor: pointer; transition: 0.2s; }
+.master-mode-tab.active { background: #fff; color: #0f172a; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+/* 상단 필터부 */
+.master-filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #fff; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0; }
+.master-filter-grid select, .master-filter-grid input { background: #f8fafc; font-weight: 700; color: #334155; }
+
+/* 중앙 리스트부 */
+.master-list-area { flex: none; max-height: 35vh; overflow-y: auto; overflow-x: hidden; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; padding: 8px; display: flex; flex-direction: column; gap: 6px; box-sizing: border-box; }
+.master-list-card { display: flex; justify-content: space-between; width: 100%; text-align: left; border: 1px solid #f1f5f9; border-radius: 8px; background: #fff; padding: 12px; cursor: pointer; transition: 0.1s; box-sizing: border-box; }
+.master-list-card.active { border-color: #3b82f6; background: #eff6ff; }
+.master-list-card:hover { border-color: #cbd5e1; }
+
+/* 하단 폼부 */
+.master-form-area { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; display: none; flex-direction: column; gap: 10px; }
+.master-form-area.is-open { display: flex; }
+.master-input-group { position: relative; }
+.master-input-group label { position: absolute; left: 10px; top: -8px; background: #fff; padding: 0 4px; font-size: 0.75rem;; color: #bbb; z-index: 1; }
+
+.master-bottom-actions { display: flex; gap: 10px; padding: 16px; background: #fff; border-top: 1px solid #e2e8f0; }
+.master-pane-hidden { display: none !important; }
+
+/* 📱 모바일 UX: 리스트와 폼이 아래위로 자연스럽게 스크롤 되도록 변경 */
+@media (max-width: 768px) {
+    #masterEditorModal .modal-content { width: 100vw !important; max-width: 100vw !important; height: 100dvh !important; max-height: 100dvh !important; border-radius: 0; font-size: 95%; }
+    .master-editor-shell { grid-template-columns: 1fr; display: flex; flex-direction: column; overflow-y: auto; }
+    .master-editor-pane { flex: none; overflow: visible; padding: 11px; margin-bottom: 14px; }
+    #masterEditListWrap { min-height: 200px; max-height: 300px; } /* 목록이 무한정 길어지는 것 방지 */
+    .master-editor-actions { position: sticky; bottom: 0; background: #fff; padding: 11px 0; border-top: 1px solid #e2e8f0; z-index: 100; }
+    #masterEditorModal .f-input-compact,
+    #masterEditorModal .field-input { height: 42px !important; font-size: 13.3px; }
+    #masterEditorModal .picker-launch-btn { width: 42px; height: 42px; font-size: 15px; border-radius: 9px; }
+    #masterEditorModal .master-header,
+    #masterEditorModal .master-body,
+    #masterEditorModal .master-bottom-actions,
+    #masterEditorModal .master-form-area,
+    #masterEditorModal .master-filter-grid { padding: 14px; }
+    #masterEditorModal .master-mode-tab,
+    #masterEditorModal .master-list-card { padding: 11px; font-size: 13.3px; }
+}
+
+/* Reason: 현장에서 터치하기 쉬운 넓은 카드형 UI 및 입력창 디자인 */
+.field-card { background: #fff; border: 1px solid #e9ecef; border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+.field-input { height: 48px !important; border-radius: 10px !important; border: 1px solid #ced4da !important; padding: 0 16px; font-size: 16px; width: 100%; box-sizing: border-box; }
+.field-input:focus { border-color: #339af0 !important; box-shadow: 0 0 0 3px rgba(51, 154, 240, 0.2); }
+
+/* Reason: 키보드 없이 수량을 조절할 수 있는 직관적인 스텝퍼 버튼 */
+.stepper-wrap { display: flex; align-items: center; background: #f8f9fa; border-radius: 10px; border: 1px solid #ced4da; overflow: hidden; height: 48px; }
+.stepper-btn { width: 48px; height: 100%; background: #e9ecef; border: none; font-size: 20px; font-weight: bold; color: #495057; cursor: pointer; touch-action: manipulation; }
+.stepper-btn:active { background: #ced4da; }
+.stepper-input { flex: 1; height: 100%; border: none !important; text-align: center; font-size: 16px; font-weight: bold; color: #339af0; background: transparent; }
+
+/* Reason: 정보 과부하를 막기 위한 점진적 노출(Progressive Disclosure) 토글 */
+.advanced-toggle { width: 100%; background: #f8f9fa; border: 1px dashed #ced4da; border-radius: 8px; color: #868e96; font-size: 13px; font-weight: bold; padding: 10px 0; margin-top: 10px; text-align: center; cursor: pointer; }
+.advanced-content { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e9ecef; }
+.advanced-content.show { display: block; }
+.item-row-badge { display:inline-flex; align-items:center; justify-content:center; min-width:58px; min-height:30px; padding:0 8px; border-radius:8px; font-size:12px; font-weight:800; line-height:1; letter-spacing:-0.02em; color:#fff; box-sizing:border-box; box-shadow:0 6px 14px rgba(15,23,42,0.10); flex-shrink:0; }
+.item-row-badge.label-inner { background:linear-gradient(135deg, #12b886, #0ca678); }
+.item-row-badge.label-outer { background:linear-gradient(135deg, #f76707, #e8590c); }
+.item-row-badge.label-badge { background:linear-gradient(135deg, #3b82f6, #2563eb); }
+</style>
+
+<div id="manualModal" class="modal">
+    <div class="modal-content manual-con" style="text-align:left;">
+        <div class="bs-handle"></div>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px;">
+            <h3 id="manualTitle" style="margin:0; font-weight: 900; letter-spacing: -0.5px; font-size: 1.25rem;">&#54408;&#47785;&#46321;&#47197;</h3>
+            {% if not is_external %}
+            <button type="button" id="btnMasterEditorToggle" class="btn btn-back" style="height:40px; padding:0 14px; border-radius:8px; font-weight:700; white-space:nowrap;" onclick="openMasterEditorModal()">
+                &#51228;&#54408;&#44288;&#47532;
+            </button>
+            {% endif %}
+        </div>
+        
+        <form action="/api/item/save" method="post" id="manualForm" onsubmit="if(prepareDynamicAttributes()===false) return false; markItemChanged(); const btn=document.getElementById('btnSaveManual'); if(btn.disabled) return false; btn.disabled=true; btn.innerText='\uC800\uC7A5\uC911..'; return true;" style="display: flex; flex-direction: column; flex-grow: 1;">
+            <input type="hidden" name="OrderID" value="{{ order.OrderID }}">
+            <input type="hidden" name="ItemID" id="hidItemID" value="">
+            <input type="hidden" name="GroupID" id="hidGroupID" value=""> 
+            <input type="hidden" name="CanonicalPayload" id="hidCanonicalPayload" value="">
+            {% if is_external %}<input type="hidden" name="access_key" value="{{ access_key }}">{% endif %}
+            
+            <div class="control-box" style="margin-bottom: 12px;">
+                <div class="control-row" style="display:flex; gap: 8px;">
+                    <div style="position:relative; width: 148px;">
+                        <div class="location-picker-row">
+                            <input type="text" id="locPickerDisplay" class="f-input-compact" value="" placeholder="위치선택" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                            <button type="button" class="picker-launch-btn" onclick="openLocationPicker()" aria-label="위치 선택 열기">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
+                        <select name="Location" id="selLocation" class="hidden-picker-select" onchange="toggleLocation(this.value)" style="font-weight: bold; background-color: #f8f9fa;">
+                            <option value="거실">거실</option><option value="안방">안방</option>
+                            <option value="작은방(중)">작은방(중)</option><option value="작은방(끝)">작은방(끝)</option>
+                            <option value="주방">주방</option><option value="알파룸">알파룸</option><option value="드레스룸">드레스룸</option>
+                            <option disabled style="background:#f1f3f5; color:#aaa;">────────</option>
+                            <option value="발코니_거실">발코니_거실</option><option value="발코니_안방">발코니_안방</option><option value="발코니_작은방">발코니_작은방</option>
+                            <option value="direct" style="font-weight:bold; color:#007bff;">👉 직접입력</option>
+                        </select>
+                    </div>
+                    
+                    {% set _item_categories = item_categories or ['커튼', '블라인드', '기타'] %}
+                    <div id="catTabWrap" style="flex:1; display:flex; gap:0; background:#f1f3f5; padding:3px; border-radius:8px; height: 44px;">
+                        <input type="hidden" id="catSelect" name="Category" value="{{ _item_categories[0] }}">
+                        {% for cat_name in _item_categories %}
+                        <button type="button" class="btn-cat-type{% if loop.first %} active{% endif %}" onclick='clickCategory({{ cat_name | tojson }})' style="flex:1; border:none; background:none; border-radius:6px; font-weight:bold; color:#888; cursor:pointer; font-size:13px; transition:0.2s;">{{ cat_name }}</button>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div id="divDirectLoc" style="display:none; gap:5px; width:100%; margin-top: 8px;">
+                    <input type="text" name="inpLocation" id="inpLocation" class="f-input-compact" placeholder="위치 입력" style="flex:1;" oninput="syncLocationPickerLabel()">
+                    <button type="button" onclick="resetLocation()" style="padding:0 12px; height:44px; border:1px solid #ccc; background:#fff; border-radius:8px; font-weight: bold; color:#495057;"><i class="fas fa-undo"></i></button>
+                </div>
+
+                <div id="plugin-area-curtain" style="margin-top: 10px;">
+                    <div id="curtainTypeDiv" class="btn-group-toggle" style="display:flex; height: 40px;">
+                        <input type="radio" name="CurtainType" id="typeMix" value="mix" checked onclick="renderRows()"> <label for="typeMix" style="flex:1; line-height:40px; padding:0;">속지+겉지</label>
+                        <input type="radio" name="CurtainType" id="typeOuter" value="outer" onclick="renderRows()"> <label for="typeOuter" style="flex:1; line-height:40px; padding:0;">겉지(형상)</label>
+                        <input type="radio" name="CurtainType" id="typeInner" value="inner" onclick="renderRows()"> <label for="typeInner" style="flex:1; line-height:40px; padding:0;">속지</label>
+                    </div>
+                    
+                    <div id="blindTypeDiv" style="display:none; width:100%;">
+                        <div style="margin-bottom:6px;">
+                            <input type="hidden" id="blindSubKind" name="SubCategory" value="콤비" data-min="2.0">
+                            <div class="blind-kind-group horizontal-scroll-group">
+                                <button type="button" class="btn-kind active" style="height:36px; padding:0 14px; border-radius:18px;" onclick="setBlindKind(this, '콤비', 2.0)">콤비</button>
+                                <button type="button" class="btn-kind" style="height:36px; padding:0 14px; border-radius:18px;" onclick="setBlindKind(this, '롤', 2.0)">롤</button>
+                                <button type="button" class="btn-kind" style="height:36px; padding:0 14px; border-radius:18px;" onclick="setBlindKind(this, '우드', 1.5)">우드</button>
+                                <button type="button" class="btn-kind" style="height:36px; padding:0 14px; border-radius:18px;" onclick="setBlindKind(this, 'A/L', 1.5)">A/L</button>
+                                <button type="button" class="btn-kind" style="height:36px; padding:0 14px; border-radius:18px;" onclick="setBlindKind(this, '허니콤', 1.5)">허니콤</button>
+                                <button type="button" class="btn-kind" style="height:36px; padding:0 14px; border-radius:18px;" onclick="setBlindKind(this, '홀딩', 3.5)">홀딩</button>
+                                <button type="button" class="btn-kind" style="height:36px; padding:0 14px; border-radius:18px;" onclick="setBlindKind(this, '버티칼', 3.5)">버티칼</button>
+                                <button type="button" class="btn-kind" style="height:36px; padding:0 14px; border-radius:18px;" onclick="setBlindKind(this, '유니슬렛', 5.0)">유니슬렛</button>
+                            </div>
+                        </div>
+                        <div class="blind-btn-group" id="blindBtnGroup"></div>
+                        <input type="hidden" id="blindSplit" value="1">
+                    </div>
+
+                    <div id="etcTypeDiv" style="display:none; background:#f8f9fa; padding:10px 12px; border-radius:8px;">
+                        <label style="font-size:12px; font-weight:bold; color:#666; margin-bottom: 4px; display: block;">기타 품목 상세:</label>
+                        <input type="text" id="inpEtcKind" class="f-input-compact" style="font-weight:bold; color:#495057;" placeholder="예: 설치비, 수선, 레일 등" oninput="syncEtcData()">
+                    </div>
+                </div>
+            </div>
+            
+            <div id="dynamicArea" style="flex-grow: 1; overflow-y:auto; padding-right:2px; padding-bottom: 10px;"></div>
+            
+            <div class="sticky-action-bar">
+                <button type="submit" class="btn btn-save" id="btnSaveManual" style="flex: 2; height: 48px; font-size: 16px; font-weight: 800; border-radius: 10px; box-shadow: 0 4px 10px rgba(51,154,240,0.3);">저장 및 적용</button>
+                <button type="button" class="btn btn-back" onclick="closeManualModal()" style="flex: 1; height: 48px; font-size: 15px; font-weight: 700; border-radius: 10px; background: #e9ecef; color: #495057;">취소</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if not is_external %}
+<div id="masterEditorModal" class="modal" style="display:none; z-index:100180;" onclick="if(event.target===this) closeMasterEditorModal()">
+    <div class="modal-content master-modal-content" onclick="event.stopPropagation()">
+        
+        <div class="master-header">
+            <h3>&#51228;&#54408;&#44288;&#47532;</h3>
+            <button type="button" class="btn btn-back" style="padding:6px 16px; border-radius:8px; font-weight:bold;" onclick="closeMasterEditorModal()">&#45803;&#44592;</button>
+        </div>
+
+        <div class="master-body">
+            <div class="master-mode-tabs">
+                <button type="button" id="masterModeEdit" class="master-mode-tab active" onclick="setMasterEditorMode('edit')">기존 제품 수정</button>
+                <button type="button" id="masterModeCreate" class="master-mode-tab" onclick="setMasterEditorMode('create')">신규 제품 등록</button>
+            </div>
+
+            <div class="master-filter-grid" id="masterFilterBox">
+                <select id="masterEditCategory" class="f-input-compact" onchange="onMasterEditCategoryChange()">
+                    <option value="">1차 분류 전체</option><option value="커튼">커튼</option><option value="블라인드">블라인드</option><option value="기타">기타</option>
+                </select>
+                <select id="masterEditSubCategory" class="f-input-compact" onchange="loadMasterEditProducts()">
+                    <option value="">2차 분류 전체</option>
+                </select>
+                <select id="masterEditSupplier" class="f-input-compact" onchange="loadMasterEditProducts()" style="grid-column: 1 / -1;">
+                    <option value="">공급처 전체</option>
+                </select>
+                <div style="grid-column: 1 / -1; display:flex; gap:6px;">
+                    <input type="text" id="masterEditSearch" class="f-input-compact" placeholder="🔍 제품명 검색" oninput="loadMasterEditProducts()" style="flex:1;" autocomplete="off">
+                    <button type="button" class="btn btn-back" style="padding:0 14px; border-radius:8px; font-weight:bold; white-space:nowrap;" onclick="resetMasterEditorForm()">초기화</button>
+                </div>
+            </div>
+
+            <div id="masterEditListWrap" class="master-list-area">
+                <div id="masterEditList"></div>
+            </div>
+
+            <div class="master-form-area">
+                <div style="font-size:14px; font-weight:900; color:#0f172a; margin-bottom:4px;" id="masterEditorFormTitle">상세 정보 편집</div>
+                <input type="hidden" id="masterEditProductID" value="">
+                <input type="hidden" id="masterEditSupplierID" value="">
+                
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <div class="master-input-group">
+                        <label>1차 분류 (먼저 선택)</label>
+                        <select id="masterEditCategoryInline" class="f-input-compact" onchange="syncInlineMasterCategory(); syncInlineSupplierDropdown();" style="font-weight:bold;">
+                            <option value="">1차 분류</option><option value="커튼">커튼</option><option value="블라인드">블라인드</option><option value="기타">기타</option>
+                        </select>
+                    </div>
+                    <div class="master-input-group">
+                        <label>2차 분류</label>
+                        <select id="masterEditSubCategoryInline" class="f-input-compact" onchange="syncInlineSupplierDropdown();" style="font-weight:bold;"></select>
+                    </div>
+                </div>
+
+                <div class="master-input-group" style="margin-top:8px;">
+                    <label style="color:#8b5cf6;"><i class="fas fa-building"></i> 공급 업체</label>
+                    <div style="display:flex; gap:6px;">
+                        <select id="masterEditSupplierSelectInline" class="f-input-compact" onchange="handleInlineSupplierChange()" style="font-weight:900; border-color:#c4b5fd; flex:1;">
+                            <option value="">업체를 선택하세요</option>
+                        </select>
+                        <input type="text" id="masterEditSupplierName" class="f-input-compact" placeholder="새 업체명 직접 입력" style="display:none; font-weight:900; border-color:#c4b5fd; flex:1;" autocomplete="off">
+                    </div>
+                    <div id="masterSupplierTypoWarning" style="font-size:11px; color:#ef4444; margin-top:4px; display:none;">
+                        <i class="fas fa-exclamation-triangle"></i> 주의: 오타 입력 시 완전히 새로운 업체로 등록됩니다.
+                    </div>
+                </div>
+
+                <div class="master-input-group">
+                    <label>제품명</label>
+                    <input type="text" id="masterEditProductName" class="f-input-compact" placeholder="제품명 (예: 차르르 쉬폰)" style="font-weight:bold;" autocomplete="off" onkeyup="if(typeof handleCustomAuto==='function') handleCustomAuto(this)">
+                </div>
+
+                <div style="display:flex; gap:8px;">
+                    <div class="master-input-group" style="flex:1;">
+                        <label style="color:#e03131;">매입가</label>
+                        <input type="text" id="masterEditCostPrice" class="f-input-compact" placeholder="0" inputmode="numeric" oninput="this.value=formatComma(this.value)" style="color:#e03131; font-weight:bold; text-align:right;">
+                    </div>
+                    <div class="master-input-group" style="flex:1;">
+                        <label style="color:#2563eb;">판매가</label>
+                        <input type="text" id="masterEditSellingPrice" class="f-input-compact" placeholder="0" inputmode="numeric" oninput="this.value=formatComma(this.value)" style="color:#2563eb; font-weight:bold; text-align:right;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="master-bottom-actions">
+            <button type="button" id="masterEditorDeleteBtn" class="btn" style="flex:1; background:#fee2e2; color:#ef4444; border-radius:10px; height:48px; font-weight:900; border:none;" onclick="deleteMasterEditorItem()">삭제</button>
+            <button type="button" id="masterEditorSaveBtn" class="btn" style="flex:2; background:#3b82f6; color:#fff; border-radius:10px; height:48px; font-weight:900; border:none; font-size:16px;" onclick="saveMasterEditorItem()">저장 및 적용</button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+// Reason: 수량(+, -) 버튼을 눌렀을 때 값을 안전하게 증감시키고 이벤트를 발생시키는 함수
+window.stepQty = function(id, delta) {
+    var input = document.getElementById(id);
+    if(input) {
+        var val = parseFloat(input.value) || 0;
+        val = Math.max(0, val + delta); // 음수 방지
+        input.value = Number.isInteger(val) ? val : val.toFixed(1);
+        input.dispatchEvent(new Event('input')); // 단가, 마진 자동 계산 트리거
+    }
+};
+
+// Reason: 상세 옵션(메모, 꺽쇠 등) 영역을 열고 닫는 토글 함수
+window.toggleAdvanced = function(idx) {
+    var content = document.getElementById('Advanced_' + idx);
+    var btn = document.getElementById('ToggleBtn_' + idx);
+    if(content && btn) {
+        if(content.classList.contains('show')) {
+            content.classList.remove('show');
+            btn.innerHTML = '상세 옵션 열기 <i class="fas fa-chevron-down"></i>';
+        } else {
+            content.classList.add('show');
+            btn.innerHTML = '상세 옵션 닫기 <i class="fas fa-chevron-up"></i>';
+        }
+    }
+};
+
+window.isMobileInlineSelectMode = window.isMobileInlineSelectMode || function() {
+    try {
+        if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true;
+    } catch (e) {}
+    return window.innerWidth <= 768;
+};
+
+window.closeMobileInlineSelect = window.closeMobileInlineSelect || function() {
+    if (window.__mobileInlineSelectResizeHandler) {
+        window.removeEventListener('resize', window.__mobileInlineSelectResizeHandler);
+        window.__mobileInlineSelectResizeHandler = null;
+    }
+    var panel = document.getElementById('mobileInlineSelectPanel');
+    var scrim = document.getElementById('mobileInlineSelectScrim');
+    if (panel) panel.remove();
+    if (scrim) scrim.remove();
+    window.__mobileInlineSelectAnchor = null;
+    window.__mobileInlineSelectTarget = null;
+};
+
+window.positionMobileInlineSelect = window.positionMobileInlineSelect || function(anchorEl, panel) {
+    if (!anchorEl || !panel) return;
+    var rect = anchorEl.getBoundingClientRect();
+    var width = Math.max(rect.width, 220);
+    width = Math.min(width, window.innerWidth - 16);
+    var left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+    var top = rect.bottom + 6;
+    var maxTop = window.innerHeight - panel.offsetHeight - 8;
+    if (top > maxTop) {
+        top = Math.max(8, rect.top - panel.offsetHeight - 6);
+    }
+    panel.style.width = width + 'px';
+    panel.style.left = left + 'px';
+    panel.style.top = top + 'px';
+};
+
+window.openMobileInlineSelect = window.openMobileInlineSelect || function(selectEl, options) {
+    if (!selectEl) return false;
+    if (!window.isMobileInlineSelectMode()) return false;
+    if (window.__mobileInlineSelectIgnoreUntil && Date.now() < window.__mobileInlineSelectIgnoreUntil) return true;
+
+    var opts = options || {};
+    var anchorEl = opts.anchor || selectEl;
+    var optionList = Array.from(selectEl.options || []).filter(function(opt) {
+        return !opt.disabled && String(opt.text || '').trim() !== '';
+    });
+    if (!optionList.length) return false;
+
+    window.closeMobileInlineSelect();
+
+    var scrim = document.createElement('button');
+    scrim.type = 'button';
+    scrim.id = 'mobileInlineSelectScrim';
+    scrim.className = 'mobile-inline-select__scrim';
+    scrim.setAttribute('aria-label', '닫기');
+    scrim.onclick = function() {
+        if (window.__mobileInlineSelectIgnoreUntil && Date.now() < window.__mobileInlineSelectIgnoreUntil) return;
+        window.closeMobileInlineSelect();
+    };
+    document.body.appendChild(scrim);
+
+    var panel = document.createElement('div');
+    panel.id = 'mobileInlineSelectPanel';
+    panel.className = 'mobile-inline-select';
+    panel.innerHTML = optionList.map(function(opt) {
+        var selected = String(opt.value) === String(selectEl.value) ? ' is-selected' : '';
+        return '<button type="button" class="mobile-inline-select__item' + selected + '" data-value="' + String(opt.value).replace(/"/g, '&quot;') + '">' + String(opt.text) + '</button>';
+    }).join('');
+    panel.addEventListener('click', function(event) {
+        var btn = event.target.closest('.mobile-inline-select__item');
+        if (!btn) return;
+        var nextValue = btn.getAttribute('data-value');
+        if (String(selectEl.value) !== String(nextValue)) {
+            selectEl.value = nextValue;
+            selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+            selectEl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        window.closeMobileInlineSelect();
+    });
+    document.body.appendChild(panel);
+    window.__mobileInlineSelectIgnoreUntil = Date.now() + 360;
+
+    window.__mobileInlineSelectAnchor = anchorEl;
+    window.__mobileInlineSelectTarget = selectEl;
+    window.__mobileInlineSelectResizeHandler = function() {
+        var currentPanel = document.getElementById('mobileInlineSelectPanel');
+        if (!currentPanel || !window.__mobileInlineSelectAnchor) return;
+        window.positionMobileInlineSelect(window.__mobileInlineSelectAnchor, currentPanel);
+    };
+    window.addEventListener('resize', window.__mobileInlineSelectResizeHandler);
+    window.positionMobileInlineSelect(anchorEl, panel);
+    return true;
+};
+
+window.handleMobileInlineSelectTrigger = window.handleMobileInlineSelectTrigger || function(event) {
+    var selectEl = event.target.closest('select');
+    if (!selectEl) return false;
+    if (!window.isMobileInlineSelectMode()) return false;
+    if (selectEl.classList.contains('hidden-picker-select')) return false;
+    if (!selectEl.closest('#manualModal, #masterEditorModal')) return false;
+    if (window.__mobileInlineSelectTarget === selectEl && document.getElementById('mobileInlineSelectPanel')) {
+        if (event.cancelable) event.preventDefault();
+        event.stopPropagation();
+        return true;
+    }
+    if (window.__mobileInlineSelectIgnoreUntil && Date.now() < window.__mobileInlineSelectIgnoreUntil) {
+        if (event.cancelable) event.preventDefault();
+        event.stopPropagation();
+        return true;
+    }
+    if (event.cancelable) event.preventDefault();
+    event.stopPropagation();
+    window.openMobileInlineSelect(selectEl);
+    return true;
+};
+
+if (!window.__mobileInlineSelectGlobalBound) {
+    document.addEventListener('pointerdown', function(event) {
+        window.handleMobileInlineSelectTrigger(event);
+    }, true);
+
+    document.addEventListener('touchstart', function(event) {
+        window.handleMobileInlineSelectTrigger(event);
+    }, true);
+
+    document.addEventListener('click', function(event) {
+        window.handleMobileInlineSelectTrigger(event);
+    }, true);
+}
+
+
+
+/* ==========================================================================
+   [ERP 마스터 관리 모달 전용 스크립트 - 모바일 탑다운 & 전역 동기화 최적화]
+   ========================================================================== */
+window.__masterEditProducts = [];
+window.__masterEditSuppliers = [];
+window.__masterEditFiltered = [];
+window.__masterEditorMode = 'edit';
+
+async function openMasterEditorModal() {
+    const modal = document.getElementById('masterEditorModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    if (typeof registerModalBackTrap === 'function') registerModalBackTrap('masterEditorModal', 'closeMasterEditorModal');
+    setMasterEditorMode('edit');
+    await initMasterEditorSources();
+}
+
+function closeMasterEditorModal(options) {
+    const opts = options || {};
+    const modal = document.getElementById('masterEditorModal');
+    if (modal) modal.style.display = 'none';
+    if (typeof releaseModalBackTrap === 'function') releaseModalBackTrap('masterEditorModal', opts);
+}
+
+function setMasterEditorFormOpen(isOpen) {
+    const formArea = document.querySelector('#masterEditorModal .master-form-area');
+    if (!formArea) return;
+    formArea.classList.toggle('is-open', !!isOpen);
+}
+
+function setMasterEditorMode(mode) {
+    window.__masterEditorMode = mode;
+    const isCreate = mode === 'create';
+    
+    document.getElementById('masterModeEdit').classList.toggle('active', !isCreate);
+    document.getElementById('masterModeCreate').classList.toggle('active', isCreate);
+    
+    document.getElementById('masterFilterBox').style.display = isCreate ? 'none' : 'grid';
+    document.getElementById('masterEditListWrap').style.display = isCreate ? 'none' : 'flex';
+    
+    document.getElementById('masterEditorFormTitle').textContent = isCreate ? '신규 제품 등록' : '상세 정보 편집';
+    document.getElementById('masterEditorDeleteBtn').style.display = isCreate ? 'none' : 'block';
+    document.getElementById('masterEditorSaveBtn').textContent = isCreate ? '신규 등록' : '저장 및 적용';
+    setMasterEditorFormOpen(isCreate);
+
+    if (isCreate) resetMasterEditorForm();
+    else loadMasterEditProducts();
+}
+
+async function initMasterEditorSources() {
+    try {
+        const [supRes, prodRes] = await Promise.all([ fetch('/api/ledger/suppliers'), fetch('/api/supplier/smart-db') ]);
+        if (supRes.ok) window.__masterEditSuppliers = await supRes.json();
+        if (prodRes.ok) window.__masterEditProducts = await prodRes.json();
+    } catch (e) {}
+
+    const supSel = document.getElementById('masterEditSupplier');
+    if (supSel) {
+        const arr = Array.isArray(window.__masterEditSuppliers) ? window.__masterEditSuppliers : [];
+        supSel.innerHTML = '<option value="">공급처 전체</option>' + arr.map(s => `<option value="${s.SupplierName}">${s.SupplierName}</option>`).join('');
+    }
+    
+    const catSel = document.getElementById('masterEditCategory');
+    if (catSel && !catSel.value) catSel.value = normalizeCategoryForMaster(document.getElementById('catSelect')?.value || '커튼');
+    
+    onMasterEditCategoryChange();
+}
+
+function getMasterSubcategoryMap() {
+    return {
+        '커튼': ['겉지', '속지'],
+        '블라인드': ['콤비', '롤', '우드', 'A/L', '허니콤', '트리플', '버티칼', '알루미늄', '유니슬렛', '홀딩'],
+        '기타': []
+    };
+}
+
+function onMasterEditCategoryChange() {
+    const cat = document.getElementById('masterEditCategory')?.value || '';
+    const subSel = document.getElementById('masterEditSubCategory');
+    const inlineSubSel = document.getElementById('masterEditSubCategoryInline');
+    
+    // 카테고리별 2차 분류 매핑
+    const opts = {
+        '커튼': ['겉지', '속지'],
+        '블라인드': ['콤비', '롤', '우드', 'A/L', '허니콤', '트리플', '버티칼', '알루미늄', '유니슬렛', '홀딩'],
+        '기타': []
+    }[cat] || [];
+    
+    const html = '<option value="">2차 분류 전체</option>' + opts.map(v => `<option value="${v}">${v}</option>`).join('');
+    
+    if (subSel) {
+        const oldVal = subSel.value;
+        subSel.innerHTML = html;
+        if (opts.includes(oldVal)) subSel.value = oldVal;
+    }
+    if (inlineSubSel) inlineSubSel.innerHTML = html;
+    
+    const inlineCat = document.getElementById('masterEditCategoryInline');
+    if (inlineCat) inlineCat.value = cat;
+
+    loadMasterEditProducts();
+}
+
+function updateMasterSupplierDropdown(cat, sub) {
+    const supSel = document.getElementById('masterEditSupplier');
+    if (!supSel) return;
+
+    const currentSup = supSel.value;
+    let availableSuppliers = new Set();
+
+    (window.__masterEditProducts || []).forEach(p => {
+        if (cat && p.category !== cat) return;
+        if (sub && p.subcategory !== sub) return;
+        if (p.supplier) availableSuppliers.add(p.supplier);
+    });
+
+    const arr = Array.from(availableSuppliers).sort();
+    supSel.innerHTML = '<option value="">공급처 전체</option>' + arr.map(s => `<option value="${s}">${s}</option>`).join('');
+
+    // 기존에 선택했던 공급처가 새 리스트에도 있으면 유지, 없으면 전체로 초기화
+    if (arr.includes(currentSup)) {
+        supSel.value = currentSup;
+    } else {
+        supSel.value = '';
+    }
+}
+
+function syncInlineMasterCategory() {
+    const inlineCat = document.getElementById('masterEditCategoryInline');
+    const topCat = document.getElementById('masterEditCategory');
+    if (inlineCat && topCat) {
+        topCat.value = inlineCat.value;
+        onMasterEditCategoryChange();
+    }
+}
+
+function loadMasterEditProducts() {
+    if (window.__masterEditorMode === 'create') return;
+
+    const cat = document.getElementById('masterEditCategory')?.value || '';
+    const sub = document.getElementById('masterEditSubCategory')?.value || '';
+
+    // [핵심] 리스트를 필터링하기 전에 공급처 드롭다운부터 똑똑하게 압축합니다.
+    updateMasterSupplierDropdown(cat, sub);
+
+    const sup = document.getElementById('masterEditSupplier')?.value || '';
+    const keyword = document.getElementById('masterEditSearch')?.value.trim().toLowerCase() || '';
+
+    const list = (window.__masterEditProducts || []).filter(p => {
+        if (cat && p.category !== cat) return false;
+        if (sub && p.subcategory !== sub) return false;
+        if (sup && p.supplier !== sup) return false;
+        if (keyword && !(p.name || '').toLowerCase().includes(keyword)) return false;
+        return true;
+    });
+
+    window.__masterEditFiltered = list;
+
+    const listWrap = document.getElementById('masterEditList');
+    if (!listWrap) return;
+
+    if (list.length === 0) {
+        listWrap.innerHTML = '<div style="padding:20px; color:#868e96; text-align:center; font-size:13px;">조건에 맞는 제품이 없습니다.</div>';
+        return;
+    }
+
+    listWrap.innerHTML = list.map((p, idx) => `
+        <div data-master-row="${idx}" class="master-list-card" onclick="selectMasterEditRow(${idx})">
+            <div style="min-width:0;">
+                <div style="font-weight:900; color:#212529; font-size:15px; margin-bottom:4px;">${p.name || ''}</div>
+                <div style="font-size:12px; color:#6c757d;">${p.supplier || '미상'} / ${p.category || '-'} / ${p.subcategory || '-'}</div>
+            </div>
+            <div style="text-align:right; flex-shrink:0;">
+                <div style="font-size:12px; color:#e03131; font-weight:800;">매입 ${formatComma(p.cost || 0)}</div>
+                <div style="font-size:12px; color:#1971c2; font-weight:800;">판매 ${formatComma(p.price || 0)}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderMasterEditList() {
+    const listWrap = document.getElementById('masterEditList');
+    if (!listWrap) return;
+    const list = window.__masterEditFiltered || [];
+    
+    if (list.length === 0) {
+        listWrap.innerHTML = '<div style="padding:20px; color:#868e96; text-align:center; font-size:13px;">조건에 맞는 제품이 없습니다.</div>';
+        return;
+    }
+
+    listWrap.innerHTML = list.map((p, idx) => `
+        <div data-master-row="${idx}" class="master-list-card" onclick="selectMasterEditRow(${idx})">
+            <div style="min-width:0;">
+                <div style="font-weight:900; color:#212529; font-size:15px; margin-bottom:4px;">${p.name || ''}</div>
+                <div style="font-size:12px; color:#6c757d;">${p.supplier || '미상'} / ${p.category || '-'} / ${p.subcategory || '-'}</div>
+            </div>
+            <div style="text-align:right; flex-shrink:0;">
+                <div style="font-size:12px; color:#e03131; font-weight:800;">매입 ${formatComma(p.cost || 0)}</div>
+                <div style="font-size:12px; color:#1971c2; font-weight:800;">판매 ${formatComma(p.price || 0)}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function selectMasterEditRow(idx) {
+    // 직접 idx를 넘겨주어 폼에 데이터를 즉시 세팅합니다.
+    setMasterEditorFormOpen(true);
+    applyMasterEditSelection(idx);
+    
+    document.querySelectorAll('#masterEditList [data-master-row]').forEach((el) => {
+        el.classList.toggle('active', el.getAttribute('data-master-row') === String(idx));
+    });
+
+    setTimeout(() => {
+        const formTitle = document.getElementById('masterEditorFormTitle');
+        const modalBody = document.querySelector('.master-body');
+        
+        if (formTitle && modalBody) {
+            modalBody.scrollTo({
+                top: formTitle.offsetTop - 10,
+                behavior: 'smooth'
+            });
+        }
+        
+        const nameInput = document.getElementById('masterEditProductName');
+        if (nameInput) {
+            nameInput.classList.add('pulse-highlight');
+            setTimeout(() => nameInput.classList.remove('pulse-highlight'), 1000);
+        }
+    }, 50);
+}
+
+function applyMasterEditSelection(idx) {
+    const list = Array.isArray(window.__masterEditFiltered) ? window.__masterEditFiltered : [];
+    if (typeof idx === 'undefined' || Number.isNaN(idx) || !list[idx]) return;
+    const p = list[idx];
+    
+    const supplierObj = (window.__masterEditSuppliers || []).find(s => s.SupplierName === p.supplier);
+    const supID = supplierObj ? supplierObj.SupplierID : '';
+    
+    const idEl = document.getElementById('masterEditProductID');
+    const supIdEl = document.getElementById('masterEditSupplierID');
+    if (idEl) idEl.value = p.product_id || '';
+    if (supIdEl) supIdEl.value = supID;
+    
+    const supNameInput = document.getElementById('masterEditSupplierName');
+    if (supNameInput) {
+        supNameInput.value = p.supplier || '';
+        supNameInput.dataset.originalName = p.supplier || '';
+    }
+    
+    const nameEl = document.getElementById('masterEditProductName');
+    const costEl = document.getElementById('masterEditCostPrice');
+    const priceEl = document.getElementById('masterEditSellingPrice');
+    if (nameEl) nameEl.value = p.name || '';
+    if (costEl) costEl.value = formatComma(p.cost || 0);
+    if (priceEl) priceEl.value = formatComma(p.price || 0);
+    
+    const category = normalizeCategoryForMaster(p.category || '');
+    const subcategory = normalizeSubCategoryForMaster(p.subcategory || '', category);
+    
+    const inlineCat = document.getElementById('masterEditCategoryInline');
+    const inlineSub = document.getElementById('masterEditSubCategoryInline');
+    if (inlineCat) inlineCat.value = category;
+    syncInlineMasterCategory();
+    if (inlineSub) inlineSub.value = subcategory;
+    
+    syncInlineSupplierDropdown(); // 폼 동기화
+    
+    const categorySel = document.getElementById('masterEditCategory');
+    const subcategorySel = document.getElementById('masterEditSubCategory');
+    const supplierSel = document.getElementById('masterEditSupplier');
+    
+    if (categorySel) categorySel.value = category;
+    if (typeof setMasterEditSubcategoryOptions === 'function') setMasterEditSubcategoryOptions();
+    if (subcategorySel) subcategorySel.value = subcategory;
+    if (supplierSel) supplierSel.value = p.supplier || '';
+}
+
+/* ==========================================================================
+   [새로 추가됨] 폼 내부 공급처 셀렉트 박스 자동 완성 및 오타 방지 UI 제어
+   ========================================================================== */
+function syncInlineSupplierDropdown() {
+    const cat = document.getElementById('masterEditCategoryInline')?.value || '';
+    const sub = document.getElementById('masterEditSubCategoryInline')?.value || '';
+    const sel = document.getElementById('masterEditSupplierSelectInline');
+    if (!sel) return;
+
+    let available = new Set();
+    (window.__masterEditProducts || []).forEach(p => {
+        if (cat && p.category !== cat) return;
+        if (sub && p.subcategory !== sub) return;
+        if (p.supplier) available.add(p.supplier);
+    });
+
+    if (available.size === 0) {
+        (window.__masterEditSuppliers || []).forEach(s => {
+            if(s.SupplierName) available.add(s.SupplierName);
+        });
+    }
+
+    const arr = Array.from(available).sort();
+    const currentVal = document.getElementById('masterEditSupplierName')?.value || '';
+    
+    sel.innerHTML = '<option value="">== 목록에서 업체 선택 ==</option>' 
+        + arr.map(s => `<option value="${s}">${s}</option>`).join('')
+        + '<option value="___NEW___" style="color:#2563eb; font-weight:900;">➕ 직접 입력 (신규/개명)</option>';
+
+    if (arr.includes(currentVal)) { sel.value = currentVal; } 
+    else if (currentVal) { sel.value = '___NEW___'; } 
+    else { sel.value = ''; }
+    
+    handleInlineSupplierChange();
+}
+
+function handleInlineSupplierChange() {
+    const sel = document.getElementById('masterEditSupplierSelectInline');
+    const input = document.getElementById('masterEditSupplierName');
+    const warning = document.getElementById('masterSupplierTypoWarning');
+    if (!sel || !input) return;
+
+    if (sel.value === '___NEW___') {
+        input.style.display = 'block';
+        if (input.value === '___NEW___') input.value = '';
+        input.focus();
+        if (warning) warning.style.display = 'block';
+    } else {
+        input.style.display = 'none';
+        input.value = sel.value; 
+        if (warning) warning.style.display = 'none';
+    }
+}
+
+/* ==========================================================================
+   [기존 함수 수정] 선택, 초기화, 저장 로직 업데이트
+   ========================================================================== */
+function applyMasterEditSelection(idx) {
+    const list = Array.isArray(window.__masterEditFiltered) ? window.__masterEditFiltered : [];
+    if (typeof idx === 'undefined' || Number.isNaN(idx) || !list[idx]) return;
+    const p = list[idx];
+    
+    const supplierObj = (window.__masterEditSuppliers || []).find(s => s.SupplierName === p.supplier);
+    const supID = supplierObj ? supplierObj.SupplierID : '';
+    
+    const idEl = document.getElementById('masterEditProductID');
+    const supIdEl = document.getElementById('masterEditSupplierID');
+    if (idEl) idEl.value = p.product_id || '';
+    if (supIdEl) supIdEl.value = supID;
+    
+    const supNameInput = document.getElementById('masterEditSupplierName');
+    if (supNameInput) {
+        supNameInput.value = p.supplier || '';
+        supNameInput.dataset.originalName = p.supplier || '';
+    }
+    
+    const nameEl = document.getElementById('masterEditProductName');
+    const costEl = document.getElementById('masterEditCostPrice');
+    const priceEl = document.getElementById('masterEditSellingPrice');
+    if (nameEl) nameEl.value = p.name || '';
+    if (costEl) costEl.value = formatComma(p.cost || 0);
+    if (priceEl) priceEl.value = formatComma(p.price || 0);
+    
+    const category = normalizeCategoryForMaster(p.category || '');
+    const subcategory = normalizeSubCategoryForMaster(p.subcategory || '', category);
+    
+    const inlineCat = document.getElementById('masterEditCategoryInline');
+    const inlineSub = document.getElementById('masterEditSubCategoryInline');
+    if (inlineCat) inlineCat.value = category;
+    syncInlineMasterCategory();
+    if (inlineSub) inlineSub.value = subcategory;
+    
+    syncInlineSupplierDropdown(); // 폼 동기화
+    
+    const categorySel = document.getElementById('masterEditCategory');
+    const subcategorySel = document.getElementById('masterEditSubCategory');
+    const supplierSel = document.getElementById('masterEditSupplier');
+    
+    if (categorySel) categorySel.value = category;
+    if (typeof setMasterEditSubcategoryOptions === 'function') setMasterEditSubcategoryOptions();
+    if (subcategorySel) subcategorySel.value = subcategory;
+    if (supplierSel) supplierSel.value = p.supplier || '';
+}
+
+function resetMasterEditorForm(options) {
+    const opts = options || {};
+    const categoryValue = (document.getElementById('masterEditCategory') || {}).value || '';
+    const subcategoryValue = (document.getElementById('masterEditSubCategory') || {}).value || '';
+    const supplierValue = (document.getElementById('masterEditSupplier') || {}).value || '';
+
+    const els = ['masterEditProductID', 'masterEditSupplierID', 'masterEditSupplierName', 'masterEditProductName', 'masterEditCostPrice', 'masterEditSellingPrice'];
+    els.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    
+    const supNameInput = document.getElementById('masterEditSupplierName');
+    if(supNameInput) supNameInput.dataset.originalName = '';
+
+    document.querySelectorAll('#masterEditList [data-master-row]').forEach(el => el.classList.remove('active'));
+
+    if (!opts.preserveCategory) {
+        const catEl = document.getElementById('masterEditCategory');
+        if (catEl) catEl.value = '';
+        if (typeof setMasterEditSubcategoryOptions === 'function') setMasterEditSubcategoryOptions();
+    } else {
+        const catEl = document.getElementById('masterEditCategory');
+        const subEl = document.getElementById('masterEditSubCategory');
+        if (catEl) catEl.value = categoryValue;
+        if (typeof setMasterEditSubcategoryOptions === 'function') setMasterEditSubcategoryOptions();
+        if (subEl) subEl.value = subcategoryValue;
+    }
+
+    if (!opts.preserveSupplier) {
+        const supEl = document.getElementById('masterEditSupplier');
+        if (supEl) supEl.value = '';
+    } else {
+        const supEl = document.getElementById('masterEditSupplier');
+        if (supEl) supEl.value = supplierValue;
+    }
+
+    syncInlineSupplierDropdown(); // 폼 동기화
+    if (window.__masterEditorMode !== 'create') setMasterEditorFormOpen(false);
+}
+
+async function saveMasterEditorItem() {
+    const productId = (document.getElementById('masterEditProductID') || {}).value || 0;
+    const supId = (document.getElementById('masterEditSupplierID') || {}).value || '';
+    const inputSupName = ((document.getElementById('masterEditSupplierName') || {}).value || '').trim();
+    const originalSupName = (document.getElementById('masterEditSupplierName') || {}).dataset.originalName || '';
+
+    const category = (document.getElementById('masterEditCategoryInline') || {}).value || '';
+    const subcategory = (document.getElementById('masterEditSubCategoryInline') || {}).value || '';
+    const productName = ((document.getElementById('masterEditProductName') || {}).value || '').trim();
+
+    if (!category) { alert('1차 분류를 선택해주세요.'); return; }
+    if (!inputSupName || inputSupName === '___NEW___') { alert('업체명을 목록에서 선택하거나 입력해주세요.'); return; }
+    if (!productName) { alert('제품명을 입력해주세요.'); return; }
+
+    const rawCost = (document.getElementById('masterEditCostPrice') || {}).value || '0';
+    const rawPrice = (document.getElementById('masterEditSellingPrice') || {}).value || '0';
+    const cleanCost = rawCost.toString().replace(/,/g, '');
+    const cleanPrice = rawPrice.toString().replace(/,/g, '');
+
+    const existingSup = (window.__masterEditSuppliers || []).find(s => s.SupplierName === inputSupName);
+
+    // [로직 수정] 다른 기존 업체로 변경하는 것은 허용, 아예 생소한 이름일 때만 경고
+    if (window.__masterEditorMode === 'edit' && inputSupName !== originalSupName) {
+        if (!existingSup) {
+            if (!confirm(`⚠️ 기존 [${originalSupName}] 업체의 이름을 [${inputSupName}](으)로 완전히 개명하시겠습니까?\n\n(참고: 다른 업체의 제품으로 이동하려면 취소 후 목록에서 기존 업체를 선택하세요)`)) {
+                return; 
+            }
+            const supFormData = new FormData();
+            supFormData.append('SupplierName', inputSupName);
+            try {
+                const supRes = await fetch(`/api/ledger/suppliers/${supId}`, { method: 'POST', body: supFormData });
+                if (!supRes.ok) throw new Error('업체명 변경 실패');
+            } catch(e) {
+                alert('업체명 전역 변경에 실패했습니다.'); return;
+            }
+        }
+    } else if (window.__masterEditorMode === 'create' && !existingSup) {
+        if (!confirm(`'${inputSupName}'은(는) 미등록 업체입니다. 오타가 아닌지 확인해주세요.\n새로운 신규 공급처로 등록하시겠습니까?`)) {
+            return;
+        }
+        const supFormData = new FormData();
+        supFormData.append('SupplierName', inputSupName);
+        try { await fetch('/api/ledger/suppliers', { method: 'POST', body: supFormData }); } catch(e) {}
+    }
+
+    const formData = new URLSearchParams();
+    formData.append('ProductID', productId);
+    formData.append('ProductName', productName);
+    formData.append('Category', category);
+    formData.append('SubCategory', subcategory);
+    formData.append('SupplierName', inputSupName); 
+    formData.append('CostPrice', cleanCost);
+    formData.append('SellingPrice', cleanPrice);
+    formData.append('Color', ''); formData.append('Option', ''); formData.append('Note', '');
+
+    try {
+        const res = await fetch('/api/item/master/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData.toString()
+        });
+        if (!res.ok) throw new Error('save failed');
+        
+        await initMasterEditorSources(); 
+        
+        const catEl = document.getElementById('masterEditCategory');
+        if (catEl) catEl.value = category;
+        onMasterEditCategoryChange(); 
+        
+        const subEl = document.getElementById('masterEditSubCategory');
+        if (subEl) subEl.value = subcategory;
+        
+        const supEl = document.getElementById('masterEditSupplier');
+        if (supEl) supEl.value = inputSupName;
+        
+        if (window.__masterEditorMode === 'create') {
+            alert('신규 등록이 완료되었습니다.');
+            if(typeof resetMasterEditorForm === 'function') resetMasterEditorForm({ preserveCategory: true, preserveSupplier: true, skipFocus: true });
+        } else {
+            alert('수정사항이 완벽하게 저장 및 적용되었습니다.');
+            loadMasterEditProducts();
+        }
+    } catch (e) {
+        console.error(e);
+        alert('제품 저장 중 오류가 발생했습니다.');
+    }
+}
+
+async function deleteMasterEditorItem() {
+    const productId = document.getElementById('masterEditProductID').value;
+    if (!productId) {
+        alert('삭제할 항목을 선택해주세요.');
+        return;
+    }
+    if (!confirm('정말 삭제하시겠습니까?')) return;
+    
+    const formData = new URLSearchParams();
+    formData.append('ProductID', productId);
+    try {
+        const res = await fetch('/api/item/master/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData.toString()
+        });
+        if (!res.ok) throw new Error('delete failed');
+        
+        alert('삭제되었습니다.');
+        resetMasterEditorForm();
+        await initMasterEditorSources();
+        loadMasterEditProducts();
+    } catch (e) {
+        alert('삭제 중 오류가 발생했습니다.');
+    }
+}
+
+
+
+function prepareDynamicAttributes() {
+    var cat = document.getElementById('catSelect').value;
+    var rowInputs = document.querySelectorAll('input[name="RowIdx"]');
+    var locationRaw = document.getElementById('selLocation') ? document.getElementById('selLocation').value : "";
+    var resolvedLocation = locationRaw === 'direct'
+        ? ((document.getElementById('inpLocation') || {}).value || "").trim()
+        : (locationRaw || "").trim();
+    var mode = (typeof getItemCategoryMode === 'function')
+        ? getItemCategoryMode(cat)
+        : (cat === '블라인드' ? 'blind' : (cat === '커튼' ? 'curtain' : 'generic'));
+    var canonicalItems = [];
+    var supplierValidationFailed = false;
+    
+    rowInputs.forEach(function(rowInput) {
+        if (supplierValidationFailed) return;
+        var idx = rowInput.value;
+        var attr = {}; 
+        
+        if (cat === '블라인드') {
+            var handleEl = document.getElementById('Handle_' + idx);
+            var cordEl = document.getElementById('CordLen_' + idx);
+            var bracketEl = document.getElementById('chkLBracket');
+            var masterCostEl = document.getElementById('Master_CostPrice');
+            if (handleEl) attr['handle_pos'] = handleEl.value;
+            if (cordEl) attr['cord_len'] = cordEl.value;
+            if (bracketEl) attr['has_l_bracket'] = bracketEl.checked;
+            if (masterCostEl && masterCostEl.value) attr['cost_price'] = safeCleanNum(masterCostEl.value);
+        } else if (cat === '커튼') {
+            var curtainType = document.querySelector('input[name="CurtainType"]:checked');
+            if (curtainType) attr['curtain_type'] = curtainType.value;
+        } 
+
+        var costEl = document.getElementById('CostPrice_' + idx);
+        if(costEl && costEl.value) attr['cost_price'] = parseFloat(costEl.value.replace(/,/g, ''));
+        var pidEl = document.querySelector(`input[name="ProductMasterID_${idx}"]`);
+        var prodEl = document.querySelector(`[name="ProdName_${idx}"]`);
+        var pidVal = "";
+        if (pidEl && pidEl.value) pidVal = pidEl.value;
+        else if (prodEl && prodEl.dataset && prodEl.dataset.productId) pidVal = prodEl.dataset.productId;
+        if (pidVal) attr['product_id'] = safeCleanNum(pidVal);
+
+        var hidAttrId = 'Attr_' + idx;
+        var hidAttr = document.getElementById(hidAttrId);
+        if (!hidAttr) {
+            hidAttr = document.createElement('input');
+            hidAttr.type = 'hidden';
+            hidAttr.name = 'Attributes_' + idx; 
+            hidAttr.id = hidAttrId;
+            document.getElementById('manualForm').appendChild(hidAttr);
+        }
+        hidAttr.value = JSON.stringify(attr);
+
+        var rowSupplier = (document.querySelector(`[name="Supplier_${idx}"]`) || {}).value || "";
+        var rowSupplierIssue = getSupplierValidationIssue(rowSupplier);
+        if (rowSupplierIssue) {
+            alert(`발주처 입력값을 확인해주세요: ${rowSupplierIssue}`);
+            var rowSupplierEl = document.querySelector(`[name="Supplier_${idx}"]`);
+            if (rowSupplierEl && typeof rowSupplierEl.focus === 'function') rowSupplierEl.focus();
+            supplierValidationFailed = true;
+            return;
+        }
+
+        var rowItem = {
+            rowIndex: idx,
+            itemId: (document.querySelector(`input[name="ItemID_${idx}"]`) || {}).value || "",
+            subCategory: (document.querySelector(`input[name="SubCat_${idx}"]`) || {}).value || "",
+            itemName: (document.querySelector(`[name="ProdName_${idx}"]`) || {}).value || "",
+            color: (document.querySelector(`[name="Color_${idx}"]`) || {}).value || "",
+            option: (document.querySelector(`[name="Option_${idx}"]`) || {}).value || "",
+            memo: (document.querySelector(`[name="Memo_${idx}"]`) || {}).value || "",
+            supplier: rowSupplier,
+            costPrice: safeCleanNum((document.querySelector(`[name="CostPrice_${idx}"]`) || {}).value || ""),
+            width: safeCleanNum((document.querySelector(`[name="W_${idx}"]`) || {}).value || ""),
+            height: safeCleanNum((document.querySelector(`[name="H_${idx}"]`) || {}).value || ""),
+            qty: safeCleanNum((document.querySelector(`[name="Qty_${idx}"]`) || {}).value || ""),
+            price: safeCleanNum((document.querySelector(`[name="Price_${idx}"]`) || {}).value || ""),
+            lineAmount: 0,
+            location: resolvedLocation,
+            attributes: attr
+        };
+        if (pidVal) rowItem.productId = safeCleanNum(pidVal);
+
+        rowItem.lineAmount = rowItem.qty * rowItem.price;
+        if (mode === 'blind') {
+            rowItem.handlePos = (document.getElementById('Handle_' + idx) || {}).value || "";
+            rowItem.cordLen = (document.getElementById('CordLen_' + idx) || {}).value || "";
+        }
+
+        canonicalItems.push(rowItem);
+    });
+
+    if (supplierValidationFailed) return false;
+
+    var canonicalPayload = {
+        category: cat,
+        mode: mode,
+        location: resolvedLocation,
+        groupId: (document.getElementById('hidGroupID') || {}).value || "",
+        items: canonicalItems
+    };
+
+    if (mode === 'curtain') {
+        var curtainType = document.querySelector('input[name="CurtainType"]:checked');
+        canonicalPayload.curtainType = curtainType ? curtainType.value : "";
+    } else if (mode === 'blind') {
+        var blindSupplier = (document.getElementById('Master_Supplier') || {}).value || "";
+        var blindSupplierIssue = getSupplierValidationIssue(blindSupplier);
+        if (blindSupplierIssue) {
+            alert(`발주처 입력값을 확인해주세요: ${blindSupplierIssue}`);
+            var masterSupplierEl = document.getElementById('Master_Supplier');
+            if (masterSupplierEl && typeof masterSupplierEl.focus === 'function') masterSupplierEl.focus();
+            return false;
+        }
+        var masterPid = (document.getElementById('Master_ProductID') || {}).value || "";
+        if (!masterPid) {
+            var masterProdEl = document.getElementById('Master_Prod');
+            if (masterProdEl && masterProdEl.dataset && masterProdEl.dataset.productId) masterPid = masterProdEl.dataset.productId;
+        }
+        canonicalPayload.blindMeta = {
+            productId: safeCleanNum(masterPid),
+            subCategory: (document.getElementById('blindSubKind') || {}).value || "",
+            blindSize: (document.getElementById('TotalBlindSize') || {}).value || "",
+            blindQty: (document.getElementById('TotalBlindQty') || {}).value || "",
+            blindCount: safeCleanNum((document.getElementById('blindSplit') || {}).value || ""),
+            supplier: blindSupplier,
+            itemName: (document.getElementById('Master_Prod') || {}).value || "",
+            color: (document.getElementById('Master_Color') || {}).value || "",
+            option: (document.getElementById('Master_Opt') || {}).value || "",
+            memo: (document.getElementById('Master_Memo') || {}).value || "",
+            costPrice: safeCleanNum((document.getElementById('Master_CostPrice') || {}).value || ""),
+            price: safeCleanNum((document.getElementById('Master_Price') || {}).value || "")
+        };
+    }
+
+    var canonicalInput = document.getElementById('hidCanonicalPayload');
+    if (canonicalInput) canonicalInput.value = JSON.stringify(canonicalPayload);
+    return true; 
+}
+
+/* ==========================================================================
+   [UI 상태 동기화 엔진] 백엔드 데이터 삽입 시 탭 렌더링 강제 동기화 (버그 수정)
+   ========================================================================== */
+window.addEventListener('load', function() {
+    const catSelect = document.getElementById('catSelect');
+    if (catSelect) {
+        // 1. 초기 렌더링 상태 맞춤
+        const defaultCat = (typeof getDefaultItemCategory === 'function') ? getDefaultItemCategory() : '커튼';
+        syncCategoryUI(catSelect.value || defaultCat);
+        
+        // 2. 시스템/외부 JS에 의한 값 변경(수정 모드 진입 등)을 감지하는 옵저버
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'value') {
+                    syncCategoryUI(catSelect.getAttribute('value') || catSelect.value);
+                }
+            });
+        });
+        observer.observe(catSelect, { attributes: true });
+
+        // 3. JS로 value 속성에 직접 대입하는 경우를 완벽하게 가로채기 (Proxying)
+        const descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+        Object.defineProperty(catSelect, 'value', {
+            get: function() { return descriptor.get.call(this); },
+            set: function(val) {
+                descriptor.set.call(this, val);
+                this.setAttribute('value', val); // 옵저버 트리거
+                syncCategoryUI(val);
+            }
+        });
+    }
+});
+
+// 화면 상의 탭 버튼 및 컨테이너 가시성을 값에 맞게 강제 변경합니다.
+window.syncCategoryUI = function(cat) {
+    const mode = (typeof getItemCategoryMode === 'function')
+        ? getItemCategoryMode(cat)
+        : (cat === '커튼' ? 'curtain' : (cat === '블라인드' ? 'blind' : 'generic'));
+
+    document.querySelectorAll('.btn-cat-type').forEach(btn => {
+        if (btn.innerText.trim() === cat) {
+            btn.classList.add('active');
+            btn.style.background = '#fff';
+            btn.style.color = '#339af0';
+            btn.style.boxShadow = '0 2px 5px rgba(0,0,0,0.1)';
+        } else {
+            btn.classList.remove('active');
+            btn.style.background = 'none';
+            btn.style.color = '#888';
+            btn.style.boxShadow = 'none';
+        }
+    });
+
+    const cDiv = document.getElementById('curtainTypeDiv');
+    const bDiv = document.getElementById('blindTypeDiv');
+    const eDiv = document.getElementById('etcTypeDiv');
+    
+    if (cDiv) cDiv.style.display = (mode === 'curtain') ? 'flex' : 'none';
+    if (bDiv) bDiv.style.display = (mode === 'blind') ? 'block' : 'none';
+    if (eDiv) eDiv.style.display = (mode === 'generic') ? 'block' : 'none';
+};
+
+// 사용자가 탭을 '클릭' 했을 때 실행되는 함수
+window.clickCategory = function(cat) {
+    const catSelect = document.getElementById('catSelect');
+    if(catSelect) catSelect.value = cat; // 여기서 Setter가 작동하여 syncCategoryUI가 자동 호출됨
+    
+    // 수정 모드가 아니라 순수 신규 클릭일 경우에만 행을 재렌더링
+    const hidItem = document.getElementById('hidItemID');
+    if (typeof renderRows === 'function' && (!hidItem || !hidItem.value)) {
+        renderRows();
+    }
+};
+
+window.syncEtcData = function() {
+    const etcInput = document.getElementById('inpEtcKind');
+    const value = String(etcInput?.value || '').trim();
+    const hiddenInput = document.querySelector('input[name="SubCat_1"]');
+    if (hiddenInput) hiddenInput.value = value || '기타';
+
+    const badge = document.querySelector('#dynamicArea .item-row-badge');
+    if (badge) badge.innerText = value || '기타';
+};
+
+/* ==========================================================================
+   [실행 타이밍 최적화] Flat UI 렌더링 오버라이딩
+   ========================================================================== */
+window.addEventListener('load', function() {
+
+    // 커튼/기타: 행(Row)별 렌더링
+    window.__itemMasterMakeRowHTML = window.makeRowHTML = function(idx, label, badgeClass, defOpt, item, subCatVal) {
+        var valProd = "", valColor = "", valW = "", valH = "", valQ = "", valP = "", valMemo = "", valID = "";
+        var valSup = "", valSupId = "", valCost = "", valPid = "";
+        defOpt = defOpt || "";
+
+        if(item) {
+            valProd = item.prod || ""; valColor = item.color || "";
+            valW = smartFloat(item.w, 1); valH = smartFloat(item.h, 1); valQ = smartFloat(item.q, 2);
+            valP = item.p || ""; valMemo = item.memo || ""; valID = item.id || "";
+            valSup = item.supplier || ""; 
+            if(item.supplier_id) valSupId = String(item.supplier_id);
+            if(item.attributes && item.attributes.cost_price) valCost = formatComma(item.attributes.cost_price);
+            if(item.attributes && item.attributes.product_id) valPid = String(item.attributes.product_id);
+            if(!valSupId && item.attributes && item.attributes.supplier_id) valSupId = String(item.attributes.supplier_id);
+            if(item.subCat) subCatVal = item.subCat;
+            else if(item.category1 && !subCatVal) subCatVal = item.category1;
+        }
+        if(!subCatVal) subCatVal = "";
+
+        var currentCat = document.getElementById('catSelect').value;
+        var labels = getItemFieldLabels(currentCat);
+        var optHtml = "";
+        var stepVal = (currentCat === '커튼') ? "1" : "0.01";
+
+        if (valW !== "") valW = smartFloat(valW, 1);
+        if (valH !== "") valH = smartFloat(valH, 1);
+        if (valQ !== "") valQ = smartFloat(valQ, 2);
+
+        if(valW == 0) valW = ""; if(valH == 0) valH = ""; if(valQ == 0) valQ = ""; if(valP == 0) valP = "";
+
+        if(currentCat === '커튼' && (label.indexOf('속지') > -1 || label.indexOf('겉지') > -1 || label === '수정')) {
+            optHtml = `<select name="Option_${idx}" class="f-input-compact" onchange="calcQty(${idx})">
+                <option value="나비주름(2배)" ${defOpt.indexOf('나비') > -1 && defOpt.indexOf('형상') === -1 ? 'selected' : ''}>나비주름(2배)</option>
+                <option value="나비주름+형상" ${defOpt.indexOf('나비') > -1 && defOpt.indexOf('형상') > -1 ? 'selected' : ''}>나비+형상(2배)</option>
+                <option value="평식(형상)" ${defOpt.indexOf('평식') > -1 ? 'selected' : ''}>평식(형상)(1.5배)</option>
+            </select>`;
+        } else {
+            optHtml = `<input type="text" name="Option_${idx}" class="f-input-compact" placeholder="${labels.cate3}" value="${defOpt}" onfocus="this.select()" onclick="openProductAttrPicker('${idx}', 'category2', this)" onkeyup="filterProductAttrPicker(this, '${idx}', 'category2')" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">`;
+        }
+        var syncEvent = `oninput="syncInput(this, '${idx}', '${label}')"`;
+
+        setTimeout(async () => {
+            if(valProd && (!valCost || valCost === "0" || !valP)) {
+                try {
+                    const ctx = {
+                        category: normalizeCategoryForMaster(currentCat),
+                        subcategory: normalizeSubCategoryForMaster(subCatVal, currentCat),
+                        supplier: valSup
+                    };
+                    pushItemMasterSearchDebug('row-autofill-start', {
+                        screen: buildVisibleProductSearchState(idx, { value: valProd }),
+                        ctx
+                    });
+                    const rankedData = await findBestSmartProductMatch(valProd, ctx);
+                    const match = rankedData[0] || null;
+                    pushItemMasterSearchDebug('row-autofill-results', {
+                        screen: buildVisibleProductSearchState(idx, { value: valProd }),
+                        ctx,
+                        top: summarizeDebugResults(rankedData),
+                        chosen: match ? summarizeDebugResults([match])[0] : null
+                    });
+                    if(match) {
+                            const prodEl = document.querySelector(`input[name="ProdName_${idx}"]`);
+                            if (prodEl) prodEl.dataset.productId = String(match.ProductID || "");
+                            const pidEl = document.querySelector(`input[name="ProductMasterID_${idx}"]`);
+                            if (pidEl) pidEl.value = String(match.ProductID || "");
+                            if(!valSup && match.SupplierName) {
+                                const rowSupplierEl = document.getElementById('Supplier_'+idx);
+                                if (rowSupplierEl) {
+                                    rowSupplierEl.value = match.SupplierName;
+                                    rowSupplierEl.dataset.supplierId = String(match.SupplierID || "");
+                                }
+                                const supIdEl = document.querySelector(`input[name="SupplierID_${idx}"]`);
+                                if (supIdEl) supIdEl.value = String(match.SupplierID || "");
+                            }
+                            if((!valCost || valCost === "0") && match.CostPrice) {
+                                const costEl = document.getElementById('CostPrice_'+idx);
+                                costEl.value = formatComma(match.CostPrice);
+                            }
+                            if(!valP && match.SellingPrice) {
+                                const priceEl = document.getElementById('Price_'+idx);
+                                priceEl.value = formatComma(match.SellingPrice);
+                            }
+                            // DB에서 로드되었으므로 수정 버튼으로 렌더링
+                            let actionIcon = document.getElementById(`ActionIcon_${idx}`);
+                            if(actionIcon) {
+                                actionIcon.className = 'fas fa-edit text-warning';
+                                actionIcon.title = '기존 단가 수정';
+                            }
+                        }
+                } catch(e) {}
+            }
+        }, 100);
+
+        return `
+        <div style="padding: 12px 0; border-bottom: 1px solid #e9ecef;">
+            <input type="hidden" name="RowIdx" value="${idx}">
+            <input type="hidden" name="ItemID_${idx}" value="${valID}">
+            <input type="hidden" name="SubCat_${idx}" value="${subCatVal}">
+            <input type="hidden" name="ProductMasterID_${idx}" value="${valPid}">
+            <input type="hidden" name="SupplierID_${idx}" value="${valSupId}">
+            <input type="hidden" name="LocSuffix_${idx}" value="${(label=='속지')?'(속지)':(label=='겉지'?'(겉지)':'')}">
+            
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; width: 100%;">
+                <span class="item-row-badge ${badgeClass}">${label}</span>
+                <input type="text" name="ProdName_${idx}" data-product-id="${valPid}" class="f-input-compact" placeholder="${labels.cate1}" value="${valProd}" onkeyup="handleSmartProductSearch(this, '${idx}')" onfocus="this.select()" onclick="openSmartProductPicker('${idx}')" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" ${syncEvent} style="flex: 2; min-width: 0; position:relative;">
+                <button type="button" class="picker-launch-btn" onclick="openSmartProductPicker('${idx}')" aria-label="제품 목록 열기"><i class="fas fa-list"></i></button>
+                <input type="text" name="Color_${idx}" class="f-input-compact" placeholder="${labels.cate2}" value="${valColor}" onfocus="this.select()" onclick="openProductAttrPicker('${idx}', 'category1', this)" onkeyup="filterProductAttrPicker(this, '${idx}', 'category1')" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="flex: 1.5; min-width: 0;">
+            </div>
+
+            <!-- 매입 정보 -->
+            <div style="display: flex; align-items: center; gap: 6px; padding: 8px 10px; background: #f8f9fa; border-radius: 8px; margin-bottom: 8px; border: 1px dashed #ced4da;">
+                <span style="font-size: 11px; font-weight: bold; color: #868e96; white-space: nowrap;"><i class="fas fa-truck text-secondary"></i> 매입</span>
+                <input type="text" name="Supplier_${idx}" id="Supplier_${idx}" data-supplier-id="${valSupId}" class="f-input-compact" placeholder="발주처" value="${valSup}" style="flex: 1; height: 32px !important; font-size: 13px;" onkeyup="handleSmartSupplierSearch(this)" onblur="resolveSmartSupplierInput(this)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <div style="position: relative; flex: 1;">
+                    <input type="text" inputmode="numeric" name="CostPrice_${idx}" id="CostPrice_${idx}" class="f-input-compact cost-blind" placeholder="원가" value="${valCost}" style="height: 32px !important; font-size: 13px; color: #e03131; font-weight: 900;" oninput="this.value=formatComma(this.value); autoShowMargin('${idx}', document.getElementById('Price_${idx}'));">
+                    <i class="fas fa-eye-slash" style="position:absolute; right:8px; top:10px; font-size: 11px; color:#adb5bd; pointer-events:none;"></i>
+                </div>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px; width: 100%;">
+                <div style="flex: 2; min-width: 0;">${optHtml}</div>
+                <input type="text" name="Memo_${idx}" class="f-input-compact" placeholder="${labels.cate4}" value="${valMemo}" onfocus="this.select()" onclick="openProductAttrPicker('${idx}', 'category3', this)" onkeyup="filterProductAttrPicker(this, '${idx}', 'category3')" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="flex: 3; min-width: 0;">
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 6px; width: 100%;">
+                <div style="display:flex; align-items:center; gap:4px; flex: 0 0 122px; min-width: 122px;">
+                    <input type="number" name="W_${idx}" class="f-input-compact" placeholder="W" step="0.1" value="${valW}" oninput="syncInput(this, '${idx}', 'W'); calcQty(${idx});" onfocus="this.select()" style="width: 54px; min-width: 54px; text-align:center; padding: 0 4px;">
+                    <span style="color:#adb5bd; font-size:12px;">x</span>
+                    <input type="number" name="H_${idx}" class="f-input-compact" placeholder="H" step="0.1" value="${valH}" oninput="syncInput(this, '${idx}', 'H'); calcQty(${idx});" onfocus="this.select()" style="width: 54px; min-width: 54px; text-align:center; padding: 0 4px;">
+                </div>
+                <!-- 수량 입력 시에도 툴팁 업데이트 -->
+                <input type="number" name="Qty_${idx}" id="Qty_${idx}" class="f-input-compact" placeholder="수량" step="${stepVal}" value="${valQ}" oninput="calcCurtainEtcTotal('${idx}'); autoShowMargin('${idx}', document.getElementById('Price_${idx}'));" onfocus="this.select()" style="flex: 0 0 70px; width: 70px; min-width: 70px; text-align:center; padding: 0 4px; color:#339af0; background:#f8f9fa;">
+                
+                <div id="PriceWrapper_${idx}" style="flex: 1 1 136px; min-width: 136px; position: relative; display: flex; align-items: center;">
+                    <!-- 단가 입력 시 autoShowMargin (Debounce) 실행 -->
+                    <input type="text" inputmode="numeric" name="Price_${idx}" id="Price_${idx}" class="f-input-compact" placeholder="단가" value="${formatComma(valP)}" oninput="this.value=formatComma(this.value); syncInput(this, '${idx}', '${label}'); calcCurtainEtcTotal('${idx}'); autoShowMargin('${idx}', this);" onfocus="this.select()" style="width: 100%; text-align:right; border: 1px solid #ffc107; padding-right: 56px;">
+                    <div style="position: absolute; right: 10px; display: flex; gap: 10px; align-items: center;">
+                        <i class="fas fa-calculator text-secondary" onclick="triggerMarginPopup(document.getElementById('PriceWrapper_${idx}'), '${idx}')" style="cursor: pointer; font-size: 1.1rem;" title="마진율 강제 확인"></i>
+                        <i class="fas fa-save text-primary" id="ActionIcon_${idx}" onclick="uploadMasterPrice('${idx}')" style="cursor: pointer; transition: 0.2s; font-size: 1.2rem;" title="신규 단가 저장"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: right; margin-top: 6px;">
+                <span id="RowTotal_${idx}" style="font-size:14px; font-weight:800; color:#d63384; cursor:pointer;" onclick="triggerMarginPopup(document.getElementById('PriceWrapper_${idx}'), '${idx}')">0원</span>
+            </div>
+        </div>`;
+    };
+
+    // 블라인드는 공통 정보에 마스터 원가/판매가 적용
+    window.__itemMasterRenderBlindUI = window.renderBlindUI = function(container, count, items) {
+        g_blindHeightState = {}; window.g_blindCordState = {}; 
+        var labels = getItemFieldLabels('블라인드');
+        var mProd="", mColor="", mOpt="", mPrice="", mMemo="", firstH="", valSup="", valSupId="", valCost="", mProductId="";
+
+        if(items && items.length > 0) {
+            mProd = items[0].prod || ""; mColor = items[0].color || ""; mOpt = items[0].opt || ""; mPrice = items[0].p || ""; mMemo = items[0].memo || "";
+            valSup = items[0].supplier || "";
+            if(items[0].supplier_id) valSupId = String(items[0].supplier_id);
+            if(items[0].attributes && items[0].attributes.cost_price) valCost = formatComma(items[0].attributes.cost_price);
+            if(items[0].attributes && items[0].attributes.product_id) mProductId = String(items[0].attributes.product_id);
+            if(!valSupId && items[0].attributes && items[0].attributes.supplier_id) valSupId = String(items[0].attributes.supplier_id);
+            if(items[0].h) firstH = items[0].h;
+        }
+
+        setTimeout(async () => {
+            if(mProd && (!valCost || valCost === "0" || !mPrice)) {
+                try {
+                    const ctx = {
+                        category: normalizeCategoryForMaster('블라인드'),
+                        subcategory: normalizeSubCategoryForMaster((document.getElementById('blindSubKind')?.value || '').trim(), '블라인드'),
+                        supplier: valSup
+                    };
+                    pushItemMasterSearchDebug('master-autofill-start', {
+                        screen: buildVisibleProductSearchState('Master', { value: mProd }),
+                        ctx
+                    });
+                    const rankedData = await findBestSmartProductMatch(mProd, ctx);
+                    const match = rankedData[0] || null;
+                    pushItemMasterSearchDebug('master-autofill-results', {
+                        screen: buildVisibleProductSearchState('Master', { value: mProd }),
+                        ctx,
+                        top: summarizeDebugResults(rankedData),
+                        chosen: match ? summarizeDebugResults([match])[0] : null
+                    });
+                    if(match) {
+                        const masterProd = document.getElementById('Master_Prod');
+                        if (masterProd) masterProd.dataset.productId = String(match.ProductID || "");
+                        const masterPid = document.getElementById('Master_ProductID');
+                        if (masterPid) masterPid.value = String(match.ProductID || "");
+                        document.querySelectorAll('.sync-pid').forEach(el => { el.value = String(match.ProductID || ""); });
+                        if(!valSup && match.SupplierName) {
+                            const masterSupplierEl = document.getElementById('Master_Supplier');
+                            if (masterSupplierEl) {
+                                masterSupplierEl.value = match.SupplierName;
+                                masterSupplierEl.dataset.supplierId = String(match.SupplierID || "");
+                            }
+                            const masterSupId = document.getElementById('Master_SupplierID');
+                            if (masterSupId) masterSupId.value = String(match.SupplierID || "");
+                        }
+                        if((!valCost || valCost === "0") && match.CostPrice) {
+                            const costEl = document.getElementById('Master_CostPrice');
+                            costEl.value = formatComma(match.CostPrice);
+                        }
+                        if(!mPrice && match.SellingPrice) {
+                            const priceEl = document.getElementById('Master_Price');
+                            priceEl.value = formatComma(match.SellingPrice);
+                        }
+                        let actionIcon = document.getElementById(`ActionIcon_Master`);
+                        if(actionIcon) {
+                            actionIcon.className = 'fas fa-edit text-warning';
+                            actionIcon.title = '기존 단가 수정';
+                        }
+                    }
+                } catch(e) {}
+            }
+        }, 100);
+        
+        var subCatVal = document.getElementById('blindSubKind') ? document.getElementById('blindSubKind').value : "콤비";
+        var hasLBracket = (mOpt && mOpt.indexOf("[ㄱ자 꺽쇠]") > -1);
+
+        var html = `
+        <input type="hidden" name="BlindSize" id="TotalBlindSize" value="">
+        <input type="hidden" name="BlindQty" id="TotalBlindQty" value="">
+        
+        <div style="margin-top:5px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:8px;">
+                <div style="font-size:13px; font-weight:bold; color:#666;">📐 창별 사이즈 (<span style="color:#007bff;">가로 x 세로</span>)</div>
+                <label style="font-size:12px; cursor:pointer; display:flex; align-items:center; gap:3px; background:#f8f9fa; padding:4px 8px; border-radius:6px; border:1px solid #e9ecef; margin:0;">
+                    <input type="checkbox" id="chkLBracket" onchange="toggleLBracket(this)" ${hasLBracket ? 'checked' : ''}>
+                    <span style="font-weight:bold; color:#d63384;">ㄱ자 꺽쇠</span>
+                </label>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">`;
+
+        for(var i=1; i<=count; i++) {
+            var valW="", valH="", valID="", valQty="", valHandle="우", valCord="150";
+            if (count > 1 && i === 1) valHandle = "좌";
+
+            if(items && items[i-1]) {
+                var it = items[i-1];
+                valID = it.id || ""; valW = (it.w && !isNaN(it.w)) ? parseFloat(it.w) : "";
+                valH = (it.h && !isNaN(it.h)) ? parseFloat(it.h) : ""; valQty = (it.q && !isNaN(it.q)) ? parseFloat(it.q) : "";
+                valHandle = it.handle || valHandle; valCord = it.cord || "150"; 
+            } else {
+                valH = (firstH && !isNaN(firstH)) ? parseFloat(firstH) : "";
+            }
+
+            if(valW === 0) valW = ""; if(valH === 0) valH = ""; if(valQty === 0) valQty = "";
+
+            var evtCalc = `oninput="calcBlindRowArea(${i}); updateBlindAggregates(); autoShowMargin('Master', document.getElementById('Master_Price'));"`;
+            var evtHeight = (i === 1) ? `oninput="syncBlindHeight(this.value); calcBlindRowArea(1); updateBlindAggregates();"` : `oninput="g_blindHeightState[${i}]=true; calcBlindRowArea(${i}); updateBlindAggregates();"`;
+            var evtCord = (i === 1) ? `oninput="syncBlindCord(this.value); updateBlindAggregates();"` : `oninput="window.g_blindCordState[${i}]=true; updateBlindAggregates();"`;
+            var highlightStyle = (i === 1) ? "color:#007bff; border-color:#007bff;" : "";
+
+            html += `
+            <div style="display:flex; align-items:center; gap:6px; padding-bottom:8px; border-bottom:1px solid #f1f3f5; width:100%;">
+                <span style="font-size:12px; color:#adb5bd; font-weight:bold; width:16px; text-align:center; flex-shrink:0;">${i}</span>
+                <input type="number" step="0.1" name="W_${i}" id="RawW_${i}" class="f-input-compact" value="${valW}" placeholder="W" style="flex:1; min-width:0; text-align:center; padding:0 4px;" ${evtCalc} onfocus="this.select()">
+                <span style="color:#adb5bd; font-size:12px; flex-shrink:0;">x</span>
+                <input type="number" step="0.1" name="H_${i}" id="RawH_${i}" class="f-input-compact" value="${valH}" placeholder="H" style="flex:1; min-width:0; text-align:center; padding:0 4px; ${highlightStyle}" ${evtHeight} onfocus="this.select()">
+                <select id="Handle_${i}" class="f-input-compact" onchange="updateBlindAggregates()" style="width:52px; padding:0 4px; text-align:center; flex-shrink:0;">
+                    <option value="좌" ${valHandle==='좌'?'selected':''}>좌</option>
+                    <option value="우" ${valHandle==='우'?'selected':''}>우</option>
+                </select>
+                <div style="position:relative; width:60px; flex-shrink:0;">
+                    <span style="position:absolute; left:6px; top:50%; transform:translateY(-50%); font-size:10px; color:#adb5bd; pointer-events:none;">줄</span>
+                    <input type="text" id="CordLen_${i}" value="${valCord}" class="f-input-compact" style="width:100%; padding:0 0 0 16px; text-align:center;" ${evtCord} onfocus="this.select()">
+                </div>
+                <input type="number" step="0.01" name="Qty_${i}" id="Qty_${i}" class="f-input-compact" value="${valQty}" placeholder="㎡" style="width:65px; text-align:center; padding:0 4px; color:#339af0; background:#f8f9fa; flex-shrink:0;" oninput="calcBlindTotalPrice(); updateBlindAggregates(); autoShowMargin('Master', document.getElementById('Master_Price'));" onfocus="this.select()">
+                
+                <input type="hidden" name="RowIdx" value="${i}"><input type="hidden" name="ItemID_${i}" value="${valID}">
+                <input type="hidden" name="SubCat_${i}" value="${subCatVal}"><input type="hidden" name="ProdName_${i}" class="sync-prod" value="${mProd}">
+                <input type="hidden" name="ProductMasterID_${i}" class="sync-pid" value="${mProductId}">
+                <input type="hidden" name="SupplierID_${i}" class="sync-supplier-id" value="${valSupId}">
+                <input type="hidden" name="Color_${i}" class="sync-color" value="${mColor}"><input type="hidden" name="Option_${i}" class="sync-opt" value="${mOpt}">
+                <input type="hidden" name="Price_${i}" class="sync-price" value="${mPrice}"><input type="hidden" name="Memo_${i}" class="sync-memo" value="${mMemo}">
+            </div>`;
+        }
+        
+        html += `</div></div>
+        <div style="margin-top:15px; padding-top:15px; border-top:2px dashed #e9ecef;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <span style="font-weight:900; color:#343a40;"><i class="fas fa-bullhorn text-primary"></i> 공통 정보</span>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span id="blindRealtimeTotal" style="color:#d63384; font-size:1.1em; font-weight:900; cursor:pointer;" onclick="triggerBlindMarginPopup(document.getElementById('MasterPriceWrapper'))">0원</span>
+                </div>
+            </div>
+            <div style="display:flex; gap:6px; margin-bottom:8px; width:100%;">
+                <input type="hidden" id="Master_ProductID" value="${mProductId}">
+                <input type="hidden" id="Master_SupplierID" value="${valSupId}">
+                <input type="text" id="Master_Prod" data-product-id="${mProductId}" class="f-input-compact sync-prod-master" placeholder="${labels.cate1}" value="${mProd}" style="flex:2; min-width:0; font-weight:bold; position:relative;" onkeyup="handleSmartProductSearch(this, 'Master')" onfocus="this.select()" onclick="openSmartProductPicker('Master')" oninput="syncBlindData(${count}, 'ProdName')" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <button type="button" class="picker-launch-btn" onclick="openSmartProductPicker('Master')" aria-label="제품 목록 열기"><i class="fas fa-list"></i></button>
+                <input type="text" id="Master_Color" class="f-input-compact sync-color-master" placeholder="${labels.cate2}" value="${mColor}" style="flex:1; min-width:0;" oninput="syncBlindData(${count}, 'Color')" onkeyup="filterProductAttrPicker(this, 'Master', 'category1')" onclick="openProductAttrPicker('Master', 'category1', this)" onfocus="this.select()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 6px; padding: 8px 10px; background: #f8f9fa; border-radius: 8px; margin-bottom: 8px; border: 1px dashed #ced4da;">
+                <span style="font-size: 11px; font-weight: bold; color: #868e96; white-space: nowrap;"><i class="fas fa-truck text-secondary"></i> 매입</span>
+                <input type="text" name="Master_Supplier" id="Master_Supplier" data-supplier-id="${valSupId}" class="f-input-compact sync-sup-master" placeholder="발주처" value="${valSup}" style="flex: 1; height: 32px !important; font-size: 13px;" onkeyup="handleSmartSupplierSearch(this)" onblur="resolveSmartSupplierInput(this)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <div style="position: relative; flex: 1;">
+                    <input type="text" inputmode="numeric" name="Master_CostPrice" id="Master_CostPrice" class="f-input-compact cost-blind sync-cost-master" placeholder="원가" value="${valCost}" style="height: 32px !important; font-size: 13px; color: #e03131; font-weight: 900;" oninput="this.value=formatComma(this.value); autoShowMargin('Master', document.getElementById('Master_Price'));">
+                    <i class="fas fa-eye-slash" style="position:absolute; right:8px; top:10px; font-size: 11px; color:#adb5bd; pointer-events:none;"></i>
+                </div>
+            </div>
+
+            <div style="display:flex; gap:6px; margin-bottom:8px; width:100%;">
+                <input type="text" id="Master_Opt" class="f-input-compact sync-opt-master" placeholder="${labels.cate3}" value="${mOpt}" style="flex:1.5; min-width:0;" oninput="syncBlindData(${count}, 'Option')" onkeyup="filterProductAttrPicker(this, 'Master', 'category2')" onclick="openProductAttrPicker('Master', 'category2', this)" onfocus="this.select()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                
+                <div id="MasterPriceWrapper" style="flex: 1.5; min-width: 0; position: relative; display: flex; align-items: center;">
+                    <!-- 단가 입력 시 autoShowMargin 작동 -->
+                    <input type="text" inputmode="numeric" id="Master_Price" class="f-input-compact sync-price-master" placeholder="단가" value="${formatComma(mPrice)}" style="width: 100%; text-align:right; border:1px solid #ffc107; padding-right: 60px;" oninput="this.value=formatComma(this.value); syncBlindData(${count}, 'Price'); autoShowMargin('Master', this);" onfocus="this.select()">
+                    <div style="position: absolute; right: 10px; display: flex; gap: 10px; align-items: center;">
+                        <i class="fas fa-calculator text-secondary" onclick="triggerBlindMarginPopup(document.getElementById('MasterPriceWrapper'))" style="cursor: pointer; font-size: 1.1rem;" title="마진율 강제 확인"></i>
+                        <i class="fas fa-save text-primary" id="ActionIcon_Master" onclick="uploadMasterPrice('Master')" style="cursor: pointer; transition: 0.2s; font-size: 1.2rem;" title="신규 단가 저장"></i>
+                    </div>
+                </div>
+            </div>
+            <input type="text" id="Master_Memo" class="f-input-compact sync-memo-master" placeholder="${labels.cate4}" value="${mMemo}" style="width:100%;" oninput="syncBlindData(${count}, 'Memo')" onkeyup="filterProductAttrPicker(this, 'Master', 'category3')" onclick="openProductAttrPicker('Master', 'category3', this)" onfocus="this.select()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        </div>`;
+        
+        container.innerHTML = html;
+        setTimeout(function() { 
+            if(typeof calcBlindTotalPrice === 'function') calcBlindTotalPrice(); 
+            if(typeof updateBlindAggregates === 'function') updateBlindAggregates(); 
+        }, 50);
+    };
+
+    if (document.getElementById('dynamicArea') && document.getElementById('dynamicArea').innerHTML !== '') {
+        const cat = document.getElementById('catSelect').value;
+        if (cat === '커튼' || cat === '기타') {
+            if(typeof renderRows === 'function') renderRows();
+        }
+    }
+});
+
+/* ==========================================================================
+   [3] 데이터베이스 연동 자동화 모듈 (Smart Auto-fill & 마스터 동기화)
+   ========================================================================== */
+let smartDropdown = document.createElement('div');
+smartDropdown.className = 'smart-dropdown';
+smartDropdown.style.display = 'none';
+document.body.appendChild(smartDropdown);
+
+let searchDebounceTimer;
+let cachedSuppliers = [];
+let smartDropdownAnchor = null;
+
+function normalizeSupplierInputValue(value) {
+    return String(value || '').replace(/\s+/g, '');
+}
+
+function normalizeSupplierStoredValue(value) {
+    return normalizeSupplierInputValue(value)
+        .replace(/[,+]+/g, '/')
+        .replace(/\/{2,}/g, '/')
+        .replace(/^\/+|\/+$/g, '');
+}
+
+function sanitizeNumericInputValue(value) {
+    return String(value || '').replace(/\s+/g, '');
+}
+
+function getSupplierValidationIssue(value) {
+    const normalized = normalizeSupplierStoredValue(value);
+    if (!normalized) return '';
+    const tokens = normalized.split('/').filter(Boolean);
+    if (!tokens.length) return '구분자만 입력';
+    const invalidToken = tokens.find(token => /^\d+$/.test(token) || token === '고객' || token === '고객사');
+    return invalidToken || '';
+}
+
+function getSupplierIdField(targetIdx) {
+    if (targetIdx === 'Master') return document.getElementById('Master_SupplierID');
+    return document.querySelector(`input[name="SupplierID_${targetIdx}"]`);
+}
+
+function getSupplierTargetIdx(inputEl) {
+    if (!inputEl || !inputEl.id) return '';
+    if (inputEl.id === 'Master_Supplier') return 'Master';
+    if (inputEl.id.startsWith('Supplier_')) return inputEl.id.replace('Supplier_', '');
+    return '';
+}
+
+window.selectSmartSupplier = function(inputId, supplierId, supplierName) {
+    const inputEl = document.getElementById(inputId);
+    if (!inputEl) return;
+    const targetIdx = getSupplierTargetIdx(inputEl);
+    const supplierIdField = getSupplierIdField(targetIdx);
+    inputEl.value = String(supplierName || '').trim();
+    if (supplierIdField) supplierIdField.value = String(Number(supplierId || 0) || '');
+    if (inputEl.dataset) inputEl.dataset.supplierId = String(Number(supplierId || 0) || '');
+    if (targetIdx === 'Master') {
+        document.querySelectorAll('.sync-supplier-id').forEach(el => {
+            el.value = String(Number(supplierId || 0) || '');
+        });
+    }
+    hideSmartDropdown();
+};
+
+function normalizeSupplierNameKey(value) {
+    return normalizeSupplierStoredValue(value).toLowerCase();
+}
+
+function findExactSupplierMatch(name) {
+    const key = normalizeSupplierNameKey(name);
+    if (!key || !Array.isArray(cachedSuppliers)) return null;
+    return cachedSuppliers.find(s => normalizeSupplierNameKey(s.SupplierName) === key) || null;
+}
+
+window.resolveSmartSupplierInput = async function(inputEl) {
+    if (!(inputEl instanceof HTMLElement)) return;
+    const rawName = normalizeSupplierStoredValue(inputEl.value);
+    inputEl.value = rawName;
+    const targetIdx = getSupplierTargetIdx(inputEl);
+    const supplierIdField = getSupplierIdField(targetIdx);
+    if (!rawName) {
+        if (supplierIdField) supplierIdField.value = '';
+        if (inputEl.dataset) inputEl.dataset.supplierId = '';
+        return;
+    }
+    if (cachedSuppliers.length === 0) {
+        try {
+            const res = await fetch('/api/ledger/suppliers');
+            if (res.ok) cachedSuppliers = await res.json();
+        } catch (e) {}
+    }
+    const exact = findExactSupplierMatch(rawName);
+    if (exact) {
+        window.selectSmartSupplier(inputEl.id, Number(exact.SupplierID || 0), String(exact.SupplierName || rawName));
+        return;
+    }
+    if (supplierIdField) supplierIdField.value = '';
+    if (inputEl.dataset) inputEl.dataset.supplierId = '';
+};
+
+function hideSmartDropdown() {
+    smartDropdown.style.display = 'none';
+    smartDropdownAnchor = null;
+}
+
+function positionSmartDropdown(anchorEl) {
+    if (!(anchorEl instanceof HTMLElement)) return;
+    const rect = anchorEl.getBoundingClientRect();
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+    const sideGap = 8;
+    const width = Math.min(Math.max(rect.width, 280), Math.max(220, viewportWidth - (sideGap * 2)));
+    const left = Math.min(Math.max(sideGap, rect.left), Math.max(sideGap, viewportWidth - width - sideGap));
+    let top = rect.bottom + 6;
+
+    if (viewportHeight > 0) {
+        const maxTop = Math.max(sideGap, viewportHeight - sideGap - 48);
+        top = Math.min(top, maxTop);
+    }
+
+    smartDropdown.style.top = `${Math.max(sideGap, top)}px`;
+    smartDropdown.style.left = `${left}px`;
+    smartDropdown.style.bottom = 'auto';
+    smartDropdown.style.width = `${width}px`;
+    smartDropdown.style.transform = 'none';
+}
+
+document.addEventListener('click', (e) => {
+    if (!smartDropdown.contains(e.target) && e.target.tagName !== 'INPUT') {
+        hideSmartDropdown();
+    }
+});
+
+// 다른 입력창으로 포커스가 이동하면 기존 자동완성은 즉시 닫습니다.
+document.addEventListener('focusin', (e) => {
+    const target = e.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (smartDropdown.contains(target)) return;
+    if (!smartDropdownAnchor) return;
+    if (target === smartDropdownAnchor) return;
+    hideSmartDropdown();
+});
+
+window.addEventListener('resize', () => {
+    if (smartDropdown.style.display === 'block' && smartDropdownAnchor) {
+        positionSmartDropdown(smartDropdownAnchor);
+    }
+});
+
+window.addEventListener('scroll', () => {
+    if (smartDropdown.style.display === 'block' && smartDropdownAnchor) {
+        positionSmartDropdown(smartDropdownAnchor);
+    }
+}, true);
+
+async function handleSmartSupplierSearch(inputEl) {
+    smartDropdownAnchor = inputEl;
+    positionSmartDropdown(inputEl);
+    const targetIdx = getSupplierTargetIdx(inputEl);
+    const supplierIdField = getSupplierIdField(targetIdx);
+    if (supplierIdField) supplierIdField.value = '';
+    if (inputEl?.dataset) inputEl.dataset.supplierId = '';
+
+    const query = inputEl.value.trim().toLowerCase();
+
+    if (cachedSuppliers.length === 0) {
+        try {
+            const res = await fetch('/api/ledger/suppliers');
+            if (res.ok) cachedSuppliers = await res.json();
+        } catch(e) {}
+    }
+
+    const filtered = query ? cachedSuppliers.filter(s => s.SupplierName.toLowerCase().includes(query)) : cachedSuppliers;
+
+    if (filtered.length > 0) {
+        smartDropdown.innerHTML = '';
+        filtered.forEach(function(s) {
+            const row = document.createElement('div');
+            row.className = 'smart-dropdown-item';
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'sd-prod';
+            nameSpan.textContent = String(s.SupplierName || '');
+            row.appendChild(nameSpan);
+
+            row.addEventListener('mousedown', function(event) {
+                event.preventDefault();
+                window.selectSmartSupplier(inputEl.id, Number(s.SupplierID || 0), String(s.SupplierName || ''));
+            });
+
+            smartDropdown.appendChild(row);
+        });
+        positionSmartDropdown(inputEl);
+        smartDropdown.style.display = 'block';
+    } else {
+        hideSmartDropdown();
+    }
+}
+
+// 사용자 타이핑 시, 신규 제품으로 간주하여 아이콘을 저장(Save) 모드로 롤백
+function getProductSearchContext(targetIdx) {
+    const category = normalizeCategoryForMaster((document.getElementById('catSelect')?.value || '').trim());
+    let subcategory = '';
+    let supplier = '';
+    if (targetIdx === 'Master') {
+        subcategory = normalizeSubCategoryForMaster((document.getElementById('blindSubKind')?.value || '').trim(), category);
+        supplier = (document.getElementById('Master_Supplier')?.value || '').trim();
+    } else {
+        subcategory = (document.querySelector(`[name="SubCat_${targetIdx}"]`) || {}).value || '';
+        subcategory = normalizeSubCategoryForMaster(String(subcategory || '').trim(), category);
+        supplier = (document.getElementById(`Supplier_${targetIdx}`)?.value || '').trim();
+    }
+    return { category, subcategory, supplier };
+}
+
+function normalizeSmartProductRecord(product) {
+    const rawCategory = String(product?.Category ?? product?.category ?? '').trim();
+    const category = normalizeCategoryForMaster(rawCategory);
+    return {
+        ProductID: Number(product?.ProductID ?? product?.product_id ?? 0) || 0,
+        SupplierID: Number(product?.SupplierID ?? product?.supplier_id ?? 0) || 0,
+        Category: category,
+        SubCategory: normalizeSubCategoryForMaster(String(product?.SubCategory ?? product?.subcategory ?? '').trim(), category),
+        ProdName: String(product?.ProdName ?? product?.name ?? '').trim(),
+        SupplierName: String(product?.SupplierName ?? product?.supplier ?? '').trim(),
+        CostPrice: Number(product?.CostPrice ?? product?.cost ?? 0) || 0,
+        SellingPrice: Number(product?.SellingPrice ?? product?.price ?? 0) || 0,
+        Color: String(product?.Color ?? product?.color ?? '').trim(),
+        Option: String(product?.Option ?? product?.option ?? '').trim(),
+        Note: String(product?.Note ?? product?.note ?? '').trim()
+    };
+}
+
+window.__itemMasterSearchDebug = window.__itemMasterSearchDebug || [];
+
+function buildVisibleProductSearchState(targetIdx, inputEl) {
+    const rawCategory = (document.getElementById('catSelect')?.value || '').trim();
+    const rawBlindSub = (document.getElementById('blindSubKind')?.value || '').trim();
+    const rawRowSub = targetIdx === 'Master'
+        ? rawBlindSub
+        : String((document.querySelector(`[name="SubCat_${targetIdx}"]`) || {}).value || '').trim();
+    const rawSupplier = targetIdx === 'Master'
+        ? (document.getElementById('Master_Supplier')?.value || '').trim()
+        : (document.getElementById(`Supplier_${targetIdx}`)?.value || '').trim();
+
+    return {
+        targetIdx,
+        query: String(inputEl?.value || '').trim(),
+        rawCategory,
+        rawBlindSub,
+        rawRowSub,
+        rawSupplier
+    };
+}
+
+function summarizeDebugResults(results) {
+    return (Array.isArray(results) ? results : []).slice(0, 5).map(item => ({
+        productId: item.ProductID || item.product_id || 0,
+        category: item.Category || item.category || '',
+        subcategory: item.SubCategory || item.subcategory || '',
+        supplier: item.SupplierName || item.supplier || '',
+        product: item.ProdName || item.name || '',
+        cost: item.CostPrice || item.cost || 0,
+        price: item.SellingPrice || item.price || 0
+    }));
+}
+
+function pushItemMasterSearchDebug(stage, payload) {
+    const entry = {
+        stage,
+        at: new Date().toISOString(),
+        payload
+    };
+    window.__itemMasterSearchDebug.push(entry);
+    if (window.__itemMasterSearchDebug.length > 80) {
+        window.__itemMasterSearchDebug.splice(0, window.__itemMasterSearchDebug.length - 80);
+    }
+    try {
+        console.log('[item-master-search]', stage, entry.payload);
+    } catch (err) {}
+}
+
+async function fetchSmartProductResults(query, ctx) {
+    const params = new URLSearchParams({ q: query });
+    if (ctx.category) params.set('category', ctx.category);
+    if (ctx.subcategory) params.set('subcategory', ctx.subcategory);
+    if (ctx.supplier) params.set('supplier', ctx.supplier);
+    pushItemMasterSearchDebug('fetch-request', {
+        query,
+        ctx,
+        url: `/api/ledger/products/search?${params.toString()}`
+    });
+    const res = await fetch(`/api/ledger/products/search?${params.toString()}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    pushItemMasterSearchDebug('fetch-response', {
+        query,
+        ctx,
+        count: Array.isArray(data) ? data.length : 0,
+        top: summarizeDebugResults(data)
+    });
+    return data;
+}
+
+async function findBestSmartProductMatch(query, ctx) {
+    // Always fetch from the server to get correctly ranked results.
+    return await fetchSmartProductResults(query, ctx);
+}
+
+function renderSmartProductDropdown(items, targetIdx) {
+    return (Array.isArray(items) ? items : []).map(p => `
+        <div class="smart-dropdown-item" onmousedown="event.preventDefault(); selectProduct('${targetIdx}', ${p.ProductID || 0}, '${p.ProdName}', '${p.SupplierName}', ${p.SupplierID || 0}, ${p.CostPrice || 0}, ${p.SellingPrice || 0})">
+            <div class="sd-left">
+                <span class="sd-sup">${p.SupplierName || '미상'}</span>
+                <span class="sd-prod">${p.ProdName}</span>
+            </div>
+            <div style="text-align:right; font-size:14px; font-weight:900; color:#364fc7; white-space:nowrap;">${formatComma(p.SellingPrice || 0)}</div>
+        </div>
+    `).join('');
+}
+
+function normalizeCategoryForMaster(raw) {
+    const v = String(raw || '').trim();
+    if (v === '커튼') return '커튼';
+    if (v === '블라인드') return '블라인드';
+    if (v === '기타') return '기타';
+    return v;
+}
+
+function normalizeSubCategoryForMaster(raw, category) {
+    const v = String(raw || '').trim();
+    const cat = normalizeCategoryForMaster(category);
+    if (!v) return '';
+    
+    if (cat === '커튼') {
+        if (v === '겉지') return '겉지';
+        if (v === '속지') return '속지';
+        return v;
+    }
+    
+    if (cat === '블라인드') {
+        const m = {
+            '콤비': '콤비',
+            '롤': '롤',
+            '우드': '우드',
+            'A/L': 'A/L',
+            '허니콤': '허니콤',
+            '트리플': '트리플',
+            '버티칼': '버티칼',
+            '알루미늄': '알루미늄'
+        };
+        return m[v] || v; 
+    }
+    return v;
+}
+
+window.__itemMasterHandleSmartProductSearch = window.handleSmartProductSearch = async function(inputEl, targetIdx, preserveSelection) {
+    smartDropdownAnchor = inputEl;
+    const keepSelected = preserveSelection === true;
+    if (!keepSelected && inputEl && inputEl.dataset) inputEl.dataset.productId = "";
+    const pidEl = targetIdx === 'Master' ? document.getElementById('Master_ProductID') : document.querySelector(`input[name="ProductMasterID_${targetIdx}"]`);
+    if (!keepSelected && pidEl) pidEl.value = "";
+    if (!keepSelected && targetIdx === 'Master') document.querySelectorAll('.sync-pid').forEach(el => { el.value = ""; });
+    let actionIcon = document.getElementById(`ActionIcon_${targetIdx}`);
+    if(actionIcon && actionIcon.classList.contains('fa-edit')) {
+        actionIcon.className = 'fas fa-save text-primary';
+        actionIcon.title = '신규 단가 저장';
+    }
+
+    clearTimeout(searchDebounceTimer);
+    const query = inputEl.value.trim();
+    positionSmartDropdown(inputEl);
+
+    searchDebounceTimer = setTimeout(async () => {
+        try {
+            const ctx = getProductSearchContext(targetIdx);
+            pushItemMasterSearchDebug('dropdown-start', {
+                screen: buildVisibleProductSearchState(targetIdx, inputEl),
+                ctx
+            });
+            const results = (await fetchSmartProductResults(query, ctx)).slice(0, query.length < 1 ? 12 : 20);
+            pushItemMasterSearchDebug('dropdown-results', {
+                screen: buildVisibleProductSearchState(targetIdx, inputEl),
+                ctx,
+                top: summarizeDebugResults(results)
+            });
+            if (results.length > 0) {
+                smartDropdown.innerHTML = renderSmartProductDropdown(results, targetIdx);
+                positionSmartDropdown(inputEl);
+                smartDropdown.style.display = 'block';
+                smartDropdownAnchor = inputEl;
+            } else {
+                hideSmartDropdown();
+            }
+        } catch(e) { hideSmartDropdown(); }
+    }, 250);
+}
+
+window.openSmartProductPicker = function(targetIdx) {
+    const inputEl = targetIdx === 'Master'
+        ? document.getElementById('Master_Prod')
+        : document.querySelector(`input[name="ProdName_${targetIdx}"]`);
+    if (!inputEl) return;
+    handleSmartProductSearch(inputEl, targetIdx, true);
+}
+
+window.__productAttrCache = window.__productAttrCache || {};
+
+function getProductAttrField(targetIdx, attrType) {
+    const fieldMap = {
+        category1: targetIdx === 'Master'
+            ? document.getElementById('Master_Color')
+            : document.querySelector(`input[name="Color_${targetIdx}"]`),
+        category2: targetIdx === 'Master'
+            ? document.getElementById('Master_Opt')
+            : document.querySelector(`[name="Option_${targetIdx}"]`),
+        category3: targetIdx === 'Master'
+            ? document.getElementById('Master_Memo')
+            : document.querySelector(`input[name="Memo_${targetIdx}"]`),
+    };
+    return fieldMap[attrType] || null;
+}
+
+async function resolveTargetProductId(targetIdx) {
+    const pidEl = targetIdx === 'Master'
+        ? document.getElementById('Master_ProductID')
+        : document.querySelector(`input[name="ProductMasterID_${targetIdx}"]`);
+    const pidValue = String(pidEl?.value || '').trim();
+    if (pidValue) return pidValue;
+
+    const prodEl = targetIdx === 'Master'
+        ? document.getElementById('Master_Prod')
+        : document.querySelector(`input[name="ProdName_${targetIdx}"]`);
+    const datasetPid = String(prodEl?.dataset?.productId || '').trim();
+    if (datasetPid) return datasetPid;
+
+    const productName = String(prodEl?.value || '').trim();
+    if (!productName) return '';
+
+    const ctx = typeof getProductSearchContext === 'function' ? getProductSearchContext(targetIdx) : {};
+    let matched = Array.isArray(window.__smartDB)
+        ? window.__smartDB.find(function(item) {
+            if (String(item?.name || '').trim() !== productName) return false;
+            if (ctx?.category && String(item?.category || '').trim() && String(item.category).trim() !== String(ctx.category).trim()) return false;
+            if (ctx?.subcategory && String(item?.subcategory || '').trim() && String(item.subcategory).trim() !== String(ctx.subcategory).trim()) return false;
+            return true;
+        })
+        : null;
+
+    if (!matched && typeof fetchSmartProductResults === 'function') {
+        try {
+            const results = await fetchSmartProductResults(productName, ctx || {});
+            matched = Array.isArray(results)
+                ? results.find(function(item) { return String(item?.ProdName || '').trim() === productName; }) || results[0]
+                : null;
+        } catch (err) {}
+    }
+
+    const resolvedPid = String(matched?.product_id || matched?.ProductID || '').trim();
+    if (!resolvedPid) return '';
+
+    if (pidEl) pidEl.value = resolvedPid;
+    if (prodEl && prodEl.dataset) prodEl.dataset.productId = resolvedPid;
+    return resolvedPid;
+}
+
+async function fetchProductAttrOptions(productId) {
+    const normalizedId = String(productId || '').trim();
+    if (!normalizedId) return { category1: [], category2: [], category3: [] };
+    if (window.__productAttrCache[normalizedId]) return window.__productAttrCache[normalizedId];
+
+    const res = await fetch(`/api/item/master/attrs?product_id=${encodeURIComponent(normalizedId)}`);
+    if (!res.ok) throw new Error(`attr fetch failed: ${res.status}`);
+    const data = await res.json();
+    window.__productAttrCache[normalizedId] = data || { category1: [], category2: [], category3: [] };
+    return window.__productAttrCache[normalizedId];
+}
+
+window.primeProductAttrCache = async function(productId) {
+    try {
+        await fetchProductAttrOptions(productId);
+    } catch (err) {}
+};
+
+function renderProductAttrDropdown(items, targetIdx, attrType, inputEl) {
+    smartDropdown.innerHTML = '';
+    if (!Array.isArray(items) || items.length === 0 || !inputEl) {
+        hideSmartDropdown();
+        return;
+    }
+
+    items.forEach((item) => {
+        const value = String(item?.value || '').trim();
+        if (!value) return;
+
+        const row = document.createElement('div');
+        row.className = 'smart-dropdown-item';
+
+        const left = document.createElement('div');
+        left.className = 'sd-left';
+
+        const valueSpan = document.createElement('span');
+        valueSpan.className = 'sd-prod';
+        valueSpan.style.fontSize = '15px';
+        valueSpan.textContent = value;
+        left.appendChild(valueSpan);
+        row.appendChild(left);
+
+        const count = Number(item?.use_count || 0);
+        if (count > 0) {
+            const countSpan = document.createElement('span');
+            countSpan.style.cssText = 'font-size:12px; font-weight:800; color:#868e96; white-space:nowrap;';
+            countSpan.textContent = String(count);
+            row.appendChild(countSpan);
+        }
+
+        row.addEventListener('mousedown', function(event) {
+            event.preventDefault();
+            const targetField = getProductAttrField(targetIdx, attrType);
+            if (!targetField) return;
+            targetField.value = value;
+            targetField.dispatchEvent(new Event('input', { bubbles: true }));
+            targetField.dispatchEvent(new Event('change', { bubbles: true }));
+            hideSmartDropdown();
+        });
+
+        smartDropdown.appendChild(row);
+    });
+
+    if (!smartDropdown.children.length) {
+        hideSmartDropdown();
+        return;
+    }
+
+    smartDropdownAnchor = inputEl;
+    positionSmartDropdown(inputEl);
+    smartDropdown.style.display = 'block';
+}
+
+window.openProductAttrPicker = async function(targetIdx, attrType, inputEl) {
+    const fieldEl = inputEl || getProductAttrField(targetIdx, attrType);
+    if (!fieldEl) return;
+
+    const productId = await resolveTargetProductId(targetIdx);
+    if (!productId) {
+        hideSmartDropdown();
+        return;
+    }
+
+    try {
+        const data = await fetchProductAttrOptions(productId);
+        renderProductAttrDropdown(data?.[attrType] || [], targetIdx, attrType, fieldEl);
+    } catch (err) {
+        hideSmartDropdown();
+    }
+};
+
+window.filterProductAttrPicker = async function(inputEl, targetIdx, attrType) {
+    const fieldEl = inputEl || getProductAttrField(targetIdx, attrType);
+    if (!fieldEl) return;
+
+    const productId = await resolveTargetProductId(targetIdx);
+    if (!productId) {
+        hideSmartDropdown();
+        return;
+    }
+
+    try {
+        const data = await fetchProductAttrOptions(productId);
+        const keyword = String(fieldEl.value || '').trim().toLowerCase();
+        const items = Array.isArray(data?.[attrType]) ? data[attrType] : [];
+        const filtered = !keyword
+            ? items
+            : items.filter(item => String(item?.value || '').toLowerCase().includes(keyword));
+        renderProductAttrDropdown(filtered, targetIdx, attrType, fieldEl);
+    } catch (err) {
+        hideSmartDropdown();
+    }
+};
+
+document.addEventListener('input', function(e) {
+    const target = e.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    const name = String(target.name || '');
+    const id = String(target.id || '');
+
+    if (name.startsWith('Supplier_') || id === 'Master_Supplier') {
+        const normalized = normalizeSupplierInputValue(target.value);
+        if (target.value !== normalized) target.value = normalized;
+        return;
+    }
+
+    const isNumericField =
+        name.startsWith('CostPrice_') ||
+        name.startsWith('Price_') ||
+        id === 'Master_CostPrice' ||
+        id === 'Master_Price';
+
+    if (isNumericField) {
+        const normalized = sanitizeNumericInputValue(target.value);
+        if (target.value !== normalized) target.value = normalized;
+    }
+});
+
+// DB에서 선택 시 아이콘을 수정(Edit) 모드로 전환 및 마진율 자동 계산 트리거
+function selectProduct(targetIdx, productId, prodName, supName, supplierId, cost, sellPrice) {
+    pushItemMasterSearchDebug('dropdown-select', {
+        screen: buildVisibleProductSearchState(targetIdx, { value: prodName }),
+        chosen: {
+            productId,
+            product: prodName,
+            supplier: supName,
+            cost,
+            price: sellPrice
+        }
+    });
+    let targetInp = targetIdx === 'Master' ? document.getElementById('Master_Prod') : document.getElementById(`ProdName_${targetIdx}`) || document.querySelector(`input[name="ProdName_${targetIdx}"]`);
+    if (targetInp) {
+        targetInp.value = prodName;
+        targetInp.dataset.productId = String(productId || "");
+    }
+    let pidEl = targetIdx === 'Master' ? document.getElementById('Master_ProductID') : document.querySelector(`input[name="ProductMasterID_${targetIdx}"]`);
+    if (pidEl) pidEl.value = String(productId || "");
+    if (targetIdx === 'Master') {
+        document.querySelectorAll('.sync-pid').forEach(el => { el.value = String(productId || ""); });
+        document.querySelectorAll('.sync-supplier-id').forEach(el => { el.value = String(Number(supplierId || 0) || ""); });
+    }
+    if (productId && typeof window.primeProductAttrCache === 'function') {
+        window.primeProductAttrCache(productId);
+    }
+
+    let supEl = targetIdx === 'Master' ? document.getElementById('Master_Supplier') : document.getElementById(`Supplier_${targetIdx}`);
+    let supIdEl = targetIdx === 'Master' ? document.getElementById('Master_SupplierID') : document.querySelector(`input[name="SupplierID_${targetIdx}"]`);
+    let costEl = targetIdx === 'Master' ? document.getElementById('Master_CostPrice') : document.getElementById(`CostPrice_${targetIdx}`);
+    let priceEl = targetIdx === 'Master' ? document.getElementById('Master_Price') : document.getElementById(`Price_${targetIdx}`);
+    
+    if(supEl) {
+        supEl.value = supName || '';
+        if (supEl.dataset) supEl.dataset.supplierId = String(Number(supplierId || 0) || '');
+    }
+    if (supIdEl) supIdEl.value = String(Number(supplierId || 0) || '');
+    if(costEl) {
+        costEl.value = formatComma(cost);
+        costEl.classList.add('pulse-highlight');
+        setTimeout(() => costEl.classList.remove('pulse-highlight'), 2000);
+    }
+    
+    if(priceEl && sellPrice > 0) {
+        priceEl.value = formatComma(sellPrice);
+        priceEl.dispatchEvent(new Event('input'));
+    }
+
+    // 아이콘 스위칭 (수정 모드)
+    let actionIcon = document.getElementById(`ActionIcon_${targetIdx}`);
+    if(actionIcon) {
+        actionIcon.className = 'fas fa-edit text-warning';
+        actionIcon.title = '기존 단가 수정';
+    }
+    
+    if (targetIdx === 'Master') {
+        const count = document.querySelectorAll('input[name="RowIdx"]').length;
+        if(typeof syncBlindData === 'function') syncBlindData(count, 'ProdName');
+    }
+    
+    smartDropdown.style.display = 'none';
+    
+    // 값 채워진 직후 바로 툴팁 렌더링
+    if(priceEl) autoShowMargin(targetIdx, priceEl);
+}
+
+// 💡 [클라우드 업로드] 마스터 DB에 단가/원가 명시적 동기화
+window.uploadMasterPrice = async function(idx) {
+    if (typeof window.__viewUiUploadMasterPrice === 'function') {
+        return window.__viewUiUploadMasterPrice(idx);
+    }
+};
+
+// [UX 최적화] 마진율 자동 표시 (Debouncing)
+let marginTimer = {};
+window.autoShowMargin = function(idx, el) {
+    clearTimeout(marginTimer[idx]);
+    marginTimer[idx] = setTimeout(() => {
+        const price = safeCleanNum(el.value);
+        let cost = 0;
+        if (idx === 'Master') {
+            cost = safeCleanNum(document.getElementById('Master_CostPrice')?.value);
+            if (price > 0 && cost > 0) triggerBlindMarginPopup(document.getElementById('MasterPriceWrapper'));
+        } else {
+            cost = safeCleanNum(document.getElementById(`CostPrice_${idx}`)?.value);
+            if (price > 0 && cost > 0) triggerMarginPopup(document.getElementById(`PriceWrapper_${idx}`), idx);
+        }
+    }, 400); // 0.4초간 추가 입력이 없으면 렌더링
+};
+
+window.triggerMarginPopup = function(el, idx) {
+    const priceStr = document.getElementById(`Price_${idx}`)?.value || document.querySelector(`input[name="Price_${idx}"]`)?.value;
+    const qtyStr = document.getElementById(`Qty_${idx}`)?.value || document.querySelector(`input[name="Qty_${idx}"]`)?.value;
+    
+    const price = safeCleanNum(priceStr);
+    let qty = safeCleanNum(qtyStr);
+    if (qty === 0) qty = 1; 
+    
+    const rev = price * qty; 
+    const costPrice = safeCleanNum(document.getElementById(`CostPrice_${idx}`)?.value);
+    const cost = costPrice * qty; 
+    
+    const targetEl = document.getElementById(`PriceWrapper_${idx}`) || el;
+    showRealMarginPopup(targetEl, rev, cost);
+};
+
+window.triggerBlindMarginPopup = function(el) {
+    const price = safeCleanNum(document.getElementById('Master_Price')?.value);
+    let totalQty = safeCleanNum(document.getElementById('TotalBlindQty')?.value);
+    if (totalQty === 0) totalQty = 1; 
+    
+    const rev = price * totalQty;
+    const costPrice = safeCleanNum(document.getElementById('Master_CostPrice')?.value);
+    const cost = costPrice * totalQty;
+    
+    const targetEl = document.getElementById('MasterPriceWrapper') || el;
+    showRealMarginPopup(targetEl, rev, cost);
+};
+
+function showRealMarginPopup(element, rev, cost) {
+    const existing = document.getElementById('realMarginBubble');
+    if(existing) existing.remove();
+
+    const profit = rev - cost;
+    const marginRate = rev > 0 ? ((profit / rev) * 100).toFixed(1) : 0;
+    const colorCode = profit >= 0 ? '#fcc419' : '#fa5252'; 
+    
+    const bubble = document.createElement('div');
+    bubble.id = 'realMarginBubble';
+    bubble.innerHTML = `
+        <div style="font-size:11px; color:#adb5bd; margin-bottom:2px; font-weight:normal;">매입원가 차감 순이익</div>
+        <div style="font-size:16px; font-weight:900; color:${colorCode};">${formatComma(profit)}원 <span style="font-size:12px; font-weight:bold; opacity:0.9;">(${marginRate}%)</span></div>
+    `;
+    bubble.style.cssText = "position:absolute; background:#212529; padding:8px 12px; border-radius:10px; z-index:99999; box-shadow:0 8px 24px rgba(0,0,0,0.3); bottom:calc(100% + 8px); right:0; white-space:nowrap; text-align:right;";
+    
+    element.style.position = "relative";
+    element.appendChild(bubble);
+    setTimeout(() => { if(bubble) bubble.remove(); }, 3000);
+}
+</script>

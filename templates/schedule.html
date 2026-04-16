@@ -1,0 +1,546 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>일정</title>
+    <link rel="stylesheet" href="/static/css/common.css?v=2">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <style>
+        body { margin: 0; background: #f4f7fb; font-family: 'Pretendard', sans-serif; color: #0f172a; }
+        .schedule-page { max-width: 1400px; margin: 0 auto; padding: 12px; }
+        .schedule-shell { background: #fff; border: 1px solid #e5e7eb; border-radius: 22px; box-shadow: 0 18px 44px rgba(15, 23, 42, 0.06); overflow: hidden; }
+        .schedule-shell__body { padding: 6px 10px 6px; }
+        .schedule-toolbar { display: flex; flex-direction: column; gap: 8px; padding: 2px 0 10px; }
+        .schedule-toolbar__top { display: flex; align-items: center; justify-content: flex-end; min-height: 20px; }
+        .schedule-toolbar__controls { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .schedule-toolbar__nav { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+        .schedule-toolbar__nav-group { display: inline-flex; align-items: center; gap: 4px; padding: 4px; border-radius: 16px; background: #2554e8; }
+        .schedule-toolbar__nav-btn,
+        .schedule-toolbar__today-btn,
+        .schedule-toolbar__view-btn {
+            border: none;
+            border-radius: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform 0.16s ease, opacity 0.16s ease, background 0.16s ease;
+        }
+        .schedule-toolbar__nav-btn {
+            width: 42px;
+            height: 38px;
+            background: transparent;
+            color: #fff;
+            font-size: 1.05rem;
+        }
+        .schedule-toolbar__today-btn {
+            min-width: 52px;
+            height: 36px;
+            padding: 0 12px;
+            background: #7b8794;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+        .schedule-toolbar__title { font-size: 1rem; font-weight: 700; letter-spacing: -0.04em; color: #111827; text-align: right; }
+        .schedule-toolbar__views { display: inline-flex; align-items: center; padding: 4px; border-radius: 16px; background: #2554e8; gap: 4px; }
+        .schedule-toolbar__view-btn { min-width: 54px; height: 36px; padding: 0 12px; background: transparent; color: rgba(255, 255, 255, 0.82); font-size: 0.9rem; }
+        .schedule-toolbar__view-btn.is-active { background: #1f2937; color: #fff; }
+        .schedule-toolbar__nav-btn:active,
+        .schedule-toolbar__today-btn:active,
+        .schedule-toolbar__view-btn:active { transform: scale(0.97); }
+        #scheduleCalendar { min-height: 78vh; }
+        .fc .fc-col-header-cell-cushion { padding: 6px 0; font-size: 0.9rem; font-weight: 800; }
+        .fc .fc-daygrid-day { cursor: pointer; }
+        .fc .fc-daygrid-day-top { justify-content: flex-end; overflow: hidden; }
+        .fc .fc-daygrid-day-number { padding: 0 !important; }
+        .fc .fc-daygrid-day-frame { min-height: 90px; }
+        .fc .fc-daygrid-event-harness { margin-top: 1px; }
+        .schedule-legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 0 16px 18px; color: #475569; font-size: 0.88rem; font-weight: 700; }
+        .schedule-legend__item { display: inline-flex; align-items: center; gap: 6px; }
+        .schedule-legend__dot { width: 10px; height: 10px; border-radius: 50%; }
+        .schedule-day-wrap {
+            display: inline-flex;
+            align-items: baseline;
+            justify-content: flex-end;
+            gap: 3px;
+            max-width: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+        .schedule-day-number { display: inline-block; flex: 0 0 auto; font-size: 0.86rem; font-weight: 500; line-height: 1; color: #111827; letter-spacing: -0.03em; }
+        .schedule-day-number.is-sunday,
+        .schedule-day-number.is-holiday { color: #dc2626; }
+        .schedule-day-holiday {
+            display: inline-block;
+            min-width: 0;
+            max-width: calc(100% - 16px);
+            font-size: 7px;
+            line-height: 1;
+            color: #dc2626;
+            font-weight: 400;
+            white-space: nowrap;
+            overflow: hidden;
+            vertical-align: baseline;
+        }
+        .fc .fc-event {
+            border: none !important;
+            box-shadow: none !important;
+        }
+        .fc .fc-daygrid-event,
+        .fc .fc-timegrid-event {
+            border-width: 0 !important;
+            border-style: none !important;
+        }
+        .schedule-page .fc .fc-daygrid-event,
+        .schedule-page .fc .fc-daygrid-event:hover,
+        .schedule-page .fc .fc-daygrid-block-event,
+        .schedule-page .fc .fc-daygrid-block-event:hover {
+            background: transparent !important;
+            box-shadow: none !important;
+        }
+        .fc-event.bg-req,
+        .fc-event.bg-visit,
+        .fc-event.bg-const,
+        .fc-event.bg-as,
+        .fc-event.bg-done {
+            border: none !important;
+            color: #fff !important;
+        }
+        .fc-event.bg-req   { background-color: var(--c-req) !important; }
+        .fc-event.bg-visit { background-color: var(--c-visit) !important; }
+        .fc-event.bg-const { background-color: var(--c-const) !important; }
+        .fc-event.bg-as    { background-color: var(--c-as) !important; }
+        .fc-event.bg-done  { background-color: var(--c-done) !important; }
+        .schedule-event-pill {
+            display: block;
+            width: 100%;
+            border: none !important;
+            border-radius: 5px;
+            padding: 1px 4px;
+            font-size: 10px;
+            line-height: 1.22;
+            font-weight: 500;
+            letter-spacing: -0.06em;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        .schedule-event-pill--req { background: var(--c-req); }
+        .schedule-event-pill--visit { background: var(--c-visit); }
+        .schedule-event-pill--const { background: var(--c-const); }
+        .schedule-event-pill--as { background: var(--c-as); }
+        .schedule-event-pill--done { background: var(--c-done); }
+        .schedule-week-list { display: none; padding-top: 4px; }
+        .schedule-week-day {
+            margin-bottom: 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            background: #fff;
+            overflow: hidden;
+        }
+        .schedule-week-day__head {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 8px;
+            padding: 10px 12px 8px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            text-align: left;
+        }
+        .schedule-week-day__head.is-sunday .schedule-week-day__weekday,
+        .schedule-week-day__head.is-holiday .schedule-week-day__weekday,
+        .schedule-week-day__head.is-sunday .schedule-week-day__date,
+        .schedule-week-day__head.is-holiday .schedule-week-day__date { color: #dc2626; }
+        .schedule-week-day__titles { min-width: 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+        .schedule-week-day__weekday { font-size: 0.92rem; font-weight: 800; color: #111827; letter-spacing: -0.04em; }
+        .schedule-week-day__date { font-size: 0.8rem; font-weight: 600; color: #1f2937; letter-spacing: -0.04em; }
+        .schedule-week-day__holiday { font-size: 0.68rem; font-weight: 400; color: #dc2626; white-space: nowrap; overflow: hidden; max-width: 110px; }
+        .schedule-week-day__body { display: flex; flex-direction: column; gap: 6px; padding: 0 12px 12px; }
+        .schedule-list-entry {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            min-height: 34px;
+            padding: 0;
+            background: transparent;
+            border: none;
+        }
+        .schedule-list-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 56px;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            line-height: 1;
+            font-weight: 700;
+            color: #fff;
+            flex: 0 0 auto;
+        }
+        .schedule-list-badge--req { background: var(--c-req); }
+        .schedule-list-badge--visit { background: var(--c-visit); }
+        .schedule-list-badge--const { background: var(--c-const); }
+        .schedule-list-badge--as { background: var(--c-as); }
+        .schedule-list-badge--done { background: var(--c-done); }
+        .schedule-list-name { min-width: 0; font-size: 0.84rem; font-weight: 500; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.04em; }
+        @media (max-width: 768px) {
+            .schedule-page { padding: 8px; }
+            .schedule-shell { border-radius: 16px; }
+            .schedule-shell__body { padding: 8px 6px 4px; }
+            .schedule-toolbar { gap: 8px; padding: 0 0 8px; }
+            .schedule-toolbar__top { min-height: 18px; }
+            .schedule-toolbar__controls { gap: 8px; }
+            .schedule-toolbar__nav-group { gap: 4px; padding: 4px; }
+            .schedule-toolbar__nav-btn { width: 38px; height: 34px; font-size: 0.98rem; }
+            .schedule-toolbar__today-btn { min-width: 48px; height: 32px; padding: 0 10px; font-size: 0.86rem; }
+            .schedule-toolbar__title { font-size: 0.92rem; }
+            .schedule-toolbar__views { padding: 4px; }
+            .schedule-toolbar__view-btn { min-width: 44px; height: 32px; padding: 0 10px; font-size: 0.84rem; }
+            #scheduleCalendar { min-height: 74vh; }
+            .fc .fc-col-header-cell-cushion { font-size: 0.82rem; padding: 4px 0; }
+            .fc .fc-daygrid-day-frame { min-height: 70px; }
+            .schedule-day-number { font-size: 0.8rem; font-weight: 500; }
+            .schedule-day-holiday { max-width: calc(100% - 14px); font-size: 6px; }
+            .schedule-event-pill { padding: 1px 3px; font-size: 8px; line-height: 1.14; border-radius: 4px; }
+            .schedule-week-day { margin-bottom: 8px; border-radius: 12px; }
+            .schedule-week-day__head { padding: 10px 10px 7px; }
+            .schedule-week-day__titles { gap: 8px; }
+            .schedule-week-day__weekday { font-size: 0.86rem; }
+            .schedule-week-day__date { font-size: 0.76rem; }
+            .schedule-week-day__holiday { max-width: 96px; font-size: 0.66rem; }
+            .schedule-week-day__body { gap: 5px; padding: 0 10px 10px; }
+            .schedule-list-entry { min-height: 32px; gap: 7px; border-top: 1px solid #eee; }
+            .schedule-list-badge { font-size: 8px; }
+            .schedule-list-name { font-size: 1rem; }
+            .schedule-legend { gap: 10px; padding: 0 12px 14px; font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+    {% include "includes/top_nav.html" %}
+    <div class="schedule-page">
+        <section class="schedule-shell">
+            <div class="schedule-shell__body">
+                <div class="schedule-toolbar">
+                    <div class="schedule-toolbar__top">
+                        <div class="schedule-toolbar__title" id="scheduleToolbarTitle"></div>
+                    </div>
+                    <div class="schedule-toolbar__controls">
+                        <div class="schedule-toolbar__views">
+                            <button type="button" class="schedule-toolbar__view-btn is-active" id="scheduleMonthBtn">월</button>
+                            <button type="button" class="schedule-toolbar__view-btn" id="scheduleWeekBtn">주</button>
+                        </div>
+                        <div class="schedule-toolbar__nav">
+                            <button type="button" class="schedule-toolbar__today-btn" id="scheduleTodayBtn">오늘</button>
+                            <div class="schedule-toolbar__nav-group">
+                                <button type="button" class="schedule-toolbar__nav-btn" id="schedulePrevBtn" aria-label="이전"><i class="fas fa-chevron-left"></i></button>
+                                <button type="button" class="schedule-toolbar__nav-btn" id="scheduleNextBtn" aria-label="다음"><i class="fas fa-chevron-right"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="scheduleCalendar"></div>
+                <div id="scheduleWeekList" class="schedule-week-list"></div>
+            </div>
+            <div class="schedule-legend">
+                <span class="schedule-legend__item"><span class="schedule-legend__dot bg-req"></span>견적</span>
+                <span class="schedule-legend__item"><span class="schedule-legend__dot bg-visit"></span>방문</span>
+                <span class="schedule-legend__item"><span class="schedule-legend__dot bg-const"></span>시공</span>
+                <span class="schedule-legend__item"><span class="schedule-legend__dot bg-as"></span>AS</span>
+                <span class="schedule-legend__item"><span class="schedule-legend__dot bg-done"></span>완료</span>
+            </div>
+        </section>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('scheduleCalendar');
+            if (!calendarEl || typeof FullCalendar === 'undefined') return;
+            var holidayMap = {{ holiday_map | tojson }};
+            var scheduleMode = new URLSearchParams(window.location.search).get('mode') || '';
+
+            function escapeHtml(value) {
+                return String(value || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function toDateKey(date) {
+                var year = date.getFullYear();
+                var month = String(date.getMonth() + 1).padStart(2, '0');
+                var day = String(date.getDate()).padStart(2, '0');
+                return year + '-' + month + '-' + day;
+            }
+
+            function getHolidayName(date) {
+                return holidayMap[toDateKey(date)] || '';
+            }
+
+            function getCustomerName(event) {
+                return String(event.title || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+            }
+
+            function getStatusKey(event) {
+                var classNames = event.classNames || [];
+                if (classNames.indexOf('bg-visit') > -1) return 'visit';
+                if (classNames.indexOf('bg-const') > -1) return 'const';
+                if (classNames.indexOf('bg-as') > -1) return 'as';
+                if (classNames.indexOf('bg-done') > -1) return 'done';
+                return 'req';
+            }
+
+            function getStatusLabel(statusKey, longMode) {
+                var labels = longMode ? {
+                    req: '견적상담',
+                    visit: '방문상담',
+                    const: '시공예정',
+                    as: 'AS요청',
+                    done: '시공완료'
+                } : {
+                    req: '견적',
+                    visit: '방문',
+                    const: '시공',
+                    as: 'AS',
+                    done: '완료'
+                };
+                return labels[statusKey] || '일정';
+            }
+
+            function openOrderForDate(dateStr) {
+                openGlobalOrderModal();
+                var dateInput = document.getElementById('globalRequestDate');
+                if (dateInput) dateInput.value = dateStr + 'T09:00';
+            }
+
+            function getToolbarTitle(date) {
+                return date.getFullYear() + '년 ' + (date.getMonth() + 1) + '월';
+            }
+
+            function startOfWeek(date) {
+                var copy = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                copy.setDate(copy.getDate() - copy.getDay());
+                copy.setHours(0, 0, 0, 0);
+                return copy;
+            }
+
+            function addDays(date, amount) {
+                var copy = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                copy.setDate(copy.getDate() + amount);
+                return copy;
+            }
+
+            function getWeekdayLabel(date) {
+                var labels = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+                return labels[date.getDay()];
+            }
+
+            function sortEventsByTime(a, b) {
+                var timeA = (a.extendedProps && a.extendedProps.time) || '';
+                var timeB = (b.extendedProps && b.extendedProps.time) || '';
+                return String(timeA).localeCompare(String(timeB));
+            }
+
+            async function fetchScheduleRange(startDate, endDate) {
+                var url = '/api/schedule?start=' + encodeURIComponent(toDateKey(startDate)) + '&end=' + encodeURIComponent(toDateKey(endDate));
+                if (scheduleMode) {
+                    url += '&mode=' + encodeURIComponent(scheduleMode);
+                }
+                var response = await fetch(url, { credentials: 'same-origin' });
+                if (!response.ok) return [];
+                return await response.json();
+            }
+
+            async function fetchCalendarEvents(fetchInfo, successCallback, failureCallback) {
+                try {
+                    var url = '/api/schedule?start=' + encodeURIComponent(toDateKey(fetchInfo.start)) + '&end=' + encodeURIComponent(toDateKey(fetchInfo.end));
+                    if (scheduleMode) {
+                        url += '&mode=' + encodeURIComponent(scheduleMode);
+                    }
+                    var response = await fetch(url, { credentials: 'same-origin' });
+                    if (!response.ok) {
+                        successCallback([]);
+                        return;
+                    }
+                    successCallback(await response.json());
+                } catch (error) {
+                    if (typeof failureCallback === 'function') failureCallback(error);
+                }
+            }
+
+            function renderWeekList(events, baseDate) {
+                var container = document.getElementById('scheduleWeekList');
+                if (!container) return;
+                var weekStart = startOfWeek(baseDate);
+                var grouped = {};
+                events.forEach(function(evt) {
+                    var key = String(evt.start || '').slice(0, 10);
+                    if (!grouped[key]) grouped[key] = [];
+                    grouped[key].push(evt);
+                });
+                var html = '';
+                for (var i = 0; i < 7; i += 1) {
+                    var day = addDays(weekStart, i);
+                    var dateKey = toDateKey(day);
+                    var dayEvents = (grouped[dateKey] || []).slice().sort(sortEventsByTime);
+                    var holidayName = getHolidayName(day);
+                    var headClasses = ['schedule-week-day__head'];
+                    if (day.getDay() === 0) headClasses.push('is-sunday');
+                    if (holidayName) headClasses.push('is-holiday');
+                    html += '<section class="schedule-week-day">';
+                    html += '<button type="button" class="' + headClasses.join(' ') + '" data-date="' + dateKey + '">';
+                    html += '<span class="schedule-week-day__titles">';
+                    html += '<span class="schedule-week-day__weekday">' + getWeekdayLabel(day) + '</span>';
+                    html += '<span class="schedule-week-day__date">' + day.getFullYear() + '년 ' + (day.getMonth() + 1) + '월 ' + day.getDate() + '일</span>';
+                    if (holidayName) {
+                        html += '<span class="schedule-week-day__holiday">' + escapeHtml(holidayName) + '</span>';
+                    }
+                    html += '</span>';
+                    html += '</button>';
+                    html += '<div class="schedule-week-day__body">';
+                    if (dayEvents.length) {
+                        dayEvents.forEach(function(evt) {
+                            var statusKey = getStatusKey({ classNames: evt.className || [] });
+                            var customerName = escapeHtml(getCustomerName({ title: evt.title || '' }));
+                            var url = escapeHtml(evt.url || '');
+                            html += '<button type="button" class="schedule-list-entry" data-url="' + url + '"><span class="schedule-list-badge schedule-list-badge--' + statusKey + '">' + getStatusLabel(statusKey, true) + '</span><span class="schedule-list-name">' + customerName + '</span></button>';
+                        });
+                    }
+                    html += '</div></section>';
+                }
+                container.innerHTML = html;
+            }
+
+            var activeMode = 'month';
+            var weekCursor = new Date();
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'ko',
+                height: 'auto',
+                displayEventTime: false,
+                headerToolbar: false,
+                events: fetchCalendarEvents,
+                datesSet: function(info) {
+                    if (activeMode === 'month') {
+                        document.getElementById('scheduleToolbarTitle').textContent = getToolbarTitle(info.start);
+                    }
+                },
+                dayCellContent: function(info) {
+                    var holidayName = getHolidayName(info.date);
+                    var numberClasses = ['schedule-day-number'];
+                    if (info.date.getDay() === 0) numberClasses.push('is-sunday');
+                    if (holidayName) numberClasses.push('is-holiday');
+                    var holidayHtml = holidayName
+                        ? '<span class="schedule-day-holiday">' + escapeHtml(holidayName) + '</span>'
+                        : '';
+                    return {
+                        html: '<div class="schedule-day-wrap"><span class="' + numberClasses.join(' ') + '">' + info.date.getDate() + '</span>' + holidayHtml + '</div>'
+                    };
+                },
+                eventContent: function(info) {
+                    var statusKey = getStatusKey(info.event);
+                    var customerName = escapeHtml(getCustomerName(info.event));
+                    return {
+                        html: '<span class="schedule-event-pill schedule-event-pill--' + statusKey + '">' + customerName + '</span>'
+                    };
+                },
+                eventClick: function(info) {
+                    if (info.event.url) {
+                        info.jsEvent.preventDefault();
+                        location.href = info.event.url;
+                    }
+                },
+                dateClick: function(info) {
+                    openOrderForDate(info.dateStr);
+                }
+            });
+            calendar.render();
+
+            async function setActiveMode(mode) {
+                activeMode = mode;
+                var calendarNode = document.getElementById('scheduleCalendar');
+                var weekListNode = document.getElementById('scheduleWeekList');
+                var monthBtn = document.getElementById('scheduleMonthBtn');
+                var weekBtn = document.getElementById('scheduleWeekBtn');
+                if (mode === 'month') {
+                    calendarNode.style.display = '';
+                    weekListNode.style.display = 'none';
+                    monthBtn.classList.add('is-active');
+                    weekBtn.classList.remove('is-active');
+                    document.getElementById('scheduleToolbarTitle').textContent = getToolbarTitle(calendar.getDate());
+                    calendar.updateSize();
+                    return;
+                }
+
+                weekCursor = new Date(calendar.getDate());
+                calendarNode.style.display = 'none';
+                weekListNode.style.display = 'block';
+                monthBtn.classList.remove('is-active');
+                weekBtn.classList.add('is-active');
+                document.getElementById('scheduleToolbarTitle').textContent = getToolbarTitle(weekCursor);
+                var weekStart = startOfWeek(weekCursor);
+                var weekEnd = addDays(weekStart, 7);
+                var weekEvents = await fetchScheduleRange(weekStart, weekEnd);
+                renderWeekList(weekEvents, weekCursor);
+            }
+
+            document.getElementById('schedulePrevBtn').addEventListener('click', async function() {
+                if (activeMode === 'month') {
+                    calendar.prev();
+                    return;
+                }
+                weekCursor = addDays(weekCursor, -7);
+                document.getElementById('scheduleToolbarTitle').textContent = getToolbarTitle(weekCursor);
+                renderWeekList(await fetchScheduleRange(startOfWeek(weekCursor), addDays(startOfWeek(weekCursor), 7)), weekCursor);
+            });
+
+            document.getElementById('scheduleNextBtn').addEventListener('click', async function() {
+                if (activeMode === 'month') {
+                    calendar.next();
+                    return;
+                }
+                weekCursor = addDays(weekCursor, 7);
+                document.getElementById('scheduleToolbarTitle').textContent = getToolbarTitle(weekCursor);
+                renderWeekList(await fetchScheduleRange(startOfWeek(weekCursor), addDays(startOfWeek(weekCursor), 7)), weekCursor);
+            });
+
+            document.getElementById('scheduleTodayBtn').addEventListener('click', async function() {
+                if (activeMode === 'month') {
+                    calendar.today();
+                    return;
+                }
+                weekCursor = new Date();
+                document.getElementById('scheduleToolbarTitle').textContent = getToolbarTitle(weekCursor);
+                renderWeekList(await fetchScheduleRange(startOfWeek(weekCursor), addDays(startOfWeek(weekCursor), 7)), weekCursor);
+            });
+
+            document.getElementById('scheduleMonthBtn').addEventListener('click', function() {
+                setActiveMode('month');
+            });
+
+            document.getElementById('scheduleWeekBtn').addEventListener('click', function() {
+                setActiveMode('week');
+            });
+
+            document.getElementById('scheduleWeekList').addEventListener('click', function(event) {
+                var dayButton = event.target.closest('[data-date]');
+                var entryButton = event.target.closest('[data-url]');
+                if (entryButton && entryButton.dataset.url) {
+                    location.href = entryButton.dataset.url;
+                    return;
+                }
+                if (dayButton && dayButton.dataset.date) {
+                    openOrderForDate(dayButton.dataset.date);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

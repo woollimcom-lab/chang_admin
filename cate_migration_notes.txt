@@ -1,0 +1,234 @@
+OrderItems cate migration notes
+===============================
+
+Changed files
+- models.py
+- main.py
+- routers/marketing.py
+- static/js/view_ui.js
+- static/js/view_calc.js
+- static/js/view_api.js
+- templates/view.html
+- templates/view_print.html
+
+Summary
+- OrderItems common slots changed to cate1~cate4 in model.
+- Compatibility synonyms kept for ProductName / OptionInfo / ItemMemo.
+- Startup migration added to rename existing DB columns and add cate2.
+- Save/edit/group/photo/print/view flows updated to use cate1~cate4.
+- New color field (cate2) added to curtain/etc row UI and blind common UI.
+- Photo item labels now include color when available.
+- Basic anti-hardcoding label map added in view_ui.js for future category expansion.
+
+Validation
+- python -m py_compile main.py models.py routers/marketing.py routers/ledger_router.py
+- node --check static/js/view_ui.js
+- node --check static/js/view_calc.js
+- node --check static/js/view_api.js
+- jinja2 parse check for templates/view.html and templates/view_print.html
+
+PDF-based expansion baseline
+============================
+
+Reference
+- Field-service processor PDF provided by user.
+- This note treats the PDF as the source of truth for expanding the current curtain/blind item flow into a generic work-item engine.
+
+Current diagnosis
+- The database layer is partially generalized already:
+  - OrderItems cate1~cate4
+  - Attributes JSON
+- The real bottlenecks are still hardcoded:
+  - templates/includes/item_master.html input UI
+  - static/js/view_ui.js edit/restore/render flow
+  - main.py /api/item/save form parsing
+- Adding more categories today would only increase hardcoded branches.
+
+Execution principles
+- Do not rewrite the whole /view item system.
+- Keep current curtain/blind flow working first.
+- Normalize data before changing UI.
+- Treat curtain/blind as profile pack #1, not as the core engine.
+- Add new domains only after save/edit/restore are normalized.
+
+Phase 0 deliverables
+--------------------
+
+1. Hardcoding inventory
+- Category hardcoding:
+  - curtain
+  - blind
+  - generic
+- UI hardcoding:
+  - curtainTypeDiv
+  - blindTypeDiv
+  - etcTypeDiv
+- Save hardcoding:
+  - blind-specific save branch
+  - non-blind save branch
+- Restore hardcoding:
+  - blind edit restore
+  - curtain/generic row restore
+
+2. Required safety regression set
+- Add curtain item
+- Add blind item
+- Add generic item
+- Re-open and edit each saved item
+- Delete item
+- Keep group save and photo label behavior unchanged
+
+Canonical payload v1
+--------------------
+
+Purpose
+- Every future domain-specific UI must serialize into one payload before save.
+- The backend save service should depend on this payload, not on raw form branches.
+
+Shape
+```json
+{
+  "domain": "curtain",
+  "workType": "install",
+  "schemaCode": "curtain_pair_v1",
+  "catalogItemId": null,
+  "itemName": "암막커튼",
+  "supplierId": null,
+  "supplierName": "예시거래처",
+  "qty": 2,
+  "unit": "폭",
+  "costPrice": 0,
+  "sellPrice": 120000,
+  "lineAmount": 240000,
+  "location": "거실",
+  "attributes": {
+    "subType": "겉지",
+    "color": "아이보리",
+    "option": "나비주름",
+    "width": 320,
+    "height": 230,
+    "memo": ""
+  },
+  "source": {
+    "mode": "legacy-form"
+  }
+}
+```
+
+Minimum mapping rules
+- domain:
+  - curtain -> curtain
+  - blind -> blind
+  - current generic and future trades -> generic or their own domain code
+- itemName:
+  - prioritize cate1/ProductName-equivalent
+- qty:
+  - current Quantity
+- unit:
+  - curtain default 폭
+  - blind default ㎡ or current business rule output
+  - others profile-defined
+- lineAmount:
+  - current LineTotal
+- attributes:
+  - variable trade-specific fields only
+
+Legacy-to-canonical mapping
+---------------------------
+
+Current curtain row
+- Category -> domain/category label
+- Category1/SubCat -> attributes.subType
+- cate1/ProductName -> itemName
+- cate2 -> attributes.color
+- cate3/OptionInfo -> attributes.option
+- cate4/ItemMemo -> attributes.memo
+- Width -> attributes.width
+- Height -> attributes.height
+- Quantity -> qty
+- UnitPrice -> sellPrice
+- LineTotal -> lineAmount
+- Location -> location
+
+Current blind row
+- Category -> domain/category label
+- Category1/SubCat -> attributes.subType
+- cate1/ProductName -> itemName
+- cate2 -> attributes.color
+- cate3/OptionInfo -> attributes.option
+- cate4/ItemMemo -> attributes.memo
+- BlindSize -> attributes.blindSize
+- BlindQty -> attributes.blindQty
+- BlindCount -> attributes.blindCount
+- Height -> attributes.height
+- Quantity -> qty
+- UnitPrice -> sellPrice
+- LineTotal -> lineAmount
+- Location -> location
+
+Current generic row
+- Category -> domain/category label
+- Category1/SubCat -> attributes.subType
+- cate1/ProductName -> itemName
+- cate2 -> attributes.color
+- cate3/OptionInfo -> attributes.option
+- cate4/ItemMemo -> attributes.memo
+- Width -> attributes.width
+- Height -> attributes.height
+- Quantity -> qty
+- UnitPrice -> sellPrice
+- LineTotal -> lineAmount
+- Location -> location
+
+Sprint 1 implementation boundary
+--------------------------------
+
+Goal
+- Keep the current UI.
+- Add a normalization layer before save.
+- Do not replace the renderer yet.
+
+Files expected in Sprint 1
+- main.py
+- static/js/view_ui.js
+- templates/includes/item_master.html
+
+Sprint 1 tasks
+- Define canonical serializer on frontend.
+- Add legacy adapter for current curtain/blind/generic form state.
+- Add backend helper that converts canonical payload into OrderItem fields.
+- Keep /api/item/save endpoint path unchanged.
+- Keep current screen UX unchanged.
+
+User verification checklist
+---------------------------
+
+Because auto-upload is enabled, the user must verify all of the following after each patch:
+
+1. Deployment reflection
+- Confirm the saved local file is actually uploaded to the server.
+- Confirm Python file changes are reflected by reload or service restart.
+
+2. Browser cache
+- Hard refresh before testing /view.
+- Especially verify static/js/view_ui.js is the latest file.
+
+3. Core regression
+- Curtain item add works
+- Blind item add works
+- Generic item add works
+- Existing saved curtain edit works
+- Existing saved blind edit works
+- Existing saved generic edit works
+- Item delete works
+
+4. Mismatch symptoms to watch
+- HTML changed but JS still old
+- JS changed but backend still old
+- Server reload did not happen after Python change
+- Edit modal opens with empty or shifted values
+
+Rollback point
+--------------
+- If any save/edit regression appears in /view after Sprint 1, rollback should happen at the adapter layer only.
+- Do not mix renderer replacement with save normalization in the same patch.

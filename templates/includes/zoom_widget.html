@@ -1,0 +1,276 @@
+
+<div class="tool-rail" id="toolRail" aria-label="작업 도구">
+    <button type="button" class="tool-handle" id="toolHandle" aria-label="도구 열기/닫기">
+        <i class="fas fa-chevron-right" id="toolHandleIcon"></i>
+    </button>
+
+    <div class="tool-panel">
+        <button class="tool-btn direct-voice-btn" id="zoomDirectVoiceBtn" title="입력창 직접 음성입력">
+            <i class="fas fa-microphone-lines"></i>
+        </button>
+
+        <button class="tool-btn" onclick="goToExpense()" title="지출 등록/관리">
+            <i class="fas fa-receipt"></i>
+        </button>
+
+        <div class="tool-zoom-wrap">
+            <button class="tool-btn" id="btn-zoom-main" title="줌 도구">
+                <i class="fas fa-search"></i>
+            </button>
+
+            <div class="tool-zoom-submenu" id="zoomSubmenu">
+                <button class="tool-sub-btn" id="btn-zoom-in" title="확대"><i class="fas fa-plus"></i></button>
+                <button class="tool-sub-btn" id="btn-zoom-reset" title="기본 크기"><i class="fas fa-undo"></i></button>
+                <button class="tool-sub-btn" id="btn-zoom-out" title="축소"><i class="fas fa-minus"></i></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="jarvis-voice-fab" id="jarvisVoiceBtn" title="자비스 음성">
+    <i class="fas fa-microphone"></i>
+</div>
+
+<style>
+.tool-rail{
+    position:fixed;
+    left:8px;
+    bottom:92px;
+    z-index:99999;
+    display:flex;
+    align-items:flex-end;
+    gap:6px;
+    /* 추가: 부모 컨테이너의 빈 공간은 터치를 통과시키도록 설정 (투명 방패 제거) */
+    pointer-events:none; 
+}
+
+.tool-panel{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    padding:8px;
+    background:rgba(33,37,41,.92);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:18px;
+    box-shadow:0 10px 24px rgba(0,0,0,.16);
+    transform:translateX(calc(-100% - 6px));
+    opacity:0;
+    pointer-events:none; /* 기존 유지: 닫혀있을 땐 터치 불가 */
+    transition:transform .24s ease, opacity .24s ease;
+}
+
+body.tool-rail-open .tool-panel{
+    transform:translateX(0);
+    opacity:1;
+    pointer-events:auto; /* 기존 유지: 열렸을 땐 터치 가능 */
+}
+
+.tool-handle{
+    width:26px;
+    height:44px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,.5);
+    background:rgba(33,37,41,.96);
+    color:#fff;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    box-shadow:0 6px 16px rgba(0,0,0,.10);
+    /* 추가: 눈에 보이는 손잡이는 터치가 가능하도록 복구 */
+    pointer-events:auto; 
+}
+.tool-handle i{ transition:transform .24s ease; }
+body.tool-rail-open .tool-handle i{ transform:rotate(180deg); }
+
+.tool-btn{
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    border:2px solid #fff;
+    background:#111;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:19px;
+    cursor:pointer;
+    box-shadow:0 2px 5px rgba(0,0,0,.3);
+    transition:transform .16s ease, background-color .16s ease;
+}
+.tool-btn:hover{ transform:translateY(-2px); background:#333; }
+.tool-btn:active{ transform:translateY(0); }
+
+.direct-voice-btn.is-on{
+    background:#e03131 !important;
+    border-color:#fff;
+    animation:pulse-direct 1.5s infinite;
+}
+@keyframes pulse-direct{
+    0%{ box-shadow:0 0 0 0 rgba(224,49,49,.7); }
+    70%{ box-shadow:0 0 0 12px rgba(224,49,49,0); }
+    100%{ box-shadow:0 0 0 0 rgba(224,49,49,0); }
+}
+
+.tool-zoom-wrap{
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+}
+.tool-zoom-submenu{
+    display:none;
+    flex-direction:column;
+    gap:6px;
+}
+.tool-zoom-submenu.open{ display:flex; }
+.tool-sub-btn{
+    width:36px;
+    height:36px;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,.75);
+    background:#fff;
+    color:#212529;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    font-size:14px;
+    box-shadow:0 4px 10px rgba(0,0,0,.12);
+}
+.tool-sub-btn:hover{ background:#f1f3f5; }
+
+.jarvis-voice-fab{
+    position:fixed;
+    right:10px;
+    bottom:96px;
+    width:50px;
+    height:50px;
+    border-radius:50%;
+    background:#4361ee;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:22px;
+    cursor:pointer;
+    z-index:99999;
+    box-shadow:0 6px 18px rgba(67,97,238,.28);
+    transition:transform .16s ease, background-color .16s ease, opacity .16s ease;
+    opacity:.94;
+}
+.jarvis-voice-fab:hover{ transform:translateY(-2px); background:#3651d4; }
+.jarvis-voice-fab:active{ transform:translateY(0); }
+.jarvis-voice-fab.is-disabled{ background:#868e96; box-shadow:none; opacity:.75; }
+
+.voice-toast{
+    position:fixed; left:50%; transform:translateX(-50%);
+    bottom:24px; z-index:100005;
+    background:rgba(33,37,41,.95); color:#fff;
+    border-radius:999px; padding:10px 16px;
+    font-size:14px; box-shadow:0 10px 24px rgba(0,0,0,.18);
+}
+
+@media (max-width:768px){
+    .tool-rail{ left:6px; bottom:84px; }
+    .tool-panel{ gap:7px; padding:7px; border-radius:16px; }
+    .tool-btn{ width:40px; height:40px; font-size:17px; }
+    .tool-handle{ width:24px; height:40px; }
+    .tool-sub-btn{ width:32px; height:32px; font-size:13px; }
+    .jarvis-voice-fab{
+        right:8px; bottom:88px;
+        width:44px; height:44px; font-size:19px;
+        box-shadow:0 4px 12px rgba(67,97,238,.22);
+    }
+}
+</style>
+
+<script src="/static/js/voice_core.js"></script>
+<script>
+function goToExpense(){
+    const form = document.getElementById('formContainer');
+    if(form){
+        const y = form.getBoundingClientRect().top + window.scrollY - 60;
+        window.scrollTo({top:y, behavior:'smooth'});
+        const originalShadow = form.style.boxShadow;
+        form.style.boxShadow = "0 0 0 4px rgba(67, 97, 238, 0.3)";
+        setTimeout(() => { form.style.boxShadow = originalShadow; }, 800);
+    }else{
+        window.location.href = '/ledger#action-expense';
+    }
+}
+
+function initToolRail(){
+    const handle = document.getElementById('toolHandle');
+    const rail = document.getElementById('toolRail');
+    const submenu = document.getElementById('zoomSubmenu');
+    const btnZoomMain = document.getElementById('btn-zoom-main');
+    if(!handle || !rail) return;
+
+    handle.addEventListener('click', (e)=>{
+        e.preventDefault();
+        document.body.classList.toggle('tool-rail-open');
+    });
+
+    btnZoomMain?.addEventListener('click', (e)=>{
+        e.preventDefault();
+        submenu?.classList.toggle('open');
+    });
+
+    let sx = null, sy = null;
+    rail.addEventListener('touchstart', (e)=>{
+        const t = e.touches?.[0];
+        if(!t) return;
+        sx = t.clientX; sy = t.clientY;
+    }, { passive:true });
+
+    rail.addEventListener('touchmove', (e)=>{
+        const t = e.touches?.[0];
+        if(!t || sx === null || sy === null) return;
+        const dx = t.clientX - sx;
+        const dy = t.clientY - sy;
+        if(Math.abs(dx) > 28 && Math.abs(dx) > Math.abs(dy)){
+            if(dx > 0) document.body.classList.add('tool-rail-open');
+            if(dx < 0) document.body.classList.remove('tool-rail-open');
+            sx = null; sy = null;
+        }
+    }, { passive:true });
+
+    document.addEventListener('click', (e)=>{
+        if (!rail.contains(e.target)) {
+            submenu?.classList.remove('open');
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+    initToolRail();
+
+    const savedZoom = localStorage.getItem('global_zoom_level');
+    let currentZoom = savedZoom ? parseFloat(savedZoom) : 1.0;
+    const rail = document.getElementById('toolRail');
+
+    function applyZoom(newZoom){
+        if(newZoom < 0.6) newZoom = 0.6;
+        if(newZoom > 2.0) newZoom = 2.0;
+        currentZoom = parseFloat(newZoom.toFixed(1));
+        document.body.style.zoom = currentZoom;
+        if(rail) rail.style.zoom = 1 / currentZoom;
+        localStorage.setItem('global_zoom_level', currentZoom);
+    }
+
+    applyZoom(currentZoom);
+
+    document.getElementById('btn-zoom-in')?.addEventListener('click', ()=>applyZoom(currentZoom + 0.1));
+    document.getElementById('btn-zoom-out')?.addEventListener('click', ()=>applyZoom(currentZoom - 0.1));
+    document.getElementById('btn-zoom-reset')?.addEventListener('click', ()=>applyZoom(1.0));
+
+    if(window.voiceWidget && typeof window.voiceWidget.init === 'function'){
+        window.voiceWidget.init({
+            directBtnId:'zoomDirectVoiceBtn',
+            jarvisBtnId:'jarvisVoiceBtn'
+        });
+    }
+});
+</script>

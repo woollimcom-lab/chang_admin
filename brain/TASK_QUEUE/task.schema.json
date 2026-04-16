@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chang-admin.local/brain/task.schema.json",
+  "title": "Codex Task Queue",
+  "type": "object",
+  "required": [
+    "defaults",
+    "tasks"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "defaults": {
+      "type": "object",
+      "required": [
+        "model",
+        "maxAttempts",
+        "allowNewFiles",
+        "requirePlanJson"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "model": { "type": "string" },
+        "modelReasoningEffort": { "type": "string" },
+        "maxAttempts": { "type": "integer", "minimum": 1 },
+        "maxChangedFiles": { "type": "integer", "minimum": 1 },
+        "allowNewFiles": { "type": "boolean" },
+        "requirePlanJson": { "type": "boolean" }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "task_id",
+          "goal",
+          "target_files",
+          "reuse_symbols",
+          "do_not_touch",
+          "acceptance",
+          "verification",
+          "rollback_plan",
+          "promotion_rule"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "task_id": { "type": "string" },
+          "priority": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low"]
+          },
+          "goal": { "type": "string" },
+          "target_files": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" }
+          },
+          "reuse_symbols": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "do_not_touch": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "acceptance": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" }
+          },
+          "verification": {
+            "type": "object",
+            "required": [
+              "url",
+              "useAuth",
+              "forbidDialogs",
+              "steps"
+            ],
+            "additionalProperties": true
+          },
+          "rollback_plan": { "type": "string" },
+          "promotion_rule": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,69 @@
+mode: v2-with-v3-guards
+goal: codex automation hardening
+trunk:
+  source_of_truth: night_agent.v2.json
+  frozen: false
+  destructive_change_requires_confirmation: true
+active_branch: codex-v3-bootstrap
+approved_scope:
+  - verification hardening
+  - reviewer gate
+  - request compiler
+  - brain scaffolding
+confirmed_decisions:
+  minimal_patch_over_rewrite: true
+  target_files_only: true
+  runtime_korean_corruption_is_release_blocker: true
+  remote_restore_required_after_failed_deploy_steps: true
+open_risks:
+  - weak_behavior_verification_for_complex_ui_tasks
+  - legacy_large_files_need_smaller_task_splitting
+  - current_brain_files_are_scaffolding_not_memory
+promotion_policy:
+  branch_note_after_first_success: true
+  playbook_after_repeated_success: 2
+  trunk_rule_after_stable_reuse: 3
+execution_guard:
+  block_on_risky_hotspot: true
+  default_hotspot_threshold: 2
+risk_files:
+  - path: templates/view.html
+    risk_level: critical
+    max_tasks_per_run: 1
+    prefer_batch_isolation: true
+    note: large legacy template with known inline-script risk, keep one task per run
+  - path: templates/stats.html
+    risk_level: critical
+    max_tasks_per_run: 1
+    prefer_batch_isolation: true
+    note: chart-heavy template, modal and chart changes should stay isolated
+  - path: static/js/view_ui.js
+    risk_level: high
+    max_tasks_per_run: 2
+    prefer_batch_isolation: true
+    note: shared UI event surface, batch tightly
+  - path: static/js/view_api.js
+    risk_level: high
+    max_tasks_per_run: 2
+    prefer_batch_isolation: true
+    note: shared ajax and item-status flow, avoid broad mixed tasks
+  - path: templates/includes/marketing_modal.html
+    risk_level: high
+    max_tasks_per_run: 2
+    prefer_batch_isolation: true
+    note: generation UI and result-package changes should stay in small batches
+  - path: routers/marketing.py
+    risk_level: high
+    max_tasks_per_run: 2
+    prefer_batch_isolation: true
+    note: auth and blog-context endpoints should move with narrow scope
+  - path: templates/includes/item_master.html
+    risk_level: high
+    max_tasks_per_run: 2
+    prefer_batch_isolation: true
+    note: smart search and picker changes are tightly coupled
+  - path: services/photo_service.py
+    risk_level: medium
+    max_tasks_per_run: 2
+    prefer_batch_isolation: false
+    note: upload normalization and audit logging can share one run

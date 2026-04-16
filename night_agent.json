@@ -1,0 +1,45 @@
+{
+  "defaults": {
+    "sshTarget": "ubuntu@43.202.209.122",
+    "sshKeyPath": "d:\\dev\\changarum.pem",
+    "serviceName": "mysite",
+    "maxAttempts": 3
+  },
+  "tasks": [
+    {
+      "name": "view success feedback cleanup",
+      "instruction": "Update only static/js/view_api.js, static/js/view_ui.js, and templates/view.html. On the view page, replace only success/completion alerts related to save, edit, delete, schedule update, signature save, memo save, payment save, manager save, and similar completed actions so they no longer require an extra OK click. Reuse the existing flash/vibration feedback helper on the view page wherever possible, and keep non-blocking notice/toast behavior consistent. Preserve error alerts, validation alerts, and confirm dialogs. Keep the current data refresh behavior only where it is still necessary after the success feedback change.",
+      "paths": [
+        "static\\js\\view_api.js",
+        "static\\js\\view_ui.js",
+        "templates\\view.html"
+      ],
+      "url": "http://43.202.209.122/view/6075"
+    },
+    {
+      "name": "view item master modal success feedback cleanup",
+      "instruction": "Update only templates/includes/item_master.html. In the item registration/edit modal inside view, replace only success alerts for product create, update, and delete completion with non-blocking feedback using the existing view flash/vibration experience. Preserve validation alerts, supplier input warnings, confirm dialogs, and error alerts. Do not change Korean UI text unless required by the existing flow.",
+      "paths": [
+        "templates\\includes\\item_master.html"
+      ],
+      "url": "http://43.202.209.122/view/6075"
+    },
+    {
+      "name": "dashboard success feedback cleanup",
+      "instruction": "Update only static/dashboard.js and templates/dashboard.html. Replace only success/completion alerts for save, edit, register, and delete actions on the dashboard with non-blocking visual flash plus vibration feedback so the user does not need to dismiss an alert after successful completion. Preserve error alerts, validation alerts, phone-number warnings, and confirm dialogs. Keep the dashboard behavior and layout otherwise unchanged.",
+      "paths": [
+        "static\\dashboard.js",
+        "templates\\dashboard.html"
+      ],
+      "url": "http://43.202.209.122/dashboard"
+    },
+    {
+      "name": "ledger success feedback cleanup",
+      "instruction": "Update only templates/unified_ledger.html. Replace only success/completion alerts for supplier save/delete and ledger item save/edit/delete with non-blocking flash/vibration feedback. Preserve all error alerts, validation alerts, permission alerts, and confirm dialogs. Keep the rest of the ledger behavior, filtering, and rendering unchanged.",
+      "paths": [
+        "templates\\unified_ledger.html"
+      ],
+      "url": "http://43.202.209.122/ledger"
+    }
+  ]
+}

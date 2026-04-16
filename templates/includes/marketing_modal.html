@@ -1,0 +1,749 @@
+<!-- marketing_modal.html (v6) -->
+<!-- 목적: 품목 기반 서브키워드 자동 추출 + 작업기록(메모) 리스트 편집 + 역할(말투) 버튼 + SEO 안전 지시서 -->
+<style>
+  .mk-backdrop{position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9998; display:none;}
+  .mk-modal{position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:min(760px,92vw);
+            max-height:86vh; background:#fff; border-radius:16px; z-index:9999; display:none;
+            box-shadow:0 10px 30px rgba(0,0,0,.25); overflow:hidden;}
+  .mk-head{display:flex; align-items:center; justify-content:space-between; padding:14px 14px; border-bottom:1px solid #eee;}
+  .mk-title{font-size:16px; font-weight:800;}
+  .mk-subtitle{font-size:12px; color:#777; margin-top:2px;}
+  .mk-actions{display:flex; gap:8px; align-items:center;}
+  .mk-btn{border:1px solid #ddd; background:#fff; padding:9px 11px; border-radius:10px; font-size:13px;}
+  .mk-btn.primary{background:#111; color:#fff; border-color:#111;}
+  .mk-btn.ghost{background:#f6f6f6;}
+  .mk-body{padding:12px 14px; overflow:auto; max-height:calc(86vh - 62px);}
+  .mk-card{border:1px solid #eee; border-radius:14px; padding:12px; margin-bottom:10px; background:#fff;}
+  .mk-card h4{margin:0 0 10px 0; font-size:14px;}
+  .mk-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .mk-chip{border:1px solid #ddd; background:#fafafa; padding:7px 10px; border-radius:999px; font-size:13px; cursor:pointer; user-select:none;}
+  .mk-chip.on{background:#111; color:#fff; border-color:#111;}
+  .mk-field{display:flex; flex-direction:column; gap:6px;}
+  .mk-field label{font-size:12px; color:#666;}
+  .mk-field input,.mk-field textarea{width:100%; border:1px solid #ddd; border-radius:12px; padding:10px 12px; font-size:14px;}
+  .mk-field textarea{min-height:90px; resize:vertical;}
+  .mk-meta{font-size:12px; color:#666; line-height:1.5; white-space:pre-wrap;}
+  .mk-small{font-size:12px; color:#777;}
+  .mk-divider{height:1px; background:#eee; margin:10px 0;}
+  .mk-toast{position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:10000;
+            background:#111; color:#fff; padding:10px 12px; border-radius:12px; display:none; font-size:13px;}
+  .mk-list{display:flex; flex-direction:column; gap:8px; margin-top:8px;}
+  .mk-item{display:flex; gap:8px; align-items:flex-start; border:1px solid #eee; border-radius:12px; padding:10px;}
+  .mk-item input[type=checkbox]{margin-top:3px;}
+  .mk-item .txt{flex:1; font-size:13px; line-height:1.4;}
+  .mk-item .tools{display:flex; gap:6px;}
+  .mk-mini{border:1px solid #ddd; background:#fff; border-radius:10px; padding:6px 8px; font-size:12px;}
+  .mk-mini.danger{border-color:#f2c0c0; background:#fff7f7;}
+  .mk-mini.ok{background:#f6f6f6;}
+  .mk-tabs{display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;}
+  .mk-tab{border:1px solid #ddd; background:#fff; padding:7px 10px; border-radius:999px; font-size:12px; cursor:pointer;}
+  .mk-tab.on{background:#111; color:#fff; border-color:#111;}
+</style>
+
+<div id="mkBackdrop" class="mk-backdrop"></div>
+
+<div id="mkModal" class="mk-modal" role="dialog" aria-modal="true" aria-labelledby="mkTitle">
+  <div class="mk-head">
+    <div>
+      <div id="mkTitle" class="mk-title">블로그 작성</div>
+      <div class="mk-subtitle">최소 입력 + 품목/작업기록 자동 반영 + SEO 안전 규칙</div>
+    </div>
+    <div class="mk-actions">
+      <button id="mkCloseBtn" class="mk-btn ghost" type="button">닫기</button>
+      <button id="mkGenerateBtn" class="mk-btn primary" type="button">AI 작업지시서</button>
+    </div>
+  </div>
+
+  <div class="mk-body">
+    <div class="mk-card">
+      <h4>말투/역할 선택</h4>
+      <div class="mk-row" id="mkRoleChips"></div>
+      <div class="mk-small" style="margin-top:6px;">선택한 말투가 지시서 ‘# 역할’에 반영됩니다.</div>
+    </div>
+
+    <div class="mk-card">
+      <h4>키워드</h4>
+      <div class="mk-field" style="margin-bottom:10px;">
+        <label>메인 키워드 (1개)</label>
+        <input id="mkMainKeyword" type="text" placeholder="예: 운정 커튼" />
+      </div>
+
+      <div class="mk-field" style="margin-bottom:10px;">
+        <label>서브 키워드 (품목 기반 자동 추천 / 체크로 선택)</label>
+        <div class="mk-tabs" id="mkSubTabs"></div>
+        <div id="mkSubChips" class="mk-row" style="margin-top:8px;"></div>
+        <div class="mk-small" style="margin-top:6px;">서브 키워드는 ‘공간/품목/제품(기능)’이 섞이도록 추천합니다. (SEO 유리)</div>
+        <input id="mkSubAdd" type="text" placeholder="추가 키워드 입력 후 Enter" />
+        <div class="mk-row" style="margin-top:8px;">
+          <button id="mkSuggestHeadings" class="mk-btn" type="button">소제목 추천</button>
+          <button id="mkSuggestTitles" class="mk-btn" type="button">제목 추천 3개</button>
+        </div>
+      </div>
+
+      <div class="mk-field">
+        <label>오늘 포인트 메모 (선택, 1줄)</label>
+        <input id="mkOneLine" type="text" placeholder="예: 아이방 아토피 걱정으로 친환경 원단 요청" />
+      </div>
+
+      <div class="mk-divider"></div>
+      <div class="mk-field">
+        <label>롱테일 키워드 (자동 생성 / 즉시 갱신)</label>
+        <input id="mkLongtail" type="text" placeholder="자동 생성됩니다" />
+        <div class="mk-small">지역/메인/서브가 바뀌면 자동으로 갱신됩니다.</div>
+      </div>
+    </div>
+
+    <div class="mk-card">
+      <h4>#현장 정보 (자동)</h4>
+      <div id="mkSiteInfo" class="mk-meta">불러오는 중…</div>
+      <div class="mk-divider"></div>
+      <div class="mk-field">
+        <label>지역 (기본정보에서 자동 / 추가 가능)</label>
+        <input id="mkRegion" type="text" placeholder="예: 파주 운정, 문산" />
+      </div>
+    </div>
+
+    <div class="mk-card">
+      <h4>작업기록(자동참고) - 메모</h4>
+      <div class="mk-small">체크된 항목만 지시서에 들어갑니다. (수정/삭제/추가 가능)</div>
+      <div id="mkWorklogList" class="mk-list"></div>
+      <div class="mk-row" style="margin-top:8px;">
+        <input id="mkWorklogAdd" type="text" style="flex:1; min-width:180px;" placeholder="메모 추가 후 Enter" />
+        <button id="mkWorklogAddBtn" class="mk-btn" type="button">추가</button>
+      </div>
+    </div>
+
+    <div class="mk-card" id="mkHeadingsCard" style="display:none;">
+      <h4>추천 소제목</h4>
+      <div id="mkHeadings" class="mk-list"></div>
+      <div class="mk-small">※ 글 생성 시 ‘소제목 가이드’로만 사용됩니다(강제 삽입 X).</div>
+    </div>
+
+    <div class="mk-card" id="mkTitlesCard" style="display:none;">
+      <h4>제목 추천 3개</h4>
+      <div id="mkTitles" class="mk-list"></div>
+    </div>
+
+    <div class="mk-card" id="mkPromptCard" style="display:none;">
+      <h4>AI 작업지시서</h4>
+      <textarea id="mkPrompt" readonly></textarea>
+      <div class="mk-row" style="margin-top:10px;">
+        <button id="mkCopyPrompt" class="mk-btn" type="button">지시서 복사</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="mkToast" class="mk-toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  function $(id){ return document.getElementById(id); }
+
+  function showToast(msg){
+    var t = $("mkToast");
+    if(!t) return;
+    t.textContent = msg;
+    t.style.display = "block";
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(function(){ t.style.display = "none"; }, 1400);
+  }
+
+  function safeText(v){ return (v === null || v === undefined) ? "" : String(v); }
+
+  function uniq(arr){
+    var out = [];
+    var seen = {};
+    for(var i=0;i<arr.length;i++){
+      var s = safeText(arr[i]).trim();
+      if(!s) continue;
+      var k = s.toLowerCase();
+      if(seen[k]) continue;
+      seen[k] = true;
+      out.push(s);
+    }
+    return out;
+  }
+
+  function normWord(w){
+    w = safeText(w).trim();
+    if(!w) return "";
+    w = w.replace(/\([^\)]*\)/g, "");
+    w = w.replace(/[0-9]+/g, "");
+    w = w.replace(/\s+/g, " ").trim();
+    w = w.replace(/[\[\]\|]/g, "").trim();
+    return w;
+  }
+
+  function extractSubKeywordsFromItems(itemsText){
+    var t = safeText(itemsText);
+    if(!t) return {all:[], space:[], base:[], product:[]};
+    var lines = t.split(/\r?\n/);
+    var spaces = [];
+    var bases = [];
+    var products = [];
+    var spaceDict = {"거실":1,"안방":1,"아이방":1,"주방":1,"서재":1,"베란다":1,"현관":1,"작은방":1,"큰방":1};
+    for(var i=0;i<lines.length;i++){
+      var line = lines[i].trim();
+      if(!line) continue;
+      var m = line.match(/\[([^\]]+)\]/);
+      if(m && m[1]){
+        var s = normWord(m[1]);
+        if(spaceDict[s]) spaces.push(s);
+      }
+      var segs = line.split(/[\/\|]/);
+      for(var j=0;j<segs.length;j++){
+        var raw = normWord(segs[j]);
+        if(!raw) continue;
+        if(spaceDict[raw]) { spaces.push(raw); continue; }
+        if(raw.indexOf("커튼") >= 0){ bases.push("커튼"); }
+        if(raw.indexOf("블라인드") >= 0){ bases.push("블라인드"); }
+        if(raw.indexOf("암막") >= 0) products.push("암막커튼");
+        if(raw.indexOf("차르르") >= 0) products.push("차르르");
+        if(raw.indexOf("쉬폰") >= 0) products.push("쉬폰");
+        if(raw.indexOf("린넨") >= 0) products.push("린넨");
+        if(raw.indexOf("단열") >= 0) products.push("단열커튼");
+        if(raw.indexOf("방염") >= 0) products.push("방염커튼");
+        if(raw.indexOf("우드") >= 0) products.push("우드블라인드");
+        if(raw.indexOf("콤비") >= 0) products.push("콤비블라인드");
+        if(raw.indexOf("허니콤") >= 0) products.push("허니콤블라인드");
+        if(raw.indexOf("롤") >= 0) products.push("롤스크린");
+        if(raw.indexOf("알루미늄") >= 0) products.push("알루미늄블라인드");
+      }
+    }
+    spaces = uniq(spaces);
+    bases = uniq(bases);
+    products = uniq(products);
+    var all = uniq(spaces.concat(bases).concat(products));
+    return {all:all, space:spaces, base:bases, product:products};
+  }
+
+  function buildLongtails(region, mainKw, subKws){
+    var r = safeText(region).split(",")[0].trim();
+    var m = safeText(mainKw).trim();
+    if(!m) return [];
+    var s1 = (subKws && subKws.length ? subKws[0] : "");
+    var base1 = (r ? (r + " " + m) : m) + " 시공 후기";
+    var base2 = (r ? (r + " " + m) : m) + (s1 ? (" " + s1) : "") + " 설치";
+    return uniq([base1, base2]).slice(0,2);
+  }
+
+  var TAB_ALL = "전체";
+  var TAB_SPACE = "공간";
+  var TAB_BASE = "품목";
+  var TAB_PROD = "제품·기능";
+
+  function renderTabs(){
+    var tabs = [TAB_ALL, TAB_SPACE, TAB_BASE, TAB_PROD];
+    var box = $("mkSubTabs");
+    box.innerHTML = "";
+    for(var i=0;i<tabs.length;i++){
+      (function(name){
+        var t = document.createElement("div");
+        t.className = "mk-tab" + (name === TAB_ALL ? " on" : "");
+        t.textContent = name;
+        t.setAttribute("data-tab", name);
+        t.addEventListener("click", function(){
+          var all = box.querySelectorAll(".mk-tab");
+          for(var k=0;k<all.length;k++) all[k].classList.remove("on");
+          t.classList.add("on");
+          applyTab(name);
+        });
+        box.appendChild(t);
+      })(tabs[i]);
+    }
+  }
+
+  function renderSubChips(list){
+    var box = $("mkSubChips");
+    box.innerHTML = "";
+    for(var i=0;i<list.length;i++){
+      (function(word){
+        var chip = document.createElement("div");
+        chip.className = "mk-chip on";
+        chip.textContent = word;
+        chip.setAttribute("data-word", word);
+        chip.addEventListener("click", function(){
+          if(chip.classList.contains("on")) chip.classList.remove("on");
+          else chip.classList.add("on");
+          refreshLongtail();
+        });
+        box.appendChild(chip);
+      })(list[i]);
+    }
+  }
+
+  function getSelectedSubKeywords(){
+    var box = $("mkSubChips");
+    var chips = box.querySelectorAll(".mk-chip.on");
+    var out = [];
+    for(var i=0;i<chips.length;i++){
+      out.push(chips[i].getAttribute("data-word") || chips[i].textContent);
+    }
+    return uniq(out);
+  }
+
+  function applyTab(tabName){
+    var store = window.__MK_SUB_STORE || {all:[], space:[], base:[], product:[]};
+    if(tabName === TAB_SPACE) renderSubChips(store.space);
+    else if(tabName === TAB_BASE) renderSubChips(store.base);
+    else if(tabName === TAB_PROD) renderSubChips(store.product);
+    else renderSubChips(store.all);
+    refreshLongtail();
+  }
+
+  var ROLE_PRESETS = [
+    {id:"teamlead", label:"베테랑 시공팀장", desc:"현장감 + 전문성", tone:"현장 경험이 느껴지는 자연스럽고 솔직한 말투"},
+    {id:"owner", label:"꼼꼼한 사장", desc:"디테일 꼼꼼", tone:"꼼꼼하고 신뢰감 있는 말투"},
+    {id:"cheer", label:"밝고 경쾌한 어조", desc:"가볍게 읽힘", tone:"밝고 경쾌한 말투"},
+    {id:"pro", label:"전문가 정보형", desc:"정보 위주", tone:"정확하고 전문적인 말투"},
+    {id:"friendly", label:"친절한 상담사", desc:"상냥하게", tone:"친절하고 편안한 말투"}
+  ];
+
+  function renderRoleChips(){
+    var box = $("mkRoleChips");
+    box.innerHTML = "";
+    for(var i=0;i<ROLE_PRESETS.length;i++){
+      (function(p, idx){
+        var chip = document.createElement("div");
+        chip.className = "mk-chip" + (idx===0 ? " on":"");
+        chip.textContent = p.label;
+        chip.setAttribute("data-role", p.id);
+        chip.title = p.desc;
+        chip.addEventListener("click", function(){
+          var all = box.querySelectorAll(".mk-chip");
+          for(var k=0;k<all.length;k++) all[k].classList.remove("on");
+          chip.classList.add("on");
+        });
+        box.appendChild(chip);
+      })(ROLE_PRESETS[i], i);
+    }
+  }
+
+  function getSelectedRole(){
+    var box = $("mkRoleChips");
+    var on = box.querySelector(".mk-chip.on");
+    var id = on ? on.getAttribute("data-role") : ROLE_PRESETS[0].id;
+    for(var i=0;i<ROLE_PRESETS.length;i++){
+      if(ROLE_PRESETS[i].id === id) return ROLE_PRESETS[i];
+    }
+    return ROLE_PRESETS[0];
+  }
+
+  function linesFromText(t){
+    var s = safeText(t);
+    var parts = s.split(/\r?\n/);
+    var out = [];
+    for(var i=0;i<parts.length;i++){
+      var v = parts[i].trim();
+      if(!v) continue;
+      out.push(v);
+    }
+    return out;
+  }
+
+  function renderWorklog(list){
+    var box = $("mkWorklogList");
+    box.innerHTML = "";
+    for(var i=0;i<list.length;i++){
+      (function(idx){
+        var row = document.createElement("div");
+        row.className = "mk-item";
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = list[idx].on;
+
+        var txt = document.createElement("div");
+        txt.className = "txt";
+        txt.textContent = list[idx].text;
+
+        var tools = document.createElement("div");
+        tools.className = "tools";
+
+        var edit = document.createElement("button");
+        edit.type = "button";
+        edit.className = "mk-mini ok";
+        edit.textContent = "수정";
+
+        var del = document.createElement("button");
+        del.type = "button";
+        del.className = "mk-mini danger";
+        del.textContent = "삭제";
+
+        cb.addEventListener("change", function(){ list[idx].on = cb.checked; });
+
+        edit.addEventListener("click", function(){
+          var v = prompt("메모 수정", list[idx].text);
+          if(v === null) return;
+          v = safeText(v).trim();
+          if(!v){ showToast("내용이 비어있어요"); return; }
+          list[idx].text = v;
+          txt.textContent = v;
+        });
+
+        del.addEventListener("click", function(){
+          list.splice(idx, 1);
+          renderWorklog(list);
+        });
+
+        tools.appendChild(edit);
+        tools.appendChild(del);
+
+        row.appendChild(cb);
+        row.appendChild(txt);
+        row.appendChild(tools);
+        box.appendChild(row);
+      })(i);
+    }
+  }
+
+  function getSelectedWorklog(){
+    var list = window.__MK_WORKLOG || [];
+    var out = [];
+    for(var i=0;i<list.length;i++){
+      if(list[i].on) out.push(list[i].text);
+    }
+    return out;
+  }
+
+  function addWorklogItem(text){
+    var v = safeText(text).trim();
+    if(!v) return;
+    window.__MK_WORKLOG = window.__MK_WORKLOG || [];
+    window.__MK_WORKLOG.push({text:v, on:true});
+    renderWorklog(window.__MK_WORKLOG);
+  }
+
+  function suggestHeadings(region, mainKw, subs){
+    var m = safeText(mainKw).trim();
+    var out = [];
+    for(var i=0;i<subs.length;i++){
+      if(subs[i] === "거실" || subs[i] === "안방" || subs[i] === "아이방" || subs[i] === "베란다"){
+        out.push(subs[i] + " " + (m || "시공") + " 선택 포인트");
+      }
+      if(out.length >= 2) break;
+    }
+    for(var j=0;j<subs.length;j++){
+      var s = subs[j];
+      if(s === "커튼" || s === "블라인드" || s === "거실" || s === "안방") continue;
+      out.push(s + " 시공 디테일");
+      if(out.length >= 4) break;
+    }
+    if(out.length < 3){
+      out.push((m || "시공") + " 진행 과정");
+      out.push("관리/주의사항 정리");
+    }
+    return uniq(out).slice(0,5);
+  }
+
+  function renderSimpleList(targetId, items){
+    var box = $(targetId);
+    box.innerHTML = "";
+    for(var i=0;i<items.length;i++){
+      (function(text){
+        var row = document.createElement("div");
+        row.className = "mk-item";
+        var spacer = document.createElement("div");
+        spacer.style.width = "0px";
+        var txt = document.createElement("div");
+        txt.className = "txt";
+        txt.textContent = text;
+        var tools = document.createElement("div");
+        tools.className = "tools";
+        var copy = document.createElement("button");
+        copy.type = "button";
+        copy.className = "mk-mini ok";
+        copy.textContent = "복사";
+        copy.addEventListener("click", function(){
+          try{
+            navigator.clipboard.writeText(text);
+            showToast("복사했어요");
+          }catch(e){
+            showToast("복사 실패");
+          }
+        });
+        tools.appendChild(copy);
+        row.appendChild(spacer);
+        row.appendChild(txt);
+        row.appendChild(tools);
+        box.appendChild(row);
+      })(items[i]);
+    }
+  }
+
+  function suggestTitles(region, mainKw, subs){
+    var r = safeText(region).split(",")[0].trim();
+    var m = safeText(mainKw).trim();
+    var s = (subs && subs.length ? subs[0] : "");
+    var t1 = (r ? (r + " ") : "") + m + " 시공 후기";
+    var t2 = (r ? (r + " ") : "") + (s ? (s + " ") : "") + m + " 설치 포인트";
+    var t3 = (r ? (r + " ") : "") + m + " 선택 가이드 (현장 기준)";
+    return uniq([t1,t2,t3]).slice(0,3);
+  }
+
+  function buildPrompt(ctx){
+    var rolePreset = getSelectedRole();
+    var role =
+      "# 역할\n" +
+      "당신은 ‘창아름커튼블라인드’의 베테랑 시공팀장입니다.\n" +
+      rolePreset.tone + "로 작성하세요.\n" +
+      "광고처럼 보이지 않도록 후기 중심 + 전문 정보가 균형 잡히게 작성하세요.\n";
+
+    var site =
+      "\n# 현장 정보\n" +
+      "- 지역: " + safeText(ctx.region) + "\n" +
+      "- 현장명: " + safeText(ctx.siteName) + "\n" +
+      "- 시공 품목: " + safeText(ctx.items) + "\n" +
+      "- 사진 수: " + safeText(ctx.photoCount) + "\n" +
+      "- 설치면: " + safeText(ctx.installSurface) + "\n" +
+      "- 사용 공구: " + safeText(ctx.tools) + "\n";
+
+    var seo =
+      "\n# SEO 키워드\n" +
+      "- 메인: " + safeText(ctx.mainKeyword) + "\n" +
+      "- 서브: " + safeText(ctx.subKeywords.join(", ")) + "\n" +
+      "- 롱테일: " + safeText(ctx.longtails.join(" / ")) + "\n" +
+      "\n[키워드 규칙]\n" +
+      "- 메인 키워드는 제목/도입/본문/마무리에 자연스럽게 3~4회 이내로만 사용.\n" +
+      "- 서브 키워드는 소제목/본문에 자연 분산(나열 금지).\n" +
+      "- 기계적으로 반복하거나 ‘키워드 끼워넣기’처럼 보이게 쓰지 말 것.\n";
+
+    var oneline = safeText(ctx.oneLine).trim();
+    if(oneline){
+      oneline = "\n# 오늘 포인트(선택)\n- " + oneline + "\n";
+    } else {
+      oneline = "";
+    }
+
+    var worklogLines = ctx.worklogLines || [];
+    var worklog = "\n# 작업기록 참고\n" +
+      "아래 기록은 참고 자료입니다.\n" +
+      "그대로 복사하지 말고 현장 상황에 맞게 자연스럽게 재구성하세요.\n" +
+      "의미 없는 문장/테스트/비문/반복 내용은 제외하세요.\n\n" +
+      "[작업기록]\n";
+    if(worklogLines.length){
+      for(var i=0;i<worklogLines.length;i++){
+        worklog += "- " + worklogLines[i] + "\n";
+      }
+    } else {
+      worklog += "- (기록 없음)\n";
+    }
+
+    var headings = ctx.headings || [];
+    var headingGuide = "";
+    if(headings.length){
+      headingGuide = "\n# 소제목 가이드(선택)\n" +
+        "아래 소제목은 참고 가이드입니다(필요 시 일부만 사용).\n";
+      for(var h=0; h<headings.length; h++){
+        headingGuide += "- " + headings[h] + "\n";
+      }
+    }
+
+    var output =
+      "\n# 출력 구조\n" +
+      "아래 5개 소제목으로 작성하세요.\n" +
+      "1) 현장상황\n" +
+      "2) 고객요청\n" +
+      "3) 해결과정\n" +
+      "4) 결과\n" +
+      "5) 관리/주의사항\n" +
+      "\n# 마무리(전화번호 1회)\n" +
+      "마지막 한 문단에만 자연스럽게 1회 문의 문장을 넣으세요.\n" +
+      "예: 궁금한 점은 언제든 편하게 문의 주세요 😊  📞 031-948-1379\n";
+
+    return role + site + seo + oneline + worklog + headingGuide + output;
+  }
+
+  function refreshLongtail(){
+    var mainKw = safeText($("mkMainKeyword").value).trim();
+    var region = safeText($("mkRegion").value).trim();
+    var sub = getSelectedSubKeywords();
+    var lts = buildLongtails(region, mainKw, sub);
+    $("mkLongtail").value = lts.join(" / ");
+  }
+
+  function tryGetOrderContext(orderId){
+    var ctx = {
+      orderId: orderId || "",
+      region: "",
+      siteName: "",
+      items: "",
+      photoCount: "",
+      installSurface: "",
+      tools: ""
+    };
+    try{
+      var o = window.currentOrder || window.__ORDER_CONTEXT || null;
+      if(o){
+        ctx.region = o.region || o.Region || o.site_region || "";
+        ctx.siteName = o.siteName || o.SiteName || o.site_name || o.customer_name || "";
+        ctx.items = o.itemsText || o.items || "";
+        ctx.photoCount = o.photoCount || "";
+        ctx.installSurface = o.installSurface || "";
+        ctx.tools = o.tools || "";
+      }
+    }catch(e){}
+    return ctx;
+  }
+
+  function openModal(){
+    $("mkBackdrop").style.display = "block";
+    $("mkModal").style.display = "block";
+    document.body.style.overflow = "hidden";
+    if (typeof registerModalBackTrap === "function") registerModalBackTrap("mkModal", "closeBlogModal");
+  }
+  function closeModal(){
+    $("mkBackdrop").style.display = "none";
+    $("mkModal").style.display = "none";
+    document.body.style.overflow = "";
+    if (typeof releaseModalBackTrap === "function") releaseModalBackTrap("mkModal", arguments[0] || {});
+  }
+
+  function wire(){
+    $("mkBackdrop").addEventListener("click", closeModal);
+    $("mkCloseBtn").addEventListener("click", closeModal);
+
+    $("mkSubAdd").addEventListener("keydown", function(e){
+      if(e.key === "Enter"){
+        e.preventDefault();
+        var v = safeText(this.value).trim();
+        if(!v) return;
+        var current = [];
+        var chips = $("mkSubChips").querySelectorAll(".mk-chip");
+        for(var i=0;i<chips.length;i++) current.push(chips[i].getAttribute("data-word") || chips[i].textContent);
+        current.push(v);
+        window.__MK_SUB_STORE = {all:uniq(current), space:[], base:[], product:[]};
+        applyTab(TAB_ALL);
+        this.value = "";
+      }
+    });
+
+    $("mkRegion").addEventListener("input", function(){ refreshLongtail(); });
+    $("mkMainKeyword").addEventListener("input", function(){ refreshLongtail(); });
+
+    $("mkSuggestHeadings").addEventListener("click", function(){
+      var mainKw = safeText($("mkMainKeyword").value).trim();
+      if(!mainKw){ showToast("메인 키워드를 먼저 입력해 주세요"); return; }
+      var region = safeText($("mkRegion").value).trim();
+      var sub = getSelectedSubKeywords();
+      var hs = suggestHeadings(region, mainKw, sub);
+      $("mkHeadingsCard").style.display = "block";
+      renderSimpleList("mkHeadings", hs);
+      window.__MK_HEADINGS = hs;
+    });
+
+    $("mkSuggestTitles").addEventListener("click", function(){
+      var mainKw = safeText($("mkMainKeyword").value).trim();
+      if(!mainKw){ showToast("메인 키워드를 먼저 입력해 주세요"); return; }
+      var region = safeText($("mkRegion").value).trim();
+      var sub = getSelectedSubKeywords();
+      var ts = suggestTitles(region, mainKw, sub);
+      $("mkTitlesCard").style.display = "block";
+      renderSimpleList("mkTitles", ts);
+    });
+
+    function doAddWorklog(){
+      var v = safeText($("mkWorklogAdd").value).trim();
+      if(!v) return;
+      addWorklogItem(v);
+      $("mkWorklogAdd").value = "";
+    }
+    $("mkWorklogAdd").addEventListener("keydown", function(e){
+      if(e.key === "Enter"){ e.preventDefault(); doAddWorklog(); }
+    });
+    $("mkWorklogAddBtn").addEventListener("click", doAddWorklog);
+
+    $("mkGenerateBtn").addEventListener("click", function(){
+      var mainKw = safeText($("mkMainKeyword").value).trim();
+      if(!mainKw){ showToast("메인 키워드를 입력해 주세요"); return; }
+
+      var region = safeText($("mkRegion").value).trim();
+      var sub = getSelectedSubKeywords();
+      var longtails = buildLongtails(region, mainKw, sub);
+
+      var ctx = window.__MK_CTX || {};
+      ctx.mainKeyword = mainKw;
+      ctx.subKeywords = sub;
+      ctx.longtails = longtails;
+      ctx.oneLine = safeText($("mkOneLine").value).trim();
+      ctx.region = region;
+      ctx.worklogLines = getSelectedWorklog();
+      ctx.headings = window.__MK_HEADINGS || [];
+
+      var prompt = buildPrompt(ctx);
+      $("mkPrompt").value = prompt;
+      $("mkPromptCard").style.display = "block";
+      $("mkPrompt").scrollIntoView({behavior:"smooth", block:"start"});
+
+      showToast("지시서를 생성했어요");
+    });
+
+    $("mkCopyPrompt").addEventListener("click", function(){
+      try{
+        $("mkPrompt").select();
+        document.execCommand("copy");
+        showToast("지시서를 복사했어요");
+      }catch(e){
+        showToast("복사에 실패했어요");
+      }
+    });
+  }
+
+  function openBlogModal(orderId){
+    var ctx = tryGetOrderContext(orderId);
+    window.__MK_CTX = ctx;
+
+    $("mkSiteInfo").textContent =
+      "- 지역: " + safeText(ctx.region) + "\n" +
+      "- 현장명: " + safeText(ctx.siteName) + "\n" +
+      "- 품목: " + safeText(ctx.items) + "\n" +
+      "- 사진 수: " + safeText(ctx.photoCount) + "\n" +
+      "- 설치면: " + safeText(ctx.installSurface) + "\n" +
+      "- 공구: " + safeText(ctx.tools);
+
+    $("mkRegion").value = safeText(ctx.region);
+
+    var wlText = "";
+    try{
+      var wlEl = document.querySelector("#worklogText, #worklog, textarea[name='worklog']");
+      if(wlEl) wlText = wlEl.value || wlEl.textContent || "";
+    }catch(e){}
+    var wlLines = linesFromText(wlText);
+    if(wlLines.length > 30) wlLines = wlLines.slice(0,30);
+    window.__MK_WORKLOG = [];
+    for(var i=0;i<wlLines.length;i++){
+      window.__MK_WORKLOG.push({text: wlLines[i], on: true});
+    }
+    renderWorklog(window.__MK_WORKLOG);
+
+    var extracted = extractSubKeywordsFromItems(ctx.items);
+    window.__MK_SUB_STORE = extracted;
+    renderTabs();
+    applyTab(TAB_ALL);
+
+    refreshLongtail();
+
+    $("mkPromptCard").style.display = "none";
+    $("mkHeadingsCard").style.display = "none";
+    $("mkTitlesCard").style.display = "none";
+    $("mkPrompt").value = "";
+    window.__MK_HEADINGS = [];
+
+    openModal();
+  }
+
+  function closeBlogModal(options){
+    closeModal(options);
+  }
+
+  window.openBlogModal = openBlogModal;
+  window.closeBlogModal = closeBlogModal;
+
+  try{
+    renderRoleChips();
+    renderTabs();
+    wire();
+  }catch(e){}
+})();
+</script>

@@ -1,0 +1,33 @@
+{% for r in results %}
+    {% set o = r.order %}
+    <li class="order-item" onclick="location.href='/view/{{ o.OrderID }}'">
+        <div class="col-date">{{ o.ConstructionDate.strftime('%Y-%m-%d') if o.ConstructionDate else '' }}</div>
+        <div class="col-name">{{ o.CustomerName }}</div>
+        <div class="col-addr">{{ o.Address or '' }}</div>
+        
+        <div class="col-badge">
+            <div class="badges-wrap">
+                {% if r.c_cnt > 0 %}<span class='badge badge-curtain'>커튼 {{ r.c_cnt }}</span>{% endif %}
+                {% if r.b_cnt > 0 %}<span class='badge badge-blind'>블라인드 {{ r.b_cnt }}</span>{% endif %}
+                {% if r.e_cnt > 0 %}<span class='badge badge-etc'>기타 {{ r.e_cnt }}</span>{% endif %}
+                
+                {% if r.c_cnt == 0 and r.b_cnt == 0 and r.e_cnt == 0 %}
+                    <span class='badge badge-none'>-</span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="col-phone">
+            <i class="fas fa-phone-alt mobile-icon"></i> {{ o.PhoneNumber or '' }}
+        </div>
+        <div class="col-price">
+            <span class="price-val">
+                {% if has_total_perm %}
+                    {{ r.final_amt | format_comma }}원
+                {% else %}
+                    <span style="color: #ccc; font-size: 0.9em;">비공개</span>
+                {% endif %}
+            </span>
+        </div>
+    </li>
+{% endfor %}

@@ -1,0 +1,2364 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>경영 통계 대시보드</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #f4f7fa; font-family: 'Pretendard', -apple-system, sans-serif; padding-bottom: 60px; color: #343a40; }
+        .main-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        
+        /* 蹂寃??댁쑀(Reason): [UX 理쒖쟻?? ?대┃ 媛?ν븳 移대뱶??留덉슦??而ㅼ꽌瑜??ъ씤?곕줈 蹂寃쏀븯怨??몃쾭 ???댁쭩 ?좎삤瑜대뒗 ?④낵 遺??*/
+        .kpi-card { border-radius: 16px; border: none; box-shadow: 0 4px 24px rgba(0,0,0,0.04); background: #fff; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
+        .kpi-card.clickable:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.08); cursor: pointer; }
+        
+        .bg-gradient-dark { background: #151a25; color: #f8f9fa; }
+        .margin-badge { background-color: #232836; border-radius: 12px; padding: 12px 18px; text-align: center; }
+        
+        .chart-swipe-wrapper { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; cursor: grab; }
+        .chart-swipe-wrapper:active { cursor: grabbing; }
+        .chart-min-width { min-width: 1000px; height: 320px; padding: 10px 0; }
+        
+        .pipe-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .pipe-item { padding: 16px 8px; border-radius: 12px; text-align: center; color: #fff; display: flex; flex-direction: column; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s; }
+        .pipe-item:hover { transform: translateY(-3px); }
+        .pipe-item.q { background-color: #f59f00; }
+        .pipe-item.b { background-color: #6c757d; }
+        .pipe-item.u { background-color: #e03131; }
+        .pipe-label { font-size: 0.75rem; font-weight: 700; opacity: 0.9; margin-bottom: 4px; }
+        .pipe-value { font-size: 1.35rem; font-weight: 900; }
+        
+        .list-compact { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: #fff; border-radius: 14px; margin-bottom: 12px; border-left: 6px solid #339af0; box-shadow: 0 2px 8px rgba(0,0,0,0.03); cursor: pointer; transition: transform 0.2s; }
+        .list-compact.paid { border-left-color: #20c997; }
+        .list-compact:hover { transform: translateX(5px); }
+        .member-expense-top-card { border: 1px solid rgba(36, 99, 235, 0.08); }
+        .member-expense-top-card .card-body { padding-top: 12px !important; }
+        .member-expense-top-card .cursor-pointer { gap: 10px; margin-bottom: 10px !important; }
+        .member-expense-toggle-btn { width: 32px; height: 32px; border: 1px solid #dbeafe; border-radius: 10px; background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); color: #2563eb; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 6px 14px rgba(37, 99, 235, 0.08); flex-shrink: 0; }
+        .member-expense-section-body { display: none; }
+        .member-expense-chart-wrap { height: 220px; }
+        .member-expense-list { display: grid; gap: 10px; }
+        .member-expense-item { padding: 12px 14px; border-radius: 14px; background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); border: 1px solid #e7eef8; cursor: pointer; transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
+        .member-expense-item:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08); border-color: #bfd3f6; }
+        .member-expense-item.is-active { border-color: #3b82f6; box-shadow: 0 12px 28px rgba(59, 130, 246, 0.14); background: linear-gradient(180deg, #ffffff 0%, #edf5ff 100%); }
+        .member-expense-item.is-active .member-expense-rank { background: #2563eb; color: #fff; }
+        .member-expense-item.is-active .member-expense-name { color: #1d4ed8; }
+        .member-expense-rank { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 28px; border-radius: 999px; background: #dbeafe; color: #1d4ed8; font-size: 0.8rem; font-weight: 900; }
+        .member-expense-name { font-size: 1rem; font-weight: 900; color: #111827; }
+        .member-expense-amount { font-size: 1.2rem; font-weight: 900; color: #1d4ed8; }
+        .member-expense-meta { font-size: 0.8rem; color: #6b7280; font-weight: 700; }
+        .member-expense-filter-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; }
+        .member-expense-filter-btn { white-space: nowrap; border: 1px solid #dbeafe; background: #f8fbff; color: #1d4ed8; border-radius: 999px; padding: 7px 12px; font-size: 0.78rem; font-weight: 800; }
+        .member-expense-filter-btn.is-active { background: #2563eb; border-color: #2563eb; color: #fff; box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18); }
+        .member-expense-summary-bar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+        .member-expense-summary-chip { padding: 10px 12px; border-radius: 12px; background: #f8fafc; border: 1px solid #e2e8f0; cursor: pointer; transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease; }
+        .member-expense-summary-chip[data-summary-kind="expense"] { background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%); }
+        .member-expense-summary-chip[data-summary-kind="revenue"] { background: linear-gradient(180deg, #fff9eb 0%, #fff4d6 100%); }
+        .member-expense-summary-chip[data-summary-kind="ratio"] { background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%); }
+        .member-expense-summary-chip:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08); border-color: #bfdbfe; }
+        .member-expense-summary-chip.is-active { background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%); border-color: #60a5fa; box-shadow: 0 10px 20px rgba(37, 99, 235, 0.12); }
+        .member-expense-summary-label { font-size: 0.7rem; font-weight: 900; color: #64748b; margin-bottom: 3px; }
+        .member-expense-summary-name { font-size: 0.8rem; font-weight: 900; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .member-expense-summary-value { font-size: 0.76rem; font-weight: 800; color: #2563eb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .member-expense-compare-board { display: grid; gap: 8px; margin-bottom: 12px; }
+        .member-expense-compare-row { padding: 10px 12px; border-radius: 14px; background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); border: 1px solid #e5edf9; cursor: pointer; transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease; }
+        .member-expense-compare-row:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(37, 99, 235, 0.08); border-color: #bfdbfe; }
+        .member-expense-compare-row.is-active { border-color: #3b82f6; background: linear-gradient(180deg, #ffffff 0%, #eef5ff 100%); box-shadow: 0 12px 26px rgba(59, 130, 246, 0.12); }
+        .member-expense-compare-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+        .member-expense-compare-name { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 0.84rem; font-weight: 900; color: #0f172a; }
+        .member-expense-compare-ratio { flex-shrink: 0; padding: 4px 8px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 0.72rem; font-weight: 900; }
+        .member-expense-compare-ratio.is-high { background: #fee2e2; color: #b91c1c; }
+        .member-expense-compare-ratio.is-medium { background: #ffedd5; color: #c2410c; }
+        .member-expense-compare-track { position: relative; height: 12px; border-radius: 999px; background: #edf2f7; overflow: hidden; }
+        .member-expense-compare-bar { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; }
+        .member-expense-compare-bar.is-revenue { background: linear-gradient(90deg, #f8d567 0%, #f59e0b 100%); opacity: 0.95; }
+        .member-expense-compare-bar.is-expense { background: linear-gradient(90deg, #93c5fd 0%, #2563eb 100%); opacity: 0.9; top: 2px; bottom: 2px; }
+        .member-expense-compare-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+        .member-expense-compare-value { font-size: 0.76rem; font-weight: 800; color: #475569; }
+        .member-expense-compare-value strong { color: #0f172a; font-weight: 900; }
+        .expense-category-panel { margin-bottom: 14px; padding: 12px; border-radius: 14px; background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); border: 1px solid #e6eef8; }
+        .expense-category-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .expense-category-title { font-size: 0.84rem; font-weight: 900; color: #0f172a; }
+        .expense-category-sub { font-size: 0.72rem; font-weight: 700; color: #64748b; }
+        .expense-category-chipbar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 10px; }
+        .expense-category-chip { white-space: nowrap; border: 1px solid #dbeafe; background: #fff; color: #1d4ed8; border-radius: 999px; padding: 7px 10px; font-size: 0.73rem; font-weight: 800; }
+        .expense-category-chip.is-active { background: #2563eb; color: #fff; border-color: #2563eb; box-shadow: 0 8px 16px rgba(37, 99, 235, 0.15); }
+        .expense-category-grid { display: grid; gap: 10px; }
+        .expense-category-box { padding: 10px 12px; border-radius: 12px; background: #fff; border: 1px solid #e5e7eb; }
+        .expense-category-box-title { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.76rem; font-weight: 900; color: #334155; }
+        .expense-category-box-note { font-size: 0.68rem; font-weight: 800; color: #94a3b8; }
+        .expense-category-chart-wrap { height: 180px; }
+        .member-expense-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .member-expense-chip { display: inline-flex; align-items: center; max-width: 100%; padding: 4px 8px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 0.73rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .member-expense-warning-box { margin-bottom: 14px; padding: 12px 14px; border-radius: 14px; background: linear-gradient(180deg, #fff7ed 0%, #fffbeb 100%); border: 1px solid #fed7aa; }
+        .member-expense-alert-box { margin-bottom: 14px; padding: 12px 14px; border-radius: 14px; background: linear-gradient(180deg, #fef2f2 0%, #fff7f7 100%); border: 1px solid #fecaca; }
+        .member-expense-alert-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .member-expense-alert-title { font-size: 0.84rem; font-weight: 900; color: #991b1b; }
+        .member-expense-alert-count { font-size: 0.72rem; font-weight: 900; color: #b91c1c; background: #fee2e2; border-radius: 999px; padding: 3px 8px; }
+        .member-expense-alert-list { display: grid; gap: 8px; }
+        .member-expense-alert-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,0.78); border: 1px solid #fecaca; }
+        .member-expense-alert-name { font-size: 0.84rem; font-weight: 900; color: #7f1d1d; }
+        .member-expense-alert-meta { font-size: 0.74rem; font-weight: 700; color: #b91c1c; }
+        .member-expense-alert-value { font-size: 0.92rem; font-weight: 900; color: #dc2626; white-space: nowrap; }
+        .member-expense-warning-title { font-size: 0.82rem; font-weight: 900; color: #9a3412; margin-bottom: 8px; }
+        .member-expense-warning-list { display: grid; gap: 8px; }
+        .member-expense-warning-item { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,0.75); }
+        .member-expense-warning-item.is-high { background: rgba(254, 242, 242, 0.95); border: 1px solid #fecaca; }
+        .member-expense-warning-item.is-medium { background: rgba(255, 247, 237, 0.95); border: 1px solid #fed7aa; }
+        .member-expense-warning-name { font-size: 0.84rem; font-weight: 900; color: #7c2d12; }
+        .member-expense-warning-meta { font-size: 0.75rem; font-weight: 700; color: #9a3412; }
+        .member-expense-warning-value { font-size: 0.9rem; font-weight: 900; color: #c2410c; white-space: nowrap; }
+        .member-expense-warning-badge { display: inline-flex; align-items: center; margin-top: 4px; padding: 2px 7px; border-radius: 999px; font-size: 0.68rem; font-weight: 900; }
+        .member-expense-warning-badge.is-high { background: #dc2626; color: #fff; }
+        .member-expense-warning-badge.is-medium { background: #f59e0b; color: #fff; }
+        .member-expense-warning-badge.is-normal { background: #e2e8f0; color: #475569; }
+        .member-expense-detail { margin-top: 12px; padding: 14px; border-radius: 14px; background: #f8fafc; border: 1px solid #e5e7eb; }
+        .member-expense-detail-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 10px; }
+        .member-expense-detail-title { font-size: 1rem; font-weight: 900; color: #111827; }
+        .member-expense-detail-total { font-size: 1rem; font-weight: 900; color: #2563eb; }
+        .member-expense-detail-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+        .member-expense-detail-kpi { padding: 10px 12px; border-radius: 12px; background: #ffffff; border: 1px solid #e5e7eb; }
+        .member-expense-detail-kpi.is-high { background: #fef2f2; border-color: #fecaca; }
+        .member-expense-detail-kpi.is-medium { background: #fff7ed; border-color: #fed7aa; }
+        .member-expense-detail-kpi-label { font-size: 0.72rem; font-weight: 800; color: #64748b; margin-bottom: 4px; }
+        .member-expense-detail-kpi-value { font-size: 0.9rem; font-weight: 900; color: #0f172a; }
+        .member-expense-trend-card { margin-bottom: 12px; padding: 12px; border-radius: 14px; background: #ffffff; border: 1px solid #e5e7eb; }
+        .member-expense-trend-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .member-expense-trend-title { font-size: 0.76rem; font-weight: 900; color: #475569; }
+        .member-expense-trend-note { font-size: 0.7rem; font-weight: 800; color: #94a3b8; }
+        .member-expense-trend-wrap { height: 160px; }
+        .member-expense-trend-months { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 10px 0 2px; }
+        .member-expense-trend-month-btn { border: 1px solid #dbeafe; background: #f8fbff; color: #1d4ed8; border-radius: 10px; padding: 7px 8px; font-size: 0.72rem; font-weight: 800; line-height: 1.2; text-align: center; }
+        .member-expense-trend-month-btn.is-active { background: #2563eb; border-color: #2563eb; color: #fff; box-shadow: 0 8px 16px rgba(37, 99, 235, 0.16); }
+        .member-expense-detail-row { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+        .member-expense-detail-row:last-child { border-bottom: none; }
+        .member-expense-detail-more { margin-top: 8px; }
+        .member-expense-detail-more-btn { width: 100%; border: 1px solid #dbeafe; background: #fff; color: #2563eb; border-radius: 10px; padding: 8px 10px; font-size: 0.76rem; font-weight: 800; }
+        .member-expense-detail-extra { display: none; }
+        .member-expense-detail-extra.is-open { display: block; }
+        .member-expense-detail-left { min-width: 0; display: flex; align-items: center; gap: 8px; }
+        .member-expense-detail-date { font-size: 0.78rem; font-weight: 800; color: #2563eb; }
+        .member-expense-detail-text { min-width: 0; }
+        .member-expense-detail-cat { font-size: 0.84rem; font-weight: 800; color: #111827; }
+        .member-expense-detail-memo { font-size: 0.76rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+        .member-expense-empty { padding: 18px; border-radius: 14px; text-align: center; color: #9ca3af; font-weight: 700; background: #f8fafc; }
+
+        .toggle-header { transition: background-color 0.2s; }
+        .toggle-header:hover { background-color: #e9ecef; }
+        .transition-icon { transition: transform 0.3s ease; }
+
+        .dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+        
+        @media (min-width: 992px) {
+            .dashboard-grid { grid-template-columns: 7fr 5fr; align-items: start; }
+            .grid-summary { grid-column: 1; grid-row: 1; }
+            .grid-expense { grid-column: 2; grid-row: 1 / span 2; }
+            .grid-orders { grid-column: 1; grid-row: 2; }
+        }
+
+        @media (max-width: 768px) {
+            .main-container { padding: 12px; }
+            .pipe-grid { grid-template-columns: 1fr; gap: 12px; } 
+            .pipe-item { padding: 20px 15px; border-radius: 14px; }
+            .pipe-label { font-size: 0.95rem; white-space: normal; margin-bottom: 6px; }
+            .pipe-value { font-size: 1.75rem; }
+            .member-expense-top-card .card-body { padding: 12px !important; }
+            .member-expense-toggle-btn { width: 30px; height: 30px; border-radius: 9px; }
+            .member-expense-chart-wrap { height: 184px; }
+            .member-expense-summary-bar { grid-template-columns: 1fr; }
+            .member-expense-compare-meta { grid-template-columns: 1fr; gap: 4px; }
+            .expense-category-chart-wrap { height: 152px; }
+            .member-expense-trend-wrap { height: 136px; }
+            .member-expense-detail-row { align-items: flex-start; }
+        }
+        ::-webkit-scrollbar { height: 6px; width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f3f5; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 10px; }
+
+        /* 蹂寃??댁쑀(Reason): [UI 理쒖쟻?? 由ъ뒪??移대뱶??醫곸? ?곸뿭??李몄뿬/???매출怨?湲곗뿬?꾨? 源붾걫?섍쾶 諛곗튂?섍린 ?꾪븳 ?띿뒪???ㅽ???*/
+        .member-expense-contribution { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 800; background: #eff6ff; color: #1d4ed8; }
+        .member-expense-rev-main { font-size: 0.8rem; font-weight: 800; color: #111827; }
+        .member-expense-rev-sub { font-size: 0.65rem; font-weight: 700; color: #64748b; }
+        .member-expense-as-meta { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+        .member-expense-as-chip { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 800; }
+        .member-expense-as-chip.is-leak { background: #fff1f2; color: #be123c; }
+        .member-expense-as-chip.is-clean { background: #ecfdf5; color: #047857; }
+        .marketing-card { margin-top: 1rem; }
+        .marketing-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+        .marketing-summary-item { padding: 10px 12px; border-radius: 12px; background: #f8fafc; border: 1px solid #e5e7eb; text-align: left; }
+        .marketing-summary-label { font-size: 0.72rem; font-weight: 800; color: #64748b; margin-bottom: 4px; }
+        .marketing-summary-value { font-size: 0.9rem; font-weight: 900; color: #111827; }
+        .marketing-chart-wrap { height: 210px; margin-bottom: 12px; }
+        .marketing-channel-list { display: grid; gap: 8px; }
+        .marketing-channel-item { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 12px; background: #fff; border: 1px solid #e5e7eb; }
+        .marketing-channel-name { font-size: 0.84rem; font-weight: 900; color: #111827; }
+        .marketing-channel-meta { font-size: 0.74rem; font-weight: 700; color: #64748b; }
+        .marketing-channel-value { text-align: right; }
+        .marketing-channel-revenue { font-size: 0.86rem; font-weight: 900; color: #0f172a; }
+        .marketing-channel-avg { font-size: 0.74rem; font-weight: 800; color: #2563eb; }
+    </style>
+</head>
+<body>
+{% include "includes/top_nav.html" %}
+ 
+<div class="main-container">
+    <header class="d-flex justify-content-between align-items-center mb-4 pt-2">
+        <div>
+            <h3 id="dashboardMainTitle" class="fw-bolder m-0 text-dark" style="letter-spacing: -1px;">월별 요약</h3>
+        </div>
+        <div class="d-flex gap-2">
+            <select id="yearSelector" class="form-select form-select-sm border-0 shadow-sm fw-bold bg-white text-dark" onchange="initYearlyDashboard()" style="width: 100px;"></select>
+        </div>
+    </header>
+
+    <div class="card kpi-card mb-4" id="trendCard">
+        <div class="card-body p-4">
+            <h6 class="fw-bolder text-dark mb-1"><i class="fas fa-chart-line text-primary me-2"></i>매출 추이 분석 (최근 24개월)</h6>
+            <p class="text-secondary small fw-bold mb-2">월별 흐름을 한눈에 볼 수 있습니다.</p>
+            <div class="chart-swipe-wrapper" id="trendChartWrapper">
+                <div class="chart-min-width"><canvas id="trendChart"></canvas></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- CSS Grid를 이용한 레이아웃 구조 -->
+    <div class="dashboard-grid mb-4">
+        
+        <!-- 1. 좌측 상단: 요약 및 파이프라인 (Grid Summary) -->
+        <div class="grid-summary d-flex flex-column gap-3">
+            
+            <!-- [UX 최적화] 클릭 시 상단 스크롤이 적용되는 수익 카드 -->
+            <div class="card kpi-card bg-gradient-dark clickable" id="netProfitCard" onclick="snapToTop('netProfitCard')">
+                <div class="card-body p-4 p-lg-5">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="text-white-50 small fw-bold">순이익 (Real Profit)</span>
+                            <h1 id="netProfit" class="fw-black mt-1 mb-0" style="font-size: 3.5rem; letter-spacing: -2px;">0건</h1>
+                        </div>
+                        <div class="margin-badge">
+                            <span class="text-white-50 small fw-bold d-block" style="font-size: 0.75rem;">마진율</span>
+                            <span id="marginRate" class="fw-bold text-success fs-5">0%</span>
+                        </div>
+                    </div>
+                    <div class="row mt-5 pt-4 border-top border-secondary border-opacity-50">
+                        <div class="col-6">
+                            <span class="text-white-50 small fw-bold">총매출 (실결제 기준)</span>
+                            <h4 id="totalRevenue" class="fw-bold text-white mt-1">0건</h4>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-white-50 small fw-bold">총지출 (매입+경비)</span>
+                            <h4 id="totalExpense" class="fw-bold text-danger mt-1">0건</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- [UX 최적화] 클릭 시 상단 스크롤이 적용되는 파이프라인 카드 -->
+            <div class="card kpi-card border-0 shadow-sm clickable" id="pipelineCard" onclick="snapToTop('pipelineCard')">
+                <div class="card-body p-3">
+                    <h6 class="fw-bolder text-dark mb-3"><i class="fas fa-funnel-dollar text-warning me-2"></i>영업 파이프라인<span class="small fw-normal text-muted">(예상 및 대기)</span></h6>
+                    <div class="pipe-grid">
+                        <div class="pipe-item q" onclick="event.stopPropagation(); location.href='/dashboard?filterStat=吏??">
+                            <div class="pipe-label" id="pipeQuoteLabel">1단계: 상담 대기 (0건)</div>
+                            <div id="pipeQuote" class="pipe-value">0건</div>
+                        </div>
+                        <div class="pipe-item b" onclick="event.stopPropagation(); location.href='/dashboard?filterStat=?쒓났'">
+                            <div class="pipe-label" id="pipeBottleneckLabel">2단계: 시공 예정 (0건)</div>
+                            <div id="pipeBottleneck" class="pipe-value">0건</div>
+                        </div>
+                        <div class="pipe-item u" onclick="event.stopPropagation(); location.href='/dashboard?filterStat=誘몄닔湲?">
+                            <div class="pipe-label" id="pipeUnpaidLabel">3단계: 미수금 (0건)</div>
+                            <div id="pipeUnpaid" class="pipe-value">0건</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card kpi-card member-expense-top-card" id="memberExpenseTopCard">
+                <div class="card-body p-3 p-md-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3 cursor-pointer" onclick="toggleMemberExpensePanel(this)">
+                        <h6 class="fw-bolder text-dark m-0"><i class="fas fa-user-group text-primary me-2"></i>직원별 지출 TOP</h6>
+                        <span id="memberExpenseMonthLabel" class="badge bg-light text-secondary border rounded-pill px-3 py-2 fw-bold">-</span>
+                        <button type="button" class="member-expense-toggle-btn" aria-label="toggle">
+                            <i id="memberExpenseToggleIcon" class="fas fa-chevron-down transition-icon"></i>
+                        </button>
+                    </div>
+                    <div id="memberExpenseSectionBody" class="member-expense-section-body">
+                    <div id="memberExpenseFilterBar" class="member-expense-filter-bar"></div>
+                    <div class="expense-category-panel">
+                        <div class="expense-category-head">
+                            <div>
+                                <div class="expense-category-title">지출 항목 분석</div>
+                                <div class="expense-category-sub">월별, 직원별, 항목별 3축 분석 요약</div>
+                            </div>
+                        </div>
+                        <div id="expenseCategoryChipBar" class="expense-category-chipbar"></div>
+                        <div class="expense-category-grid">
+                            <div class="expense-category-box">
+                                <div class="expense-category-box-title">
+                                    <span id="expenseCategoryTrendTitle">항목별 12개월 추이</span>
+                                    <span class="expense-category-box-note">월별 흐름</span>
+                                </div>
+                                <div class="expense-category-chart-wrap" style="height: 280px;">
+                                    <canvas id="expenseCategoryTrendChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="memberExpenseSummaryBar" class="member-expense-summary-bar"></div>
+                    <div id="memberExpenseCompareBoard" class="member-expense-compare-board"></div>
+                    <div id="memberExpenseAlertBox" class="member-expense-alert-box" style="display:none;"></div>
+                    <div id="memberExpenseWarningBox" class="member-expense-warning-box" style="display:none;"></div>
+                    <div class="member-expense-chart-wrap mb-3">
+                        <canvas id="memberExpenseChart"></canvas>
+                    </div>
+                    <div id="memberExpenseList" class="member-expense-list"></div>
+                    <div id="memberExpenseDetail" class="member-expense-detail" style="display:none;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 2. 우측 컬럼: 지출 상세 분석 (Grid Expense) -->
+        <div class="grid-expense">
+            <!-- [UX 최적화] 클릭 시 상단 스크롤이 적용되는 지출 카드 -->
+            <div class="card kpi-card clickable" id="expenseCard" onclick="snapToTop('expenseCard')">
+                <div class="card-body p-4 text-center">
+                    <h6 class="fw-bolder text-dark mb-4">월간 지출 분석</h6>
+                    
+                    <div class="mb-3">
+                        <span class="badge bg-light text-secondary border rounded-pill px-3 py-2 mb-2 fw-bold">총 지출 (자재 vs 운영)</span>
+                        <div style="height: 160px; position: relative;"><canvas id="expTotalChart"></canvas></div>
+                    </div>
+
+                    <div class="row text-center mb-4 mt-2">
+                        <div class="col-6">
+                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning rounded-pill px-2 py-1 mb-2 fw-bold" style="font-size:0.7rem;">자재비 (세부항목)</span>
+                            <div style="height: 110px; position: relative;"><canvas id="expMatChart"></canvas></div>
+                        </div>
+                        <div class="col-6">
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill px-2 py-1 mb-2 fw-bold" style="font-size:0.7rem;">운영비 (세부항목)</span>
+                            <div style="height: 110px; position: relative;"><canvas id="expOpChart"></canvas></div>
+                        </div>
+                    </div>
+
+                    <!-- 지출由ъ뒪???좉? UI -->
+                    <div class="d-flex justify-content-between align-items-center border-top pt-3 mt-3 cursor-pointer toggle-header p-2 rounded-3" onclick="event.stopPropagation(); toggleSection('expenseListSection', this)">
+                        <h6 class="fw-bolder text-dark m-0"><i class="fas fa-list text-warning me-2"></i>월별 지출 내역 리스트</h6>
+                        <i id="expToggleIcon" class="fas fa-chevron-down text-secondary transition-icon fs-5"></i>
+                    </div>
+                    
+                    <div id="expenseListSection" style="display: none;" onclick="event.stopPropagation();">
+                        <div class="d-flex justify-content-center gap-2 mt-2">
+                            <button id="btnAll" class="btn btn-secondary rounded-pill fw-bold flex-fill shadow-sm text-white" style="font-size:0.85rem;" onclick="showExpenseList('all')">전체 보기</button>
+                            <button id="btnMat" class="btn btn-outline-warning rounded-pill fw-bold flex-fill" style="font-size:0.85rem;" onclick="showExpenseList('mat')">자재비</button>
+                            <button id="btnOp" class="btn btn-outline-primary rounded-pill fw-bold flex-fill" style="font-size:0.85rem;" onclick="showExpenseList('op')">운영비</button>
+                        </div>
+
+                        <div id="allListContainer" class="mt-3 text-start bg-light rounded-4 p-3 border">
+                            <div id="allList"></div>
+                        </div>
+
+                        <div id="matListContainer" class="mt-3 text-start bg-warning bg-opacity-10 rounded-4 p-3 border border-warning border-opacity-25" style="display:none;">
+                            <div id="matList"></div>
+                        </div>
+
+                        <div id="opListContainer" class="mt-3 text-start bg-primary bg-opacity-10 rounded-4 p-3 border border-primary border-opacity-25" style="display:none;">
+                            <div id="opList"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+            <div class="card kpi-card marketing-card" id="marketingCard">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bolder text-dark m-0"><i class="fas fa-bullseye text-success me-2"></i>마케팅 ROI</h6>
+                        <span id="marketingAsBadge" class="badge bg-light text-secondary border rounded-pill px-3 py-2 fw-bold">A/S 0건</span>
+                    </div>
+                    <div id="marketingSummaryGrid" class="marketing-summary-grid"></div>
+                    <div class="marketing-chart-wrap"><canvas id="marketingChannelChart"></canvas></div>
+                    <div id="marketingChannelList" class="marketing-channel-list"></div>
+                </div>
+            </div>
+        <!-- 3. 좌측 하단: 시공 완료 상세 (Grid Orders) -->
+        <div class="grid-orders">
+            <div class="d-flex justify-content-between align-items-center mb-2 cursor-pointer toggle-header p-2 rounded-3 bg-white shadow-sm border" onclick="toggleSection('orderSection', this)" style="border-radius: 12px;">
+                <h6 class="fw-bolder text-dark m-0 px-2"><i class="fas fa-check-double text-primary me-2"></i><span id="listTitleLabel" class="text-primary"></span>월 완료 작업</h6>
+                <i id="orderToggleIcon" class="fas fa-chevron-down text-secondary transition-icon fs-5 pe-2"></i>
+            </div>
+            <div id="orderSection" style="display: none;">
+                <div id="orderListContainer" class="mb-5"></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- 차트 클릭 상세 모달 팝업 -->
+<div class="modal fade" id="chartDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h4 class="modal-title fw-black text-dark" id="chartModalTitle">월간 상세</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-3 pb-4" id="chartModalBody">
+                <!-- JS로 주입됩니다 -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let trendChartInst = null, expTotalChartInst = null, expMatChartInst = null, expOpChartInst = null, memberExpenseChartInst = null, memberExpenseTrendInst = null;
+    let miniSparklineInsts = []; // Reason: [硫붾え由?愿由? 由ъ뒪?멸? ?ㅼ떆 洹몃젮吏???湲곗〈 誘몃땲 李⑦듃?ㅼ쓣 ??젣(destroy)?섍린 ?꾪븳 諛곗뿴
+    let expenseCategoryTotalsChartInst = null, expenseCategoryMemberChartInst = null, expenseCategoryTrendChartInst = null, marketingChannelChartInst = null;
+    let currentMemberExpenseRows = [];
+    let currentMemberExpenseCategories = [];
+    let currentMemberExpenseFilter = '__all__';
+    let currentExpenseCategory = '__all__';
+    let currentMonthlyStatsData = null;
+    let currentSelectedYear = new Date().getFullYear();
+    let currentSelectedMonth = new Date().getMonth() + 1;
+    let detailModalInst = null;
+
+    // [UX] 遺?쒕윭???먯꽍 ?ㅽ겕濡??ы띁 ?⑥닔
+    function snapToTop(elementId) {
+        const el = document.getElementById(elementId);
+        if(el) {
+            const y = el.getBoundingClientRect().top + window.scrollY - 20; // ?ㅽ떚???ㅻ뜑媛 ?놁쑝誘濡??щ갚??以꾩엫
+            window.scrollTo({top: y, behavior: 'smooth'});
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const yearSel = document.getElementById('yearSelector');
+        for(let y = currentSelectedYear; y >= currentSelectedYear - 20; y--){
+            let opt = document.createElement('option'); opt.value = y; opt.innerText = y + '원`;
+            if(y === currentSelectedYear) opt.selected = true;
+            yearSel.appendChild(opt);
+        }
+        
+        detailModalInst = new bootstrap.Modal(document.getElementById('chartDetailModal'));
+        
+        const isPC = window.innerWidth >= 992;
+        const orderSec = document.getElementById('orderSection');
+        const orderIcon = document.getElementById('orderToggleIcon');
+        const expSec = document.getElementById('expenseListSection');
+        const expIcon = document.getElementById('expToggleIcon');
+
+        if (isPC) {
+            orderSec.style.display = 'block';
+            orderIcon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+            expSec.style.display = 'block';
+            expIcon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+        }
+        
+        initYearlyDashboard();
+        initDragScroll();
+    });
+
+    function toggleSection(sectionId, headerEl) {
+        const section = document.getElementById(sectionId);
+        const icon = headerEl.querySelector('.transition-icon');
+        
+        if (section.style.display === 'none') {
+            section.style.display = 'block';
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+            
+            setTimeout(() => {
+                const y = headerEl.getBoundingClientRect().top + window.scrollY - 20;
+                window.scrollTo({top: y, behavior: 'smooth'});
+            }, 100);
+        } else {
+            section.style.display = 'none';
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+        }
+    }
+
+    function toggleMemberExpensePanel(headerEl, forceOpen = false) {
+        const section = document.getElementById('memberExpenseSectionBody');
+        const icon = document.getElementById('memberExpenseToggleIcon');
+        if (!section || !icon) return;
+        const shouldOpen = forceOpen || section.style.display === 'none' || !section.style.display;
+        section.style.display = shouldOpen ? 'block' : 'none';
+        icon.classList.toggle('fa-chevron-down', !shouldOpen);
+        icon.classList.toggle('fa-chevron-up', shouldOpen);
+        if (shouldOpen && currentMemberExpenseRows.length) {
+            setTimeout(() => {
+                renderMemberExpenseSection(
+                    currentMemberExpenseRows,
+                    document.getElementById('memberExpenseMonthLabel')?.textContent || '-',
+                    currentMemberExpenseCategories
+                );
+            }, 40);
+        }
+        if (shouldOpen && headerEl) {
+            setTimeout(() => {
+                const y = headerEl.getBoundingClientRect().top + window.scrollY - 16;
+                window.scrollTo({ top: y, behavior: 'smooth' });
+            }, 60);
+        }
+    }
+
+    function showExpenseList(type) {
+        document.getElementById('allListContainer').style.display = type === 'all' ? 'block' : 'none';
+        document.getElementById('matListContainer').style.display = type === 'mat' ? 'block' : 'none';
+        document.getElementById('opListContainer').style.display = type === 'op' ? 'block' : 'none';
+        
+        document.getElementById('btnAll').className = type === 'all' ? 'btn btn-secondary rounded-pill fw-bold flex-fill shadow-sm text-white' : 'btn btn-outline-secondary rounded-pill fw-bold flex-fill';
+        document.getElementById('btnMat').className = type === 'mat' ? 'btn btn-warning rounded-pill fw-bold flex-fill shadow-sm text-dark' : 'btn btn-outline-warning rounded-pill fw-bold flex-fill';
+        document.getElementById('btnOp').className = type === 'op' ? 'btn btn-primary rounded-pill fw-bold flex-fill shadow-sm text-white' : 'btn btn-outline-primary rounded-pill fw-bold flex-fill';
+    }
+
+    function formatMemberExpenseTopCategories(topCategories) {
+        const arr = Array.isArray(topCategories) ? topCategories.filter(Boolean) : [];
+        return arr.length ? arr.join(' / ') + ' 以묒떖' : '遺꾨쪟 ?놁쓬';
+    }
+
+    function renderMemberExpenseChips(topCategories) {
+        const arr = Array.isArray(topCategories) ? topCategories.filter(Boolean) : [];
+        if (!arr.length) return '';
+        return `<div class="member-expense-chips">${arr.map(category => `<span class="member-expense-chip">${category}</span>`).join('')}</div>`;
+    }
+
+    function formatMemberExpenseMoney(value) {
+        return `${Math.round(value || 0).toLocaleString()}원`;
+    }
+
+    function getMemberExpenseSeriesAmount(point) {
+        if (!point) return 0;
+        if (!currentMemberExpenseFilter || currentMemberExpenseFilter === '__all__') {
+            return Number(point.amount || 0);
+        }
+        return Number((point.category_amounts || {})[currentMemberExpenseFilter] || 0);
+    }
+
+
+    function formatMarketingMoney(value) {
+        return `${Math.round(value || 0).toLocaleString()}원`;
+    }
+
+    function getAsLeakMetaHtml(item) {
+        const leakAmount = Number(item?.as_leak_amount || 0);
+        const cleanRate = typeof item?.clean_install_rate === 'number' ? item.clean_install_rate : null;
+        return `
+            <div class="member-expense-as-meta">
+                <span class="member-expense-as-chip is-leak">A/S ${formatMarketingMoney(leakAmount)}</span>
+                <span class="member-expense-as-chip is-clean">클린 ${cleanRate === null ? '-' : `${cleanRate.toFixed(1)}%`}</span>
+            </div>
+        `;
+    }
+
+    function enhanceMemberExpenseCards(rows) {
+        rows.forEach((item, idx) => {
+            const card = document.querySelector(`[data-member-expense-idx="${idx}"] .text-start`);
+            if (!card || card.querySelector('.member-expense-as-meta')) return;
+            const revenueRow = card.querySelector('.d-flex.align-items-center.gap-2.mt-1');
+            if (revenueRow) revenueRow.insertAdjacentHTML('afterend', getAsLeakMetaHtml(item));
+        });
+    }
+
+    function enhanceMemberExpenseDetail(item) {
+        const detailEl = document.getElementById('memberExpenseDetail');
+        if (!detailEl || !item) return;
+        const summary = detailEl.querySelector('.member-expense-detail-summary');
+        if (!summary || summary.querySelector('[data-as-kpi]')) return;
+        const leakAmount = Number(item.as_leak_amount || 0);
+        const cleanRate = typeof item.clean_install_rate === 'number' ? item.clean_install_rate : null;
+        summary.insertAdjacentHTML('beforeend', `
+            <div class="member-expense-detail-kpi" data-as-kpi>
+                <div class="member-expense-detail-kpi-label">A/S 누수</div>
+                <div class="member-expense-detail-kpi-value">${formatMarketingMoney(leakAmount)}</div>
+            </div>
+            <div class="member-expense-detail-kpi" data-as-kpi>
+                <div class="member-expense-detail-kpi-label">클린 시공률</div>
+                <div class="member-expense-detail-kpi-value">${cleanRate === null ? '-' : `${cleanRate.toFixed(1)}%`}</div>
+            </div>
+        `);
+    }
+
+    function renderMarketingChannelSection(channels, summary, asMonitor) {
+        const badgeEl = document.getElementById('marketingAsBadge');
+        const summaryEl = document.getElementById('marketingSummaryGrid');
+        const listEl = document.getElementById('marketingChannelList');
+        const ctx = document.getElementById('marketingChannelChart')?.getContext('2d');
+        if (!badgeEl || !summaryEl || !listEl || !ctx) return;
+        const rows = Array.isArray(channels) ? channels : [];
+        const bestAvg = summary?.best_avg_channel;
+        const bestVolume = summary?.best_volume_channel;
+        badgeEl.textContent = `A/S ${formatMarketingMoney(asMonitor?.total_amount || 0)}`;
+        summaryEl.innerHTML = `
+            <div class="marketing-summary-item"><div class="marketing-summary-label">최고 객단가</div><div class="marketing-summary-value">${bestAvg ? `${bestAvg.channel} · ${formatMarketingMoney(bestAvg.avg_revenue)}` : '-'}</div></div>
+            <div class="marketing-summary-item"><div class="marketing-summary-label">최대 매출 채널</div><div class="marketing-summary-value">${bestVolume ? `${bestVolume.channel} · ${formatMarketingMoney(bestVolume.revenue)}` : '-'}</div></div>
+            <div class="marketing-summary-item"><div class="marketing-summary-label">미분류 주문</div><div class="marketing-summary-value">${summary?.unclassified_count || 0}건</div></div>
+        `;
+        listEl.innerHTML = rows.length ? rows.map(row => `
+            <div class="marketing-channel-item">
+                <div><div class="marketing-channel-name">${row.channel || '미분류'}</div><div class="marketing-channel-meta">${row.count || 0}건 · 비중 ${(row.share_rate || 0).toFixed(1)}%</div></div>
+                <div class="marketing-channel-value"><div class="marketing-channel-revenue">${formatMarketingMoney(row.revenue || 0)}</div><div class="marketing-channel-avg">객단가 ${formatMarketingMoney(row.avg_revenue || 0)}</div></div>
+            </div>
+        `).join('') : '<div class="member-expense-empty">채널 데이터가 없습니다.</div>';
+        if (marketingChannelChartInst) marketingChannelChartInst.destroy();
+        marketingChannelChartInst = new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels: rows.map(row => row.channel || '미분류'), datasets: [{ data: rows.map(row => Math.round(row.revenue || 0)), backgroundColor: ['#16a34a', '#2563eb', '#f59e0b', '#dc2626', '#7c3aed', '#0891b2', '#64748b'], borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11, weight: '700' } } }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${formatMarketingMoney(ctx.parsed || 0)}` } } } }
+        });
+    }
+
+    function formatMarketingMoney(value) {
+        return `${Math.round(value || 0).toLocaleString()}원`;
+    }
+
+    function getAsLeakMetaHtml(item) {
+        const leakAmount = Number(item?.as_leak_amount || 0);
+        const cleanRate = typeof item?.clean_install_rate === 'number' ? item.clean_install_rate : null;
+        return `
+            <div class="member-expense-as-meta">
+                <span class="member-expense-as-chip is-leak">A/S ${formatMarketingMoney(leakAmount)}</span>
+                <span class="member-expense-as-chip is-clean">클린 ${cleanRate === null ? '-' : `${cleanRate.toFixed(1)}%`}</span>
+            </div>
+        `;
+    }
+
+    function enhanceMemberExpenseCards(rows) {
+        rows.forEach((item, idx) => {
+            const card = document.querySelector(`[data-member-expense-idx="${idx}"] .text-start`);
+            if (!card || card.querySelector('.member-expense-as-meta')) return;
+            const revenueRow = card.querySelector('.d-flex.align-items-center.gap-2.mt-1');
+            if (revenueRow) revenueRow.insertAdjacentHTML('afterend', getAsLeakMetaHtml(item));
+        });
+    }
+
+    function enhanceMemberExpenseDetail(item) {
+        const detailEl = document.getElementById('memberExpenseDetail');
+        if (!detailEl || !item) return;
+        const summary = detailEl.querySelector('.member-expense-detail-summary');
+        if (!summary || summary.querySelector('[data-as-kpi]')) return;
+        const leakAmount = Number(item.as_leak_amount || 0);
+        const cleanRate = typeof item.clean_install_rate === 'number' ? item.clean_install_rate : null;
+        summary.insertAdjacentHTML('beforeend', `
+            <div class="member-expense-detail-kpi" data-as-kpi>
+                <div class="member-expense-detail-kpi-label">A/S 누수</div>
+                <div class="member-expense-detail-kpi-value">${formatMarketingMoney(leakAmount)}</div>
+            </div>
+            <div class="member-expense-detail-kpi" data-as-kpi>
+                <div class="member-expense-detail-kpi-label">클린 시공률</div>
+                <div class="member-expense-detail-kpi-value">${cleanRate === null ? '-' : `${cleanRate.toFixed(1)}%`}</div>
+            </div>
+        `);
+    }
+
+    function renderMarketingChannelSection(channels, summary, asMonitor) {
+        const badgeEl = document.getElementById('marketingAsBadge');
+        const summaryEl = document.getElementById('marketingSummaryGrid');
+        const listEl = document.getElementById('marketingChannelList');
+        const ctx = document.getElementById('marketingChannelChart')?.getContext('2d');
+        if (!badgeEl || !summaryEl || !listEl || !ctx) return;
+        const rows = Array.isArray(channels) ? channels : [];
+        const bestAvg = summary?.best_avg_channel;
+        const bestVolume = summary?.best_volume_channel;
+        badgeEl.textContent = `A/S ${formatMarketingMoney(asMonitor?.total_amount || 0)}`;
+        summaryEl.innerHTML = `
+            <div class="marketing-summary-item"><div class="marketing-summary-label">최고 객단가</div><div class="marketing-summary-value">${bestAvg ? `${bestAvg.channel} · ${formatMarketingMoney(bestAvg.avg_revenue)}` : '-'}</div></div>
+            <div class="marketing-summary-item"><div class="marketing-summary-label">최대 매출 채널</div><div class="marketing-summary-value">${bestVolume ? `${bestVolume.channel} · ${formatMarketingMoney(bestVolume.revenue)}` : '-'}</div></div>
+            <div class="marketing-summary-item"><div class="marketing-summary-label">미분류 주문</div><div class="marketing-summary-value">${summary?.unclassified_count || 0}건</div></div>
+        `;
+        listEl.innerHTML = rows.length ? rows.map(row => `
+            <div class="marketing-channel-item">
+                <div><div class="marketing-channel-name">${row.channel || '미분류'}</div><div class="marketing-channel-meta">${row.count || 0}건 · 비중 ${(row.share_rate || 0).toFixed(1)}%</div></div>
+                <div class="marketing-channel-value"><div class="marketing-channel-revenue">${formatMarketingMoney(row.revenue || 0)}</div><div class="marketing-channel-avg">객단가 ${formatMarketingMoney(row.avg_revenue || 0)}</div></div>
+            </div>
+        `).join('') : '<div class="member-expense-empty">채널 데이터가 없습니다.</div>';
+        if (marketingChannelChartInst) marketingChannelChartInst.destroy();
+        marketingChannelChartInst = new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels: rows.map(row => row.channel || '미분류'), datasets: [{ data: rows.map(row => Math.round(row.revenue || 0)), backgroundColor: ['#16a34a', '#2563eb', '#f59e0b', '#dc2626', '#7c3aed', '#0891b2', '#64748b'], borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11, weight: '700' } } }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${formatMarketingMoney(ctx.parsed || 0)}` } } } }
+        });
+    }
+    function focusMemberExpenseCard(idx, shouldScroll = false) {
+        const section = document.getElementById('memberExpenseSectionBody');
+        if (section && (section.style.display === 'none' || !section.style.display)) {
+            toggleMemberExpensePanel(document.querySelector('#memberExpenseTopCard .cursor-pointer'), true);
+        }
+        const runSelect = () => {
+            const target = document.querySelector(`#memberExpenseList [data-member-expense-idx="${idx}"]`);
+            if (!target) return;
+            target.click();
+            if (shouldScroll) {
+                setTimeout(() => {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 50);
+            }
+        };
+        runSelect();
+        setTimeout(runSelect, 80);
+    }
+
+    function updateMemberExpenseSummaryActiveState(activeIdx) {
+        const chips = document.querySelectorAll('[data-member-expense-summary-idx]');
+        chips.forEach(node => {
+            const idx = parseInt(node.getAttribute('data-member-expense-summary-idx') || '-1', 10);
+            node.classList.toggle('is-active', idx === activeIdx && activeIdx >= 0);
+        });
+    }
+
+    function updateMemberExpenseCompareActiveState(activeIdx) {
+        const rows = document.querySelectorAll('#memberExpenseCompareBoard [data-member-expense-idx]');
+        rows.forEach(node => {
+            const idx = parseInt(node.getAttribute('data-member-expense-idx') || '-1', 10);
+            node.classList.toggle('is-active', idx === activeIdx && activeIdx >= 0);
+        });
+    }
+
+    function getCurrentExpenseCategoryTotals() {
+        return Array.isArray(currentMonthlyStatsData?.expense_category_totals) ? currentMonthlyStatsData.expense_category_totals : [];
+    }
+
+    function getCurrentExpenseCategoryBreakdown(categoryName) {
+        if (!categoryName || categoryName === '__all__') return [];
+        return Array.isArray(currentMonthlyStatsData?.expense_category_member_breakdown?.[categoryName])
+            ? currentMonthlyStatsData.expense_category_member_breakdown[categoryName]
+            : [];
+    }
+
+    function updateExpenseCategoryActiveState() {
+        document.querySelectorAll('[data-expense-category-chip]').forEach(node => {
+            node.classList.toggle('is-active', (node.getAttribute('data-expense-category-chip') || '__all__') === currentExpenseCategory);
+        });
+    }
+
+    function renderExpenseCategoryChipBar() {
+        const el = document.getElementById('expenseCategoryChipBar');
+        if (!el) return;
+        
+        const fixedKeywords = ['?앸?', '二쇱쑀', '援먰넻'];
+        // Reason: [踰꾧렇 ?섏젙] ?먮낯 諛곗뿴 ?쇱넀 諛⑹?瑜??꾪빐 ?ㅽ봽?덈뱶 ?곗궛??...)濡?蹂듭궗蹂??앹꽦 ???덉쟾?섍쾶 ?뺣젹
+        let rawTotals = [...getCurrentExpenseCategoryTotals()]; 
+        
+        let sortedTotals = rawTotals.sort((a, b) => {
+            const nameA = a.name || '';
+            const nameB = b.name || '';
+            const aFixed = fixedKeywords.some(k => nameA.includes(k));
+            const bFixed = fixedKeywords.some(k => nameB.includes(k));
+            if (aFixed && !bFixed) return -1;
+            if (!aFixed && bFixed) return 1;
+            return (b.amount || 0) - (a.amount || 0);
+        }).slice(0, 6);
+
+        const chips = [{ name: '__all__', label: '?꾩껜 ??ぉ' }, ...sortedTotals.map(item => ({ name: item.name, label: item.name }))];
+        if (currentExpenseCategory !== '__all__' && !chips.some(item => item.name === currentExpenseCategory)) {
+            currentExpenseCategory = '__all__';
+        }
+        el.innerHTML = chips.map(item => `
+            <button type="button" class="expense-category-chip${item.name === currentExpenseCategory ? ' is-active' : ''}" data-expense-category-chip="${item.name}">
+                ${item.label}
+            </button>
+        `).join('');
+        el.querySelectorAll('[data-expense-category-chip]').forEach(node => {
+            node.addEventListener('click', () => {
+                currentExpenseCategory = node.getAttribute('data-expense-category-chip') || '__all__';
+                renderExpenseCategorySection();
+            });
+        });
+    }
+
+    function renderExpenseCategoryTotalsChart() {
+        const canvas = document.getElementById('expenseCategoryTotalsChart');
+        if (!canvas) return;
+        const totals = getCurrentExpenseCategoryTotals().slice(0, 6);
+        if (expenseCategoryTotalsChartInst) expenseCategoryTotalsChartInst.destroy();
+        expenseCategoryTotalsChartInst = new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: totals.map(item => item.name || '미분류),
+                datasets: [{
+                    label: '??ぉ蹂?珥앹븸',
+                    data: totals.map(item => Math.round(item.amount || 0)),
+                    backgroundColor: totals.map(item => item.name === currentExpenseCategory ? '#2563eb' : '#bfdbfe'),
+                    borderRadius: 10,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (ctx) => ` ${formatMemberExpenseMoney(ctx.parsed.x || 0)}` } }
+                },
+                scales: {
+                    x: { grid: { color: 'rgba(148, 163, 184, 0.18)' }, ticks: { callback: (value) => formatMemberExpenseMoney(value) } },
+                    y: { grid: { display: false }, ticks: { font: { weight: '700' } } }
+                },
+                onClick: (_, elements) => {
+                    if (!elements.length) return;
+                    const item = totals[elements[0].index];
+                    if (!item) return;
+                    currentExpenseCategory = item.name || '__all__';
+                    renderExpenseCategorySection();
+                }
+            }
+        });
+    }
+
+    function renderExpenseCategoryMemberChart() {
+        const canvas = document.getElementById('expenseCategoryMemberChart');
+        const title = document.getElementById('expenseCategoryMemberTitle');
+        if (!canvas || !title) return;
+        const rows = currentExpenseCategory === '__all__'
+            ? currentMemberExpenseRows.slice(0, 6).map(item => ({
+                member_id: item.member_id,
+                member_name: item.member_name,
+                amount: Number(item.display_amount ?? item.total_amount ?? 0),
+                count: Number(item.display_count ?? item.count ?? 0),
+            }))
+            : getCurrentExpenseCategoryBreakdown(currentExpenseCategory).slice(0, 6);
+        const activeNode = document.querySelector('#memberExpenseList .member-expense-item.is-active');
+        const activeIdx = activeNode ? parseInt(activeNode.getAttribute('data-member-expense-idx') || '-1', 10) : 0;
+        const activeName = activeIdx >= 0 ? (currentMemberExpenseRows[activeIdx]?.member_name || '') : '';
+        title.textContent = currentExpenseCategory === '__all__' ? '吏곸썝蹂?지출鍮꾧탳' : `${currentExpenseCategory} 吏곸썝 鍮꾧탳`;
+        if (expenseCategoryMemberChartInst) expenseCategoryMemberChartInst.destroy();
+        expenseCategoryMemberChartInst = new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: rows.map(item => item.member_name || '미정),
+                datasets: [{
+                    label: currentExpenseCategory === '__all__' ? '吏異쒓툑?? : `${currentExpenseCategory} 지출,
+                    data: rows.map(item => Math.round(item.amount || 0)),
+                    backgroundColor: rows.map(item => {
+                        return item.member_name === activeName ? '#2563eb' : '#93c5fd';
+                    }),
+                    borderRadius: 10,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` ${formatMemberExpenseMoney(ctx.parsed.y || 0)}`,
+                            afterLabel: (ctx) => ` 嫄댁닔 ${(rows[ctx.dataIndex] || {}).count || 0}건
+                        }
+                    }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { weight: '700' } } },
+                    y: { grid: { color: 'rgba(148, 163, 184, 0.18)' }, ticks: { callback: (value) => formatMemberExpenseMoney(value) } }
+                },
+                onClick: (_, elements) => {
+                    if (!elements.length) return;
+                    const row = rows[elements[0].index];
+                    if (!row) return;
+                    const memberIdx = currentMemberExpenseRows.findIndex(item => Number(item.member_id || 0) === Number(row.member_id || 0) && (item.member_name || '') === (row.member_name || ''));
+                    if (memberIdx >= 0) focusMemberExpenseCard(memberIdx, true);
+                }
+            }
+        });
+    }
+
+    function renderExpenseCategoryTrendChart() {
+        const canvas = document.getElementById('expenseCategoryTrendChart');
+        const title = document.getElementById('expenseCategoryTrendTitle');
+        if (!canvas || !title) return;
+        
+        const monthly = Array.isArray(currentMonthlyStatsData?.expense_category_monthly) ? currentMonthlyStatsData.expense_category_monthly : [];
+        title.textContent = currentExpenseCategory === '__all__' ? '?꾩껜 ??ぉ 12媛쒖썡 異붿씠' : `${currentExpenseCategory} 12媛쒖썡 異붿씠`;
+        
+        if (expenseCategoryTrendChartInst) expenseCategoryTrendChartInst.destroy();
+
+        let datasets = [];
+        const colors = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#f43f5e'];
+
+        // Reason: [?쒓컖??媛쒖꽑] ?대떦 ?붿쓽 ?뚯궗 ?꾩껜 지출珥앹븸)???고븳 諛곌꼍 留됰?洹몃옒?꾨줈 源붿븘二쇱뼱 ?꾩껜?곸씤 ?ㅼ??쇨컧???쒓났
+        datasets.push({
+            type: 'bar',
+            label: currentExpenseCategory === '__all__' ? '?뚯궗 ?꾩껜 珥?지출 : `${currentExpenseCategory} 珥?지출,
+            data: monthly.map(item => currentExpenseCategory === '__all__' 
+                ? Math.round(item.total_amount || 0) 
+                : Math.round((item.categories || {})[currentExpenseCategory] || 0)),
+            backgroundColor: 'rgba(226, 232, 240, 0.65)', // ?고븳 ?뚯깋 諛곌꼍
+            borderRadius: 6,
+            barThickness: 'flex',
+            order: 10 // ??洹몃옒???ㅻ줈 蹂대궡湲?
+        });
+
+        // Reason: [?곗씠??遺꾨━] ??ぉ???곴??놁씠 ?대젰???덈뒗 紐⑤뱺 吏곸썝??異붿텧?섏뿬 ?ㅼ쨷 ??洹몃옒?꾨줈 ?앹꽦
+        const activeMembers = currentMemberExpenseRows.filter(member => {
+            const series = Array.isArray(member.monthly_series) ? member.monthly_series : [];
+            if (currentExpenseCategory === '__all__') {
+                return series.some(point => point.amount > 0);
+            } else {
+                return series.some(point => (point.category_amounts || {})[currentExpenseCategory] > 0);
+            }
+        });
+
+        // ?댄똻???꾩껜 吏곸썝 ?됯퇏 ?곗궛
+        const allAverages = monthly.map((_, idx) => {
+            let total = 0; let count = 0;
+            activeMembers.forEach(member => {
+                const val = currentExpenseCategory === '__all__' 
+                    ? (member.monthly_series[idx]?.amount || 0)
+                    : ((member.monthly_series[idx]?.category_amounts || {})[currentExpenseCategory] || 0);
+                total += val;
+                count++;
+            });
+            return count > 0 ? total / count : 0;
+        });
+
+        // 媛?吏곸썝蹂???洹몃옒???곗씠?곗뀑 異붽?
+        activeMembers.forEach((member, mIdx) => {
+            const series = Array.isArray(member.monthly_series) ? member.monthly_series : [];
+            const dataPoints = series.map(point => {
+                return currentExpenseCategory === '__all__'
+                    ? Math.round(point.amount || 0)
+                    : Math.round((point.category_amounts || {})[currentExpenseCategory] || 0);
+            });
+            
+            datasets.push({
+                type: 'line',
+                label: member.member_name || '미정,
+                data: dataPoints,
+                borderColor: colors[mIdx % colors.length], 
+                backgroundColor: colors[mIdx % colors.length],
+                borderWidth: 2, 
+                pointRadius: 4, 
+                pointHoverRadius: 6, 
+                tension: 0.32,
+                order: 1, // 留됰?洹몃옒???욎쑝濡?媛?몄삤湲?
+                _memberSeries: series, 
+                _allAverages: allAverages
+            });
+        });
+
+        // Reason: [UI/UX ?듯빀] 諛곌꼍 留됰?? 媛쒕퀎 ?좎씠 寃고빀??Mixed 李⑦듃 ?앹꽦 諛?踰붾?(Legend) ?좉? ?쒖꽦??
+        expenseCategoryTrendChartInst = new Chart(canvas.getContext('2d'), {
+            type: 'bar', // Mixed 李⑦듃??湲곗? ???
+            data: { labels: monthly.map(item => item.label || ''), datasets: datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false, 
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { 
+                        display: true, 
+                        position: 'top', 
+                        labels: { usePointStyle: true, boxWidth: 8, font: {weight: '700'} } 
+                        // 踰붾?(Legend) ?대┃ ????耳쒓린/?꾧린 ?좉?? Chart.js 湲곕낯 ?듭뀡?쇰줈 ?먮룞 ?숈옉?⑸땲??
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                const val = ctx.parsed.y || 0;
+                                const ds = ctx.dataset; 
+                                
+                                // 留됰? 洹몃옒??(珥앹븸) ?댄똻
+                                if (ds.type === 'bar') {
+                                    return ` ${ds.label}: ${Math.round(val).toLocaleString()}원`;
+                                }
+
+                                // ??洹몃옒??(吏곸썝) ?ъ링 遺꾩꽍 ?댄똻
+                                const series = ds._memberSeries; 
+                                const allAvgs = ds._allAverages; 
+                                const curIdx = ctx.dataIndex;
+                                
+                                const getAvg = (months, isAll = false) => {
+                                    let sum = 0; let count = 0;
+                                    for(let i = 0; i < months; i++) {
+                                        const targetIdx = curIdx - i;
+                                        if (targetIdx >= 0) {
+                                            if (isAll) {
+                                                sum += allAvgs[targetIdx] || 0;
+                                            } else {
+                                                sum += currentExpenseCategory === '__all__'
+                                                    ? (series[targetIdx]?.amount || 0)
+                                                    : ((series[targetIdx]?.category_amounts || {})[currentExpenseCategory] || 0);
+                                            }
+                                            count++;
+                                        }
+                                    }
+                                    return count > 0 ? sum / count : 0;
+                                };
+
+                                return [
+                                    ` ${ds.label} ?대쾲 ?? ${Math.round(val).toLocaleString()}원,
+                                    `  ??3媛쒖썡: ${Math.round(getAvg(3)).toLocaleString()}원(?꾩껜 ${Math.round(getAvg(3, true)).toLocaleString()}원`,
+                                    `  ??6媛쒖썡: ${Math.round(getAvg(6)).toLocaleString()}원(?꾩껜 ${Math.round(getAvg(6, true)).toLocaleString()}원`,
+                                    `  ??1?? ${Math.round(getAvg(12)).toLocaleString()}원(?꾩껜 ${Math.round(getAvg(12, true)).toLocaleString()}원`
+                                ];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { weight: '700' } } },
+                    y: { grid: { color: 'rgba(148, 163, 184, 0.18)' }, ticks: { callback: (value) => formatMemberExpenseMoney(value) }, beginAtZero: true }
+                }
+            }
+        });
+    }
+    
+    function renderExpenseCategorySection() {
+        renderExpenseCategoryChipBar();
+        updateExpenseCategoryActiveState();
+        // ??젣?? renderExpenseCategoryTotalsChart();
+        // ??젣?? renderExpenseCategoryMemberChart();
+        renderExpenseCategoryTrendChart();
+    }
+
+    function jumpToMemberExpenseMonth(point) {
+        if (!point?.ym) return;
+        const [targetYear, targetMonth] = String(point.ym).split('-').map(Number);
+        if (!targetYear || !targetMonth) return;
+        currentSelectedYear = targetYear;
+        currentSelectedMonth = targetMonth;
+        const yearSelector = document.getElementById('yearSelector');
+        if (yearSelector) yearSelector.value = String(targetYear);
+        loadMonthlyDetail(targetYear, targetMonth).then(() => {
+            const card = document.getElementById('memberExpenseTopCard');
+            card?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+
+    function getMemberExpenseSeverity(ratioValue) {
+        if (typeof ratioValue !== 'number') {
+            return { key: 'normal', label: '?뺤씤以? };
+        }
+        if (ratioValue >= 60) {
+            return { key: 'high', label: '주의' };
+        }
+        if (ratioValue >= 35) {
+            return { key: 'medium', label: '?먭?' };
+        }
+        return { key: 'normal', label: '?덉젙' };
+    }
+
+    function getFilteredMemberExpenseRows(rows, selectedCategory) {
+        const sourceRows = Array.isArray(rows) ? rows : [];
+        if (!selectedCategory || selectedCategory === '__all__') {
+            return sourceRows.map(row => ({
+                ...row,
+                display_amount: Number(row.total_amount || 0),
+                display_count: Number(row.count || 0),
+                display_ratio: typeof row.expense_ratio === 'number' ? Number(row.expense_ratio) : (Number(row.revenue_amount || 0) > 0 ? (Number(row.total_amount || 0) / Number(row.revenue_amount || 0)) * 100 : null),
+                display_top_categories: Array.isArray(row.top_categories) ? row.top_categories : [],
+                display_details: Array.isArray(row.details) ? row.details : [],
+            }));
+        }
+
+        return sourceRows.map(row => {
+            const categoryAmounts = row.category_amounts || {};
+            const filteredDetails = Array.isArray(row.details)
+                ? row.details.filter(detail => String(detail.category || '') === selectedCategory)
+                : [];
+            return {
+                ...row,
+                display_amount: Number(categoryAmounts[selectedCategory] || 0),
+                display_count: filteredDetails.length,
+                display_ratio: Number(row.revenue_amount || 0) > 0 ? (Number(categoryAmounts[selectedCategory] || 0) / Number(row.revenue_amount || 0)) * 100 : null,
+                display_top_categories: filteredDetails.length ? [selectedCategory] : [],
+                display_details: filteredDetails,
+            };
+        }).filter(row => row.display_amount > 0);
+    }
+
+    function renderMemberExpenseFilterBar(expenseCategories) {
+        const filterEl = document.getElementById('memberExpenseFilterBar');
+        if (!filterEl) return;
+        const buttons = ['__all__', ...(Array.isArray(expenseCategories) ? expenseCategories : [])];
+        filterEl.innerHTML = buttons.map(category => {
+            const label = category === '__all__' ? '?꾩껜' : category;
+            const activeClass = category === currentMemberExpenseFilter ? 'is-active' : '';
+            return `<button type="button" class="member-expense-filter-btn ${activeClass}" data-member-expense-filter="${category}">${label}</button>`;
+        }).join('');
+
+        filterEl.querySelectorAll('[data-member-expense-filter]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentMemberExpenseFilter = btn.getAttribute('data-member-expense-filter') || '__all__';
+                renderMemberExpenseSection(currentMemberExpenseRows, document.getElementById('memberExpenseMonthLabel')?.textContent || '-', currentMemberExpenseCategories);
+            });
+        });
+    }
+
+    function renderMemberExpenseSummary(rows) {
+        const el = document.getElementById('memberExpenseSummaryBar');
+        if (!el) return;
+        const items = Array.isArray(rows) ? rows : [];
+        if (!items.length) {
+            el.innerHTML = '';
+            return;
+        }
+
+        const expenseTop = [...items].sort((a, b) => Number(b.display_amount ?? b.total_amount ?? 0) - Number(a.display_amount ?? a.total_amount ?? 0))[0];
+        const revenueTop = [...items].sort((a, b) => Number(b.revenue_amount || 0) - Number(a.revenue_amount || 0))[0];
+        const ratioTop = [...items]
+            .filter(item => typeof item.display_ratio === 'number')
+            .sort((a, b) => Number(b.display_ratio || 0) - Number(a.display_ratio || 0))[0];
+
+        const cards = [
+            {
+                label: '지출理쒓퀬',
+                name: expenseTop?.member_name || '-',
+                value: formatMemberExpenseMoney(expenseTop?.display_amount ?? expenseTop?.total_amount ?? 0),
+                rowIndex: expenseTop ? items.indexOf(expenseTop) : -1,
+                key: 'expense',
+            },
+            {
+                label: '매출 理쒓퀬',
+                name: revenueTop?.member_name || '-',
+                value: formatMemberExpenseMoney(revenueTop?.revenue_amount || 0),
+                rowIndex: revenueTop ? items.indexOf(revenueTop) : -1,
+                key: 'revenue',
+            },
+            {
+                label: '鍮꾩쑉 理쒓퀬',
+                name: ratioTop?.member_name || '-',
+                value: ratioTop ? `${Number(ratioTop.display_ratio || 0).toFixed(1)}%` : '-',
+                rowIndex: ratioTop ? items.indexOf(ratioTop) : -1,
+                key: 'ratio',
+            }
+        ];
+
+        el.innerHTML = cards.map(card => `
+            <div class="member-expense-summary-chip" data-summary-kind="${card.key || ''}" data-member-expense-summary-idx="${card.rowIndex}">
+                <div class="member-expense-summary-label">${card.label}</div>
+                <div class="member-expense-summary-name">${card.name}</div>
+                <div class="member-expense-summary-value">${card.value}</div>
+            </div>
+        `).join('');
+
+        el.querySelectorAll('[data-member-expense-summary-idx]').forEach(node => {
+            node.addEventListener('click', () => {
+                const idx = parseInt(node.getAttribute('data-member-expense-summary-idx') || '-1', 10);
+                if (idx < 0) return;
+                focusMemberExpenseCard(idx, true);
+            });
+        });
+        updateMemberExpenseSummaryActiveState(cards.find(card => card.rowIndex >= 0)?.rowIndex ?? -1);
+    }
+
+    function renderMemberExpenseCompareBoard(rows) {
+        const el = document.getElementById('memberExpenseCompareBoard');
+        if (!el) return;
+        const items = Array.isArray(rows) ? rows : [];
+        if (!items.length) {
+            el.innerHTML = '';
+            return;
+        }
+
+        const maxAmount = Math.max(...items.map(item => Math.max(
+            Number(item.display_amount ?? item.total_amount ?? 0),
+            Number(item.revenue_amount || 0),
+            1
+        )));
+
+        el.innerHTML = items.map((item, idx) => {
+            const expenseAmount = Number(item.display_amount ?? item.total_amount ?? 0);
+            const revenueAmount = Number(item.revenue_amount || 0);
+            const ratioValue = typeof item.display_ratio === 'number'
+                ? item.display_ratio
+                : (typeof item.expense_ratio === 'number' ? item.expense_ratio : null);
+            const severity = getMemberExpenseSeverity(ratioValue);
+            const expenseWidth = Math.max(4, Math.min(100, (expenseAmount / maxAmount) * 100));
+            const revenueWidth = Math.max(4, Math.min(100, (revenueAmount / maxAmount) * 100));
+            return `
+                <div class="member-expense-compare-row ${idx === 0 ? 'is-active' : ''}" data-member-expense-idx="${idx}">
+                    <div class="member-expense-compare-top">
+                        <div class="member-expense-compare-name">
+                            <span class="member-expense-rank">${idx + 1}</span>
+                            <span class="text-truncate">${item.member_name || '미정}</span>
+                        </div>
+                        <div class="member-expense-compare-ratio is-${severity.key}">${ratioValue === null ? '-' : `${ratioValue.toFixed(1)}%`}</div>
+                    </div>
+                    <div class="member-expense-compare-track">
+                        <div class="member-expense-compare-bar is-revenue" style="width:${revenueWidth}%;"></div>
+                        <div class="member-expense-compare-bar is-expense" style="width:${expenseWidth}%;"></div>
+                    </div>
+                    <div class="member-expense-compare-meta">
+                        <div class="member-expense-compare-value">지출<strong>${formatMemberExpenseMoney(expenseAmount)}</strong></div>
+                        <div class="member-expense-compare-value">매출 <strong>${formatMemberExpenseMoney(revenueAmount)}</strong></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        el.querySelectorAll('[data-member-expense-idx]').forEach(node => {
+            node.addEventListener('click', () => {
+                const idx = parseInt(node.getAttribute('data-member-expense-idx') || '0', 10);
+                focusMemberExpenseCard(idx, true);
+            });
+        });
+        updateMemberExpenseCompareActiveState(0);
+    }
+
+    /*
+    function renderMemberExpenseWarnings(rows) {
+        const warningEl = document.getElementById('memberExpenseWarningBox');
+        if (!warningEl) return;
+
+        const candidates = (Array.isArray(rows) ? rows : [])
+            .map((row, idx) => {
+                const displayAmount = Number(row.display_amount ?? row.total_amount ?? 0);
+                const revenueAmount = Number(row.revenue_amount || 0);
+                const ratio = revenueAmount > 0 ? (displayAmount / revenueAmount) * 100 : null;
+                return {
+                    row_index: idx,
+                    row_index: idx,
+                    row_index: idx,
+                    member_name: row.member_name || '미정,
+                    display_amount: displayAmount,
+                    revenue_amount: revenueAmount,
+                    ratio,
+                };
+            })
+            .filter(row => row.display_amount > 0 && row.ratio !== null)
+            .sort((a, b) => (b.ratio - a.ratio) || (b.display_amount - a.display_amount))
+            .slice(0, 3);
+
+        if (!candidates.length) {
+            warningEl.style.display = 'none';
+            warningEl.innerHTML = '';
+            return;
+        }
+
+        warningEl.style.display = 'block';
+        warningEl.innerHTML = `
+            <div class="member-expense-warning-title">지출鍮꾩쑉???믪? 吏곸썝</div>
+            <div class="member-expense-warning-list">
+                ${candidates.map(row => `
+                    <div class="member-expense-warning-item is-${getMemberExpenseSeverity(row.ratio).key}">
+                        <div>
+                            <div class="member-expense-warning-name">${row.member_name}</div>
+                            <div class="member-expense-warning-meta">매출 ${formatMemberExpenseMoney(row.revenue_amount)}</div>
+                            <div class="member-expense-warning-badge is-${getMemberExpenseSeverity(row.ratio).key}">${getMemberExpenseSeverity(row.ratio).label}</div>
+                        </div>
+                        <div class="member-expense-warning-value">${row.ratio.toFixed(1)}%</div>
+                    </div>
+                `).join('')}
+            </div>
+            ${hiddenDetails.length ? `
+                <div id="memberExpenseDetailExtra" class="member-expense-detail-extra">
+                    ${hiddenDetails.map(detail => `
+                        <div class="member-expense-detail-row">
+                            <div class="member-expense-detail-left">
+                                <span class="member-expense-detail-date">${detail.date || ''}</span>
+                                <div class="member-expense-detail-text">
+                                    <div class="member-expense-detail-cat">${detail.category || '沃섎챶?뉒몴?}</div>
+                                    ${detail.memo ? `<div class="member-expense-detail-memo">${detail.memo}</div>` : ''}
+                                </div>
+                            </div>
+                            <div class="member-expense-detail-total">${formatMemberExpenseMoney(detail.amount || 0)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="member-expense-detail-more">
+                    <button type="button" id="memberExpenseDetailMoreBtn" class="member-expense-detail-more-btn">상세 내역 더보기/button>
+                </div>
+            ` : ''}
+            ${hiddenDetails.length ? `
+                <div id="memberExpenseDetailExtra" class="member-expense-detail-extra">
+                    ${hiddenDetails.map(detail => `
+                        <div class="member-expense-detail-row">
+                            <div class="member-expense-detail-left">
+                                <span class="member-expense-detail-date">${detail.date || ''}</span>
+                                <div class="member-expense-detail-text">
+                                    <div class="member-expense-detail-cat">${detail.category || '沃섎챶?뉒몴?}</div>
+                                    ${detail.memo ? `<div class="member-expense-detail-memo">${detail.memo}</div>` : ''}
+                                </div>
+                            </div>
+                            <div class="member-expense-detail-total">${formatMemberExpenseMoney(detail.amount || 0)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="member-expense-detail-more">
+                    <button type="button" id="memberExpenseDetailMoreBtn" class="member-expense-detail-more-btn">상세 내역 더보기/button>
+                </div>
+            ` : ''}
+        `;
+        enhanceMemberExpenseDetail(item);
+        renderMemberExpenseTrend(item);
+        const moreBtn = document.getElementById('memberExpenseDetailMoreBtn');
+        const extraBox = document.getElementById('memberExpenseDetailExtra');
+        if (moreBtn && extraBox) {
+            moreBtn.addEventListener('click', () => {
+                const isOpen = extraBox.classList.toggle('is-open');
+                moreBtn.textContent = isOpen ? '상세 내역 접기' : '상세 내역 더보기;
+            });
+        }
+    }
+
+    function renderMemberExpenseTrend(item) {
+        const ctx = document.getElementById('memberExpenseTrendChart')?.getContext('2d');
+        if (!ctx) return;
+        const series = Array.isArray(item?.monthly_series) ? item.monthly_series : [];
+        if (memberExpenseTrendInst) {
+            memberExpenseTrendInst.destroy();
+            memberExpenseTrendInst = null;
+        }
+        memberExpenseTrendInst = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: series.map(point => point.label || ''),
+                datasets: [
+                    {
+                        type: 'bar',
+                        label: currentMemberExpenseFilter === '__all__' ? '지출 : currentMemberExpenseFilter,
+                        data: series.map(point => Math.round(getMemberExpenseSeriesAmount(point))),
+                        backgroundColor: ['#c7d2fe', '#93c5fd', '#2563eb'],
+                        borderRadius: 10,
+                        borderSkipped: false,
+                        barThickness: 16,
+                    },
+                    {
+                        type: 'line',
+                        label: '매출',
+                        data: series.map(point => Math.round(point.revenue_amount || 0)),
+                        borderColor: '#f59e0b',
+                        backgroundColor: '#f59e0b',
+                        tension: 0.35,
+                        pointRadius: 3,
+                        pointHoverRadius: 4,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: { usePointStyle: true, boxWidth: 8, font: { size: 10, weight: '700' } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` ${ctx.dataset.label}: ${formatMemberExpenseMoney(ctx.parsed.y || 0)}`
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 10, weight: '700' } }
+                    },
+                    y: {
+                        grid: { color: 'rgba(148, 163, 184, 0.16)' },
+                        ticks: { display: false }
+                    }
+                },
+                onClick: (_, elements) => {
+                    if (!elements.length) return;
+                    const idx = elements[0].index;
+                    const point = series[idx];
+                    jumpToMemberExpenseMonth(point);
+                }
+            }
+        });
+    }
+
+    function renderMemberExpenseDetail(item) {
+        const el = document.getElementById('memberExpenseDetail');
+        if (!el || !item) return;
+        const details = Array.isArray(item.details) ? item.details : [];
+        el.style.display = 'block';
+        el.innerHTML = `
+            <div class="member-expense-detail-head">
+                <div>
+                    <div class="member-expense-detail-title">${item.member_name || '미정}</div>
+                    <div class="member-expense-meta">${item.count || 0}건쨌 ${formatMemberExpenseTopCategories(item.top_categories)}</div>
+                    ${renderMemberExpenseChips(item.top_categories)}
+                </div>
+                <div class="member-expense-detail-total">${Math.round(item.total_amount || 0).toLocaleString()}원</div>
+            </div>
+            <div class="member-expense-trend-card">
+                <div class="member-expense-trend-head">
+                    <div class="member-expense-trend-title">최근 3개월 비교</div>
+                    <div class="member-expense-trend-note">${currentMemberExpenseFilter === '__all__' ? '?꾩껜 지출 : currentMemberExpenseFilter}</div>
+                </div>
+                <div class="member-expense-trend-wrap">
+                    <canvas id="memberExpenseTrendChart"></canvas>
+                </div>
+            </div>
+            <div class="member-expense-trend-card">
+                <div class="member-expense-trend-head">
+                    <div class="member-expense-trend-title">최근 3개월 비교</div>
+                    <div class="member-expense-trend-note">${currentMemberExpenseFilter === '__all__' ? '?꾩껜 지출 : currentMemberExpenseFilter}</div>
+                </div>
+                <div class="member-expense-trend-wrap">
+                    <canvas id="memberExpenseTrendChart"></canvas>
+                </div>
+                <div class="member-expense-trend-months">
+                    ${(Array.isArray(item.monthly_series) ? item.monthly_series : []).map(point => {
+                        const isActive = point?.ym === `${currentSelectedYear}-${String(currentSelectedMonth).padStart(2, '0')}`;
+                        return `<button type="button" class="member-expense-trend-month-btn${isActive ? ' is-active' : ''}" data-member-expense-month="${point.ym || ''}">${point.label || ''}</button>`;
+                    }).join('')}
+                </div>
+            </div>
+            ${visibleDetails.length ? visibleDetails.map(detail => `
+                <div class="member-expense-detail-row">
+                    <div class="member-expense-detail-left">
+                        <span class="member-expense-detail-date">${detail.date || ''}</span>
+                        <div class="member-expense-detail-text">
+                            <div class="member-expense-detail-cat">${detail.category || '미분류}</div>
+                            ${detail.memo ? `<div class="member-expense-detail-memo">${detail.memo}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="member-expense-detail-total">${Math.round(detail.amount || 0).toLocaleString()}원</div>
+                </div>
+            `).join('') : `<div class="member-expense-empty">상세 내역???놁뒿?덈떎.</div>`}
+            ${hiddenDetails.length ? `
+                <div id="memberExpenseDetailExtra" class="member-expense-detail-extra">
+                    ${hiddenDetails.map(detail => `
+                        <div class="member-expense-detail-row">
+                            <div class="member-expense-detail-left">
+                                <span class="member-expense-detail-date">${detail.date || ''}</span>
+                                <div class="member-expense-detail-text">
+                                    <div class="member-expense-detail-cat">${detail.category || '미분류}</div>
+                                    ${detail.memo ? `<div class="member-expense-detail-memo">${detail.memo}</div>` : ''}
+                                </div>
+                            </div>
+                            <div class="member-expense-detail-total">${formatMemberExpenseMoney(detail.amount || 0)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="member-expense-detail-more">
+                    <button type="button" id="memberExpenseDetailMoreBtn" class="member-expense-detail-more-btn">상세 내역 더보기/button>
+                </div>
+            ` : ''}
+        `;
+        enhanceMemberExpenseDetail(item);
+        renderMemberExpenseTrend(item);
+        el.querySelectorAll('[data-member-expense-month]').forEach(node => {
+            node.addEventListener('click', () => {
+                const ym = node.getAttribute('data-member-expense-month') || '';
+                const point = (Array.isArray(item.monthly_series) ? item.monthly_series : []).find(entry => entry.ym === ym);
+                jumpToMemberExpenseMonth(point);
+            });
+        });
+    }
+
+    function renderMemberExpenseSection(memberExpenses, monthLabel) {
+        const listEl = document.getElementById('memberExpenseList');
+        const detailEl = document.getElementById('memberExpenseDetail');
+        const monthEl = document.getElementById('memberExpenseMonthLabel');
+        if (monthEl) monthEl.textContent = monthLabel || '-';
+        if (!listEl || !detailEl) return;
+
+        const rows = Array.isArray(memberExpenses) ? memberExpenses : [];
+        if (!rows.length) {
+            listEl.innerHTML = '<div class="member-expense-empty">吏곸썝蹂?지출데이터가 없습니다.</div>';
+            detailEl.style.display = 'none';
+            if (memberExpenseChartInst) {
+                memberExpenseChartInst.destroy();
+                memberExpenseChartInst = null;
+            }
+            if (memberExpenseTrendInst) {
+                memberExpenseTrendInst.destroy();
+                memberExpenseTrendInst = null;
+            }
+            return;
+        }
+
+        listEl.innerHTML = rows.map((item, idx) => `
+            <div class="member-expense-item ${idx === 0 ? 'is-active' : ''}" data-member-expense-idx="${idx}">
+                <div class="d-flex justify-content-between align-items-start gap-3">
+                    <div class="text-start min-w-0 flex-grow-1">
+                        <div class="d-flex align-items-center gap-2 min-w-0">
+                            <span class="member-expense-rank">${idx + 1}</span>
+                            <div class="member-expense-name text-truncate">${item.member_name || '미정}</div>
+                        </div>
+                        <div class="member-expense-meta mt-1">${item.count || 0}건/div>
+                        ${renderMemberExpenseChips(item.top_categories)}
+                    </div>
+                    <div class="member-expense-amount text-end">${Math.round(item.total_amount || 0).toLocaleString()}원</div>
+                </div>
+            </div>
+        `).join('');
+
+        const updateMemberExpenseChartActiveState = (activeIdx) => {
+            if (!memberExpenseChartInst) return;
+            memberExpenseChartInst.data.datasets[0].backgroundColor = rows.map((_, idx) => idx === activeIdx ? '#2563eb' : '#93c5fd');
+            if (memberExpenseChartInst.data.datasets[1]) {
+                memberExpenseChartInst.data.datasets[1].backgroundColor = rows.map((_, idx) => idx === activeIdx ? '#f59e0b' : '#fde68a');
+            }
+            memberExpenseChartInst.update();
+        };
+
+        listEl.querySelectorAll('[data-member-expense-idx]').forEach(node => {
+            node.addEventListener('click', () => {
+                listEl.querySelectorAll('.member-expense-item').forEach(x => x.classList.remove('is-active'));
+                node.classList.add('is-active');
+                const idx = parseInt(node.getAttribute('data-member-expense-idx') || '0', 10);
+                renderMemberExpenseDetail(rows[idx]);
+                updateMemberExpenseSummaryActiveState(idx);
+                updateMemberExpenseChartActiveState(idx);
+            });
+        });
+
+        renderMemberExpenseDetail(rows[0]);
+        updateMemberExpenseSummaryActiveState(0);
+
+        const ctx = document.getElementById('memberExpenseChart')?.getContext('2d');
+        if (ctx) {
+            if (memberExpenseChartInst) memberExpenseChartInst.destroy();
+            memberExpenseChartInst = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: rows.map(x => x.member_name || '미정),
+                    datasets: [{
+                        label: '吏곸썝蹂?지출,
+                        data: rows.map(x => Math.round(x.total_amount || 0)),
+                        backgroundColor: rows.map((_, idx) => idx === 0 ? '#2563eb' : '#93c5fd'),
+                        borderRadius: 10,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ` ${Math.round(ctx.parsed.x || 0).toLocaleString()}원
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(148, 163, 184, 0.18)' },
+                            ticks: { callback: (value) => `${Math.round(value).toLocaleString()}원 }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { font: { weight: '700' } }
+                        }
+                    },
+                    onClick: (_, elements) => {
+                        if (!elements.length) return;
+                        const idx = elements[0].index;
+                        const target = listEl.querySelector(`[data-member-expense-idx="${idx}"]`);
+                        target?.click();
+                    }
+                }
+            });
+        }
+    }
+
+    */
+    function initDragScroll() {
+        const slider = document.getElementById('trendChartWrapper');
+        let isDown = false, startX, scrollLeft;
+        slider.addEventListener('mousedown', (e) => { isDown = true; slider.style.cursor = 'grabbing'; startX = e.pageX - slider.offsetLeft; scrollLeft = slider.scrollLeft; });
+        slider.addEventListener('mouseleave', () => { isDown = false; slider.style.cursor = 'grab'; });
+        slider.addEventListener('mouseup', () => { isDown = false; slider.style.cursor = 'grab'; });
+        slider.addEventListener('mousemove', (e) => { if (!isDown) return; e.preventDefault(); const walk = (e.pageX - slider.offsetLeft - startX) * 1.5; slider.scrollLeft = scrollLeft - walk; });
+    }
+
+    // ?꾨꽋 李⑦듃 以묒븰 ?띿뒪?몄슜 而ㅼ뒪? ?뚮윭洹몄씤 ?깅줉
+    Chart.register({
+        id: 'centerText',
+        beforeDraw: function(chart) {
+            if (chart.config.type !== 'doughnut') return;
+            const config = chart.config.options.plugins.centerText;
+            if (config && config.display !== false) {
+                let width = chart.width, height = chart.height, ctx = chart.ctx;
+                ctx.restore();
+                
+                let fontSize = (height / 110).toFixed(2);
+                ctx.font = "900 " + fontSize + "em Pretendard";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = "#151a25";
+                let text = config.text || "";
+                
+                let textX = Math.round((width - ctx.measureText(text).width) / 2);
+                let textY = height / 2; 
+                ctx.fillText(text, textX, textY);
+                ctx.save();
+            }
+        }
+    });
+
+    async function initYearlyDashboard() {
+        currentSelectedYear = parseInt(document.getElementById('yearSelector').value);
+        
+        try {
+            const res = await fetch(`/api/stats/dashboard/trend?year=${currentSelectedYear}`);
+            const data = await res.json();
+            
+            let targetYear = data.length > 0 ? data[data.length - 1].year : currentSelectedYear;
+            let targetMonth = data.length > 0 ? data[data.length - 1].month : 1;
+            currentSelectedYear = targetYear;
+            currentSelectedMonth = targetMonth;
+
+            document.getElementById('dashboardMainTitle').innerText = `${currentSelectedYear}??${currentSelectedMonth}??경영 ?붿빟`;
+
+            const generateBgColors = () => data.map(d => (d.year === currentSelectedYear && d.month === currentSelectedMonth) ? '#1864ab' : '#4dabf7');
+
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            if(trendChartInst) trendChartInst.destroy();
+            
+            trendChartInst = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.label), 
+                    datasets: [
+                        { 
+                            type: 'line', label: '수익(湲덉븸)', data: data.map(d => d.net_profit), 
+                            borderColor: '#fa5252', backgroundColor: '#fa5252', showLine: false, pointStyle: 'rect', pointRadius: 6, pointHoverRadius: 8, order: 0 
+                        },
+                        {
+                            type: 'bar', label: '吏??(견적/방문)', 
+                            data: data.map(d => [d.cur_rev, d.cur_rev + d.bottleneck]), 
+                            backgroundColor: '#fa5252', barPercentage: 0.05, categoryPercentage: 1.0, grouped: false, order: 1,
+                            borderRadius: { topLeft: 6, topRight: 6 }
+                        },
+                        { 
+                            type: 'line', label: '6개월 평균', data: data.map(d => d.avg_6_rev), 
+                            borderColor: '#adb5bd', borderWidth: 1, tension: 0.5, borderDash: [4,4], pointRadius: 0, order: 2 
+                        },
+                        { 
+                            type: 'line', label: '1년 평균선, data: data.map(d => d.avg_12_rev), 
+                            borderColor: '#20c997', backgroundColor: 'rgba(32, 201, 151, 0.1)', borderWidth: 1, tension: 0.5, fill: true, pointRadius: 0, order: 3 
+                        },
+                        { 
+                            type: 'bar', label: '吏꾩꽦 매출', data: data.map(d => d.cur_rev), 
+                            backgroundColor: generateBgColors(), barPercentage: 0.9, categoryPercentage: 1.0, grouped: false, order: 4,
+                            borderRadius: { topLeft: 6, topRight: 6 }
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                    plugins: { 
+                        legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8, font: {size: 11, weight: 'bold'} } },
+                        tooltip: { 
+                            callbacks: { 
+                                label: function(ctx) { 
+                                    let l = ctx.dataset.label||''; 
+                                    if(l === '吏??(견적/방문)') return ` ${l}: ${Math.round(ctx.raw[1] - ctx.raw[0]).toLocaleString()}원`;
+                                    return ` ${l}: ${Math.round(ctx.parsed.y).toLocaleString()}원`; 
+                                } 
+                            } 
+                        }
+                    },
+                    scales: { x: { grid: { display: false } }, y: { display: false } },
+                    onClick: (e, activeEls) => {
+                        if (activeEls.length > 0) {
+                            const idx = activeEls[0].index;
+                            const d = data[idx];
+                            
+                            currentSelectedYear = d.year;
+                            currentSelectedMonth = d.month;
+                            document.getElementById('dashboardMainTitle').innerText = `${currentSelectedYear}??${currentSelectedMonth}??경영 ?붿빟`;
+                            
+                            trendChartInst.data.datasets[4].backgroundColor = generateBgColors();
+                            trendChartInst.update();
+                            
+                            // 移대뱶 ?ㅽ겕濡??숈옉 ???붾퀎 ?곗씠???섏묶
+                            snapToTop('trendCard');
+                            loadMonthlyDetail(currentSelectedYear, currentSelectedMonth).then(() => {
+                                // 蹂寃??댁쑀(Reason): [嫄댁닔 ?뚮뜑留?異붽?] API?먯꽌 ?덈줈 ?대젮諛쏆? cnt ?곗씠?곕? 紐⑤떖??議곕┰
+                                const rev = d.cur_rev || 0;
+                                const bot = d.bottleneck || 0;
+                                const totalConsult = rev + bot;
+                                const avg6 = d.avg_6_rev || 0;
+                                const avg12 = d.avg_12_rev || 0;
+                                const net = d.net_profit || 0;
+                                const totalExp = rev - net; 
+                                const margin = rev > 0 ? Math.round((net / rev) * 100) : 0;
+
+                                // API ?묐떟 ?곗씠??window 媛앹껜??DOM?먯꽌 異붿텧)?먯꽌 嫄댁닔 ?뺣낫 (fallback?쇰줈 0)
+                                const revCnt = document.getElementById('pipeQuote').getAttribute('data-rev-cnt') || 0;
+                                const botCnt = document.getElementById('pipeQuote').getAttribute('data-bot-cnt') || 0;
+                                const totalConsultCnt = parseInt(revCnt) + parseInt(botCnt);
+
+                                document.getElementById('chartModalTitle').innerHTML = `<i class="fas fa-chart-pie text-primary me-2"></i>${d.year}??${d.month}???곸꽭`;
+                                
+                                document.getElementById('chartModalBody').innerHTML = `
+                                    <div class="p-3 bg-light rounded-4 mb-3 border">
+                                        <div class="d-flex justify-content-between align-items-center mb-2"><span class="text-secondary fw-bold">총상담${totalConsultCnt}건:</span> <span class="fw-black text-dark fs-5">${Math.round(totalConsult).toLocaleString()}원</span></div>
+                                        <div class="d-flex justify-content-between align-items-center mb-2"><span class="text-secondary fw-bold">吏??방문(${botCnt}건:</span> <span class="fw-black" style="color: #f59f00; font-size: 1.25rem;">${Math.round(bot).toLocaleString()}원</span></div>
+                                        <div class="d-flex justify-content-between align-items-center"><span class="text-secondary fw-bold">실매출${revCnt}건:</span> <span class="fw-black text-primary" style="font-size: 1.25rem;">${Math.round(rev).toLocaleString()}원</span></div>
+                                    </div>
+                                    <div class="p-3 bg-light rounded-4 mb-3 border">
+                                        <div class="d-flex justify-content-between mb-2"><span class="text-secondary fw-bold">6媛쒖썡?됯퇏:</span> <span class="fw-bold text-dark">${Math.round(avg6).toLocaleString()}원</span></div>
+                                        <div class="d-flex justify-content-between"><span class="text-secondary fw-bold">1?꾪룊洹?</span> <span class="fw-bold text-dark">${Math.round(avg12).toLocaleString()}원</span></div>
+                                    </div>
+                                    <div class="p-3 bg-dark text-white rounded-4 shadow-sm">
+                                        <div class="d-flex justify-content-between align-items-center mb-3"><span class="text-white-50 fw-bold">총지출</span> <span class="fw-black text-danger fs-5">${Math.round(totalExp).toLocaleString()}원</span></div>
+                                        <div class="d-flex justify-content-between align-items-center pt-3 border-top border-secondary border-opacity-50">
+                                            <span class="text-white-50 fw-bold">영업이익(${margin}%):</span> <span class="fw-black" style="color: #fcc419; font-size: 1.65rem;">${Math.round(net).toLocaleString()}원</span>
+                                        </div>
+                                    </div>
+                                `;
+
+                                detailModalInst.show();
+                            });
+                        }
+                    }
+                }
+            });
+            
+            setTimeout(() => { document.getElementById('trendChartWrapper').scrollLeft = 9999; }, 50);
+            loadMonthlyDetail(currentSelectedYear, currentSelectedMonth);
+        } catch(e) { console.error("Trend Load Error:", e); }
+    }
+
+    async function loadMonthlyDetail(year, month) {
+        document.getElementById('listTitleLabel').innerText = month;
+        try {
+            const res = await fetch(`/api/stats/dashboard/monthly?year=${year}&month=${month}`);
+            const data = await res.json();
+            currentMonthlyStatsData = data;
+            currentExpenseCategory = '__all__';
+
+            const net = data.summary.net_profit || 0;
+            document.getElementById('netProfit').innerText = `${net < 0 ? '-' : ''}${Math.abs(Math.round(net/10000)).toLocaleString()}만`;
+            document.getElementById('netProfit').className = net >= 0 ? 'fw-black mt-1 mb-0 text-white' : 'fw-black mt-1 mb-0 text-danger';
+
+            document.getElementById('totalRevenue').innerText = `${Math.round((data.summary.total_revenue || 0)/10000).toLocaleString()}만`;
+            document.getElementById('totalExpense').innerText = `${Math.round((data.summary.total_expense || 0)/10000).toLocaleString()}만`;
+            
+            const marginEl = document.getElementById('marginRate');
+            marginEl.innerText = (data.metrics.margin || 0).toFixed(1) + '%';
+            marginEl.className = data.metrics.margin >= 0 ? 'fw-bold text-success m-0 mt-1' : 'fw-bold text-danger m-0 mt-1';
+
+            // [?곗씠???곕룞] API?먯꽌 ?덈줈 ?섍꺼二쇰뒗 嫄댁닔 ?곗씠??留듯븨
+            const quoteCnt = data.pipeline.quote_cnt || 0;
+            const botCnt = data.pipeline.bottleneck_cnt || 0;
+            const unpaidCnt = data.pipeline.unpaid_cnt || 0;
+            const revCnt = data.summary.cur_rev_cnt || 0;
+
+            document.getElementById('pipeQuote').innerText = `${Math.round((data.pipeline.quote || 0)/10000).toLocaleString()}만`;
+            document.getElementById('pipeQuoteLabel').innerText = `1단계: 영업 대기(${quoteCnt}건`;
+            
+            // 紐⑤떖李?嫄댁닔 ?뚮뜑留곸쓣 ?꾪빐 DOM???꾩떆 蹂닿? (data- ?띿꽦)
+            document.getElementById('pipeQuote').setAttribute('data-rev-cnt', revCnt);
+            document.getElementById('pipeQuote').setAttribute('data-bot-cnt', quoteCnt + botCnt);
+            
+            document.getElementById('pipeBottleneck').innerText = `${Math.round((data.pipeline.bottleneck || 0)/10000).toLocaleString()}만`;
+            document.getElementById('pipeBottleneckLabel').innerText = `2단계: 시공 예정 (${botCnt}건`;
+            
+            document.getElementById('pipeUnpaid').innerText = `${Math.round((data.pipeline.unpaid || 0)/10000).toLocaleString()}만`;
+            document.getElementById('pipeUnpaidLabel').innerText = `3단계: 입금 대기(${unpaidCnt}건`;
+
+            const matLabels = Object.keys(data.expense_details.mat);
+            const matData = Object.values(data.expense_details.mat);
+            const opLabels = Object.keys(data.expense_details.op);
+            const opData = Object.values(data.expense_details.op);
+
+            const distinctColors1 = ['#FF6B6B', '#339AF0', '#FCC419', '#20C997', '#845EF7', '#F06595', '#FF922B', '#51CF66', '#22B8CF', '#5C7CFA'];
+            const distinctColors2 = ['#845EF7', '#20C997', '#FF922B', '#339AF0', '#F06595', '#FCC419', '#5C7CFA', '#FF6B6B', '#51CF66', '#22B8CF'];
+
+            // 以묒븰 ?レ옄 ?щ㎎???좏떥
+            const formatCenterTotal = (val) => {
+                if(val === 0) return '0원`;
+                return val >= 10000 ? Math.round(val/10000).toLocaleString() + '留? : val.toLocaleString() + '원`;
+            };
+
+            const renderChart = (id, labels, dsData, colors, totalValue = null) => {
+                const ctx = document.getElementById(id).getContext('2d');
+                if(window[id+'Inst']) window[id+'Inst'].destroy();
+                const total = dsData.reduce((a, b) => a + b, 0);
+                
+                let chartOptions = { 
+                    responsive: true, maintainAspectRatio: false, cutout: '65%', 
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => total === 0 ? ' 지출?놁쓬' : ` ${c.label}: ${c.parsed.toLocaleString()}원 } } } 
+                };
+
+                if (totalValue !== null) {
+                    chartOptions.plugins.centerText = { text: formatCenterTotal(totalValue) };
+                }
+
+                window[id+'Inst'] = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: { labels: total > 0 ? labels : ['지출?놁쓬'], datasets: [{ data: total > 0 ? dsData : [1], backgroundColor: total > 0 ? colors : ['#e9ecef'], borderWidth: 0 }] },
+                    options: chartOptions
+                });
+            };
+
+            const grandTotal = data.summary.mat_exp + data.summary.op_exp;
+            // 지출援ъ“ ?먭렇?섑봽 以묒븰??湲덉븸 ?곗씠???꾨떖
+            renderChart('expTotalChart', ['자재 매입', '현장 경비'], [data.summary.mat_exp, data.summary.op_exp], ['#fcc419', '#339af0'], grandTotal);
+            renderChart('expMatChart', matLabels, matData, distinctColors1, data.summary.mat_exp);
+            renderChart('expOpChart', opLabels, opData, distinctColors2, data.summary.op_exp);
+
+            let combinedList = [];
+            data.expense_list.mat.forEach(item => combinedList.push({...item, type: 'mat'}));
+            data.expense_list.op.forEach(item => combinedList.push({...item, type: 'op'}));
+            combinedList.sort((a, b) => b.date.localeCompare(a.date));
+
+            document.getElementById('allList').innerHTML = combinedList.length > 0 ? 
+                combinedList.map(item => `
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom ${item.type === 'mat' ? 'border-warning border-opacity-25' : 'border-primary border-opacity-25'}">
+                        <div class="text-truncate">
+                            <span class="badge ${item.type === 'mat' ? 'bg-warning text-dark' : 'bg-primary text-white'} me-2">${item.date}</span>
+                            <span class="fw-bold small text-dark">${item.name}</span>
+                            ${item.memo ? `<span class="text-secondary small ms-1">- ${item.memo}</span>` : ''}
+                        </div>
+                        <span class="small fw-bold ${item.type === 'mat' ? 'text-warning-emphasis' : 'text-primary'}">${Math.round(item.amount).toLocaleString()}원</span>
+                    </div>
+                `).join('') : '<div class="text-center small text-muted p-2">내역 없음</div>';
+
+            document.getElementById('matList').innerHTML = data.expense_list.mat.length > 0 ? 
+                data.expense_list.mat.map(item => `<div class="d-flex justify-content-between py-2 border-bottom border-warning border-opacity-10"><div class="text-truncate"><span class="badge bg-warning text-dark me-2">${item.date}</span><span class="fw-bold small text-dark">${item.name}</span></div><span class="small fw-bold">${Math.round(item.amount).toLocaleString()}원</span></div>`).join('') : '<div class="text-center small text-muted">내역 없음</div>';
+
+            document.getElementById('opList').innerHTML = data.expense_list.op.length > 0 ? 
+                data.expense_list.op.map(item => `<div class="d-flex justify-content-between py-2 border-bottom border-primary border-opacity-10"><div class="text-truncate"><span class="badge bg-primary text-white me-2">${item.date}</span><span class="fw-bold small text-dark">${item.name}</span></div><span class="small fw-bold">${Math.round(item.amount).toLocaleString()}원</span></div>`).join('') : '<div class="text-center small text-muted">내역 없음</div>';
+
+            renderMemberExpenseSection(
+                data.member_expenses || [],
+                `${year}.${String(month).padStart(2, '0')}`,
+                data.expense_category_names || []
+            );
+            renderExpenseCategorySection();
+            renderMarketingChannelSection(data.marketing_channels || [], data.marketing_summary || {}, data.as_monitor || {});
+
+            const listDiv = document.getElementById('orderListContainer');
+            listDiv.innerHTML = data.order_list.length > 0 ? data.order_list.map(o => `
+                <div class="list-compact ${o.is_paid ? 'paid' : ''}" onclick="location.href='/view/${o.id}'">
+                    <div class="text-truncate flex-grow-1">
+                        <span class="fw-bolder me-2 ${o.is_paid ? 'text-success' : 'text-primary'}">${o.date}</span>
+                        <span class="fw-bolder text-dark" style="font-size:1.05rem;">${o.name}</span>
+                        <span class="text-secondary small ms-2 fw-medium">| ${o.item_summary}</span>
+                    </div>
+                    <div class="fw-black text-dark flex-shrink-0" style="font-size:1.1rem;">${Math.round((o.amt || 0)/10000).toLocaleString()}만</div>
+                </div>
+            `).join('') : '<div class="text-center text-muted p-4 bg-white rounded-4 shadow-sm fw-bold border">해당 월 내역이 없습니다.</div>';
+
+            const orderSection = document.getElementById('orderSection');
+            const orderToggleIcon = document.getElementById('orderToggleIcon');
+            if (orderSection && orderToggleIcon && data.order_list.length > 0) {
+                orderSection.style.display = 'block';
+                orderToggleIcon.classList.remove('fa-chevron-down');
+                orderToggleIcon.classList.add('fa-chevron-up');
+            }
+
+        } catch(e) { console.error("Monthly Load Error:", e); }
+    }
+    function renderMemberExpenseDetail(item) {
+        const el = document.getElementById('memberExpenseDetail');
+        if (!el || !item) return;
+        const details = Array.isArray(item.display_details) ? item.display_details : (Array.isArray(item.details) ? item.details : []);
+        const displayAmount = Number(item.display_amount ?? item.total_amount ?? 0);
+        const displayCount = Number(item.display_count ?? item.count ?? 0);
+        const revenueAmount = Number(item.revenue_amount || 0);
+        const ratioValue = typeof item.display_ratio === 'number'
+            ? item.display_ratio
+            : (typeof item.expense_ratio === 'number' ? item.expense_ratio : null);
+        const severity = getMemberExpenseSeverity(ratioValue);
+        const visibleDetails = details.slice(0, 3);
+        const hiddenDetails = details.slice(3);
+        el.style.display = 'block';
+        // Reason: [UI ?섏젙] ?곸꽭 吏꾩엯 ??'李몄뿬 매출'怨?'???매출'??遺꾨━?섏뿬 紐낇솗?섍쾶 ?덈궡
+        el.innerHTML = `
+            <div class="member-expense-detail-head">
+                <div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="member-expense-detail-title">${item.member_name || '미정}</div>
+                        <span class="member-expense-contribution">기여율${(item.contribution_rate || 0).toFixed(1)}%</span>
+                    </div>
+                    <div class="member-expense-meta">${displayCount || 0}건쨌 ${formatMemberExpenseTopCategories(item.display_top_categories || item.top_categories)}</div>
+                    ${renderMemberExpenseChips(item.display_top_categories || item.top_categories)}
+                    <div class="member-expense-warning-badge is-${severity.key}">${severity.label}</div>
+                </div>
+                <div class="member-expense-detail-total text-end">
+                    <div>${formatMemberExpenseMoney(displayAmount)}</div>
+                    <div style="font-size: 0.75rem; color: #64748b; font-weight: 700;">珥?지출/div>
+                </div>
+            </div>
+            <div class="member-expense-detail-summary">
+                <div class="member-expense-detail-kpi">
+                    <div class="member-expense-detail-kpi-label">지출?⑷퀎</div>
+                    <div class="member-expense-detail-kpi-value">${formatMemberExpenseMoney(displayAmount)}</div>
+                </div>
+                <div class="member-expense-detail-kpi">
+                    <div class="member-expense-detail-kpi-label">李몄뿬 매출 (???</div>
+                    <div class="member-expense-detail-kpi-value">${formatMemberExpenseMoney(revenueAmount)} <span class="member-expense-rev-sub">(${formatMemberExpenseMoney(item.primary_revenue_amount || 0)})</span></div>
+                </div>
+                <div class="member-expense-detail-kpi is-${severity.key}">
+                    <div class="member-expense-detail-kpi-label">지출鍮꾩쑉</div>
+                    <div class="member-expense-detail-kpi-value">${ratioValue === null ? '-' : `${ratioValue.toFixed(1)}%`}</div>
+                </div>
+            </div>
+            
+            ${visibleDetails.length ? visibleDetails.map(detail => `
+                <div class="member-expense-detail-row">
+                    <div class="member-expense-detail-left">
+                        <span class="member-expense-detail-date">${detail.date || ''}</span>
+                        <div class="member-expense-detail-text">
+                            <div class="member-expense-detail-cat">${detail.category || '미분류}</div>
+                            ${detail.memo ? `<div class="member-expense-detail-memo">${detail.memo}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="member-expense-detail-total">${formatMemberExpenseMoney(detail.amount || 0)}</div>
+                </div>
+            `).join('') : `<div class="member-expense-empty">상세 내역???놁뒿?덈떎.</div>`}
+            ${hiddenDetails.length ? `
+                <div id="memberExpenseDetailExtra" class="member-expense-detail-extra">
+                    ${hiddenDetails.map(detail => `
+                        <div class="member-expense-detail-row">
+                            <div class="member-expense-detail-left">
+                                <span class="member-expense-detail-date">${detail.date || ''}</span>
+                                <div class="member-expense-detail-text">
+                                    <div class="member-expense-detail-cat">${detail.category || '미분류}</div>
+                                    ${detail.memo ? `<div class="member-expense-detail-memo">${detail.memo}</div>` : ''}
+                                </div>
+                            </div>
+                            <div class="member-expense-detail-total">${formatMemberExpenseMoney(detail.amount || 0)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="member-expense-detail-more">
+                    <button type="button" id="memberExpenseDetailMoreBtn" class="member-expense-detail-more-btn">상세 내역 더보기/button>
+                </div>
+            ` : ''}
+        `;
+        enhanceMemberExpenseDetail(item);
+        renderMemberExpenseTrend(item);
+        const moreBtn = document.getElementById('memberExpenseDetailMoreBtn');
+        const extraBox = document.getElementById('memberExpenseDetailExtra');
+        if (moreBtn && extraBox) {
+            moreBtn.addEventListener('click', () => {
+                const isOpen = extraBox.classList.toggle('is-open');
+                moreBtn.textContent = isOpen ? '상세 내역 접기' : '상세 내역 더보기;
+            });
+        }
+    }
+
+    function renderMemberExpenseTrend(item) {
+        const ctx = document.getElementById('memberExpenseTrendChart')?.getContext('2d');
+        if (!ctx) return;
+        const series = Array.isArray(item?.monthly_series) ? item.monthly_series : [];
+        
+        // ?대떦 吏곸썝??3媛쒖썡 지출?됯퇏媛??곗궛
+        const avgExpense = series.reduce((sum, point) => sum + getMemberExpenseSeriesAmount(point), 0) / (series.length || 1);
+
+        if (memberExpenseTrendInst) {
+            memberExpenseTrendInst.destroy();
+            memberExpenseTrendInst = null;
+        }
+        
+        // Reason: [UI 怨좊룄?? 매출? ?⑤룆(吏꾪븳 二쇳솴)怨??묒뾽(?낆? ?몃옉) ?ㅽ깮?쇰줈 ?볤퀬, 吏異쒖? ?뚮???留됰?濡?遺꾨━?섏뿬 鍮꾧탳 吏곴???洹밸???
+        memberExpenseTrendInst = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: series.map(point => point.label || ''),
+                datasets: [
+                    {
+                        type: 'line',
+                        label: '3媛쒖썡 지출?됯퇏??,
+                        data: series.map(() => Math.round(avgExpense)),
+                        borderColor: '#94a3b8',
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        fill: false,
+                        borderWidth: 2,
+                        order: 0
+                    },
+                    {
+                        type: 'bar',
+                        label: '?⑤룆 매출',
+                        data: series.map(point => Math.round(point.solo_revenue || 0)),
+                        backgroundColor: '#f59e0b', // 吏꾪븳 二쇳솴??
+                        stack: 'Revenue',
+                        borderRadius: 4,
+                        barThickness: 14,
+                        order: 2
+                    },
+                    {
+                        type: 'bar',
+                        label: '?묒뾽 매출 (N遺꾨같)',
+                        data: series.map(point => Math.round(point.collab_revenue || 0)),
+                        backgroundColor: '#fde68a', // ?낆? ?몃???
+                        stack: 'Revenue',
+                        borderRadius: 4,
+                        barThickness: 14,
+                        order: 2
+                    },
+                    {
+                        type: 'bar',
+                        label: currentMemberExpenseFilter === '__all__' ? '지출?⑷퀎' : currentMemberExpenseFilter,
+                        data: series.map(point => Math.round(getMemberExpenseSeriesAmount(point))),
+                        backgroundColor: '#3b82f6', // ?뚮???
+                        stack: 'Expense',
+                        borderRadius: 4,
+                        barThickness: 14,
+                        order: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false }, // 留덉슦???ㅻ쾭 ??留됰? 3媛쒖쓽 ?댄똻????踰덉뿉 蹂댁뿬以?
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: { usePointStyle: true, boxWidth: 8, font: { size: 10, weight: '700' } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` ${ctx.dataset.label}: ${Math.round(ctx.parsed.y || 0).toLocaleString()}원
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true, // X異??ㅽ깮 ?쒖꽦??
+                        grid: { display: false },
+                        ticks: { font: { size: 10, weight: '700' } }
+                    },
+                    y: {
+                        stacked: true, // Y異??ㅽ깮 ?쒖꽦??
+                        grid: { color: 'rgba(148, 163, 184, 0.16)' },
+                        ticks: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    function renderMemberExpenseSection(memberExpenses, monthLabel, expenseCategories = []) {
+        currentMemberExpenseRows = Array.isArray(memberExpenses) ? memberExpenses : [];
+        currentMemberExpenseCategories = Array.isArray(expenseCategories) ? expenseCategories : [];
+        if (currentMemberExpenseFilter !== '__all__' && !currentMemberExpenseCategories.includes(currentMemberExpenseFilter)) {
+            currentMemberExpenseFilter = '__all__';
+        }
+
+        const listEl = document.getElementById('memberExpenseList');
+        const detailEl = document.getElementById('memberExpenseDetail');
+        const monthEl = document.getElementById('memberExpenseMonthLabel');
+        if (monthEl) monthEl.textContent = monthLabel || '-';
+        if (!listEl || !detailEl) return;
+
+        renderMemberExpenseFilterBar(currentMemberExpenseCategories);
+
+        const rows = getFilteredMemberExpenseRows(currentMemberExpenseRows, currentMemberExpenseFilter);
+        renderMemberExpenseSummary(rows);
+        renderMemberExpenseCompareBoard(rows);
+        renderMemberExpenseWarnings(rows);
+        if (!rows.length) {
+            listEl.innerHTML = '<div class="member-expense-empty">선택한 조건의吏곸썝蹂?지출데이터가 없습니다.</div>';
+            detailEl.style.display = 'none';
+            if (memberExpenseChartInst) {
+                memberExpenseChartInst.destroy();
+                memberExpenseChartInst = null;
+            }
+            return;
+        }
+
+        // Reason: [硫붾え由?珥덇린?? ?붾㈃???ㅼ떆 洹몃━湲??? 湲곗〈??洹몃젮吏?誘몃땲 李⑦듃?ㅼ씠 硫붾え由щ? ?뚮㉨吏 ?딅룄濡??뚭눼
+        if (typeof miniSparklineInsts !== 'undefined') {
+            miniSparklineInsts.forEach(inst => inst.destroy());
+        }
+        miniSparklineInsts = [];
+
+        // Reason: [UI 怨좊룄?? 由ъ뒪???곗륫??80x35 ?쎌? ?ш린??珥덉냼??罹붾쾭?ㅻ? 異붽??섏뿬 ?ㅽ뙆?щ씪??怨듦컙 ?뺣낫
+        listEl.innerHTML = rows.map((item, idx) => `
+            <div class="member-expense-item ${idx === 0 ? 'is-active' : ''}" data-member-expense-idx="${idx}">
+                <div class="d-flex justify-content-between align-items-center gap-2">
+                    <div class="text-start min-w-0 flex-grow-1">
+                        <div class="d-flex align-items-center gap-2 min-w-0">
+                            <span class="member-expense-rank">${idx + 1}</span>
+                            <div class="member-expense-name text-truncate">${item.member_name || '미정}</div>
+                            <span class="member-expense-contribution">기여율${(item.contribution_rate || 0).toFixed(1)}%</span>
+                        </div>
+                        <div class="member-expense-meta mt-1 mb-1">지출${item.display_count || item.count || 0}건쨌 ${formatMemberExpenseTopCategories(item.display_top_categories || item.top_categories)}</div>
+                        
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <span class="member-expense-rev-main">李몄뿬 매출 ${formatMemberExpenseMoney(item.revenue_amount || 0)}</span>
+                            <span class="member-expense-rev-sub">(???${formatMemberExpenseMoney(item.primary_revenue_amount || 0)})</span>
+                        </div>
+                    </div>
+                    
+                    <div style="width: 70px; height: 35px; flex-shrink: 0;" class="mx-2">
+                        <canvas id="miniSparkline-${idx}"></canvas>
+                    </div>
+
+                    <div class="text-end flex-shrink-0">
+                        <div class="member-expense-amount">${formatMemberExpenseMoney(item.display_amount ?? item.total_amount ?? 0)}</div>
+                        <div class="member-expense-warning-badge is-${getMemberExpenseSeverity(item.display_ratio).key} mt-1">${getMemberExpenseSeverity(item.display_ratio).label}</div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        // Reason: [?곗씠???쒓컖?? 由ъ뒪???뚮뜑留??꾨즺 ?? 媛??꾩씠?쒕쭏??堉덈?留??④릿 ?뉗? ??洹몃옒???ㅽ뙆?щ씪?? ?앹꽦
+        enhanceMemberExpenseCards(rows);
+
+        rows.forEach((item, idx) => {
+            const ctx = document.getElementById(`miniSparkline-${idx}`)?.getContext('2d');
+            if (!ctx) return;
+            
+            const series = Array.isArray(item.monthly_series) ? item.monthly_series : [];
+            const dataPoints = series.map(p => Math.round(getMemberExpenseSeriesAmount(p)));
+
+            const inst = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: series.map(p => p.label || ''),
+                    datasets: [{
+                        data: dataPoints,
+                        borderColor: '#93c5fd', // ?吏 ?딅뒗 ?고븳 ?뚮???
+                        borderWidth: 2,
+                        pointRadius: 0,         // ???④?
+                        pointHoverRadius: 0,
+                        tension: 0.35           // 遺?쒕윭??怨≪꽑
+                    }]
+                },
+                options: {
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    animation: false, // 濡쒕뵫 ?띾룄 理쒖쟻?붾? ?꾪빐 ?좊땲硫붿씠???꾧린
+                    plugins: { 
+                        legend: { display: false }, 
+                        tooltip: { enabled: false } // 留덉슦???ㅻ쾭 諛섏쓳 ?꾧린
+                    },
+                    scales: { 
+                        x: { display: false }, // X異??④?
+                        y: { display: false, min: 0 }  // Y異??④? (??긽 0遺???쒖옉?섏뿬 ?쒓끝 諛⑹?)
+                    },
+                    layout: { padding: 0 }
+                }
+            });
+            miniSparklineInsts.push(inst);
+        });
+
+        const updateMemberExpenseChartActiveState = (activeIdx) => {
+            if (!memberExpenseChartInst) return;
+            memberExpenseChartInst.data.datasets[0].backgroundColor = rows.map((_, idx) => idx === activeIdx ? '#2563eb' : '#93c5fd');
+            if (memberExpenseChartInst.data.datasets[1]) {
+                memberExpenseChartInst.data.datasets[1].backgroundColor = rows.map((_, idx) => idx === activeIdx ? '#f59e0b' : '#fde68a');
+            }
+            memberExpenseChartInst.update();
+        };
+
+        listEl.querySelectorAll('[data-member-expense-idx]').forEach(node => {
+            node.addEventListener('click', () => {
+                listEl.querySelectorAll('.member-expense-item').forEach(x => x.classList.remove('is-active'));
+                node.classList.add('is-active');
+                const idx = parseInt(node.getAttribute('data-member-expense-idx') || '0', 10);
+                renderMemberExpenseDetail(rows[idx]);
+                updateMemberExpenseSummaryActiveState(idx);
+                updateMemberExpenseCompareActiveState(idx);
+                updateMemberExpenseChartActiveState(idx);
+                renderExpenseCategoryMemberChart();
+            });
+        });
+
+        renderMemberExpenseDetail(rows[0]);
+        updateMemberExpenseSummaryActiveState(0);
+        updateMemberExpenseCompareActiveState(0);
+        renderExpenseCategoryMemberChart();
+
+        const ctx = document.getElementById('memberExpenseChart')?.getContext('2d');
+        if (!ctx) return;
+        if (memberExpenseChartInst) memberExpenseChartInst.destroy();
+        memberExpenseChartInst = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: rows.map(x => x.member_name || '미정),
+                datasets: [{
+                    label: currentMemberExpenseFilter === '__all__' ? '吏곸썝蹂?지출 : `${currentMemberExpenseFilter} 鍮꾧탳`,
+                    data: rows.map(x => Math.round(x.display_amount ?? x.total_amount ?? 0)),
+                    backgroundColor: rows.map((_, idx) => idx === 0 ? '#2563eb' : '#93c5fd'),
+                    borderRadius: 10,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` ${formatMemberExpenseMoney(ctx.parsed.x || 0)}`
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(148, 163, 184, 0.18)' },
+                        ticks: { callback: (value) => formatMemberExpenseMoney(value) }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { font: { weight: '700' } }
+                    }
+                },
+                onClick: (_, elements) => {
+                    if (!elements.length) return;
+                    const idx = elements[0].index;
+                    focusMemberExpenseCard(idx, false);
+                }
+            }
+        });
+
+        memberExpenseChartInst.destroy();
+        memberExpenseChartInst = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: rows.map(x => x.member_name || '미정),
+                datasets: [
+                    {
+                        label: currentMemberExpenseFilter === '__all__' ? '지출 : `${currentMemberExpenseFilter}`,
+                        data: rows.map(x => Math.round(x.display_amount ?? x.total_amount ?? 0)),
+                        backgroundColor: rows.map((_, idx) => idx === 0 ? '#2563eb' : '#93c5fd'),
+                        borderRadius: 10,
+                        borderSkipped: false,
+                        barThickness: 14,
+                    },
+                    {
+                        label: '매출',
+                        data: rows.map(x => Math.round(x.revenue_amount || 0)),
+                        backgroundColor: rows.map((_, idx) => idx === 0 ? '#f59e0b' : '#fde68a'),
+                        borderRadius: 10,
+                        borderSkipped: false,
+                        barThickness: 14,
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: { usePointStyle: true, boxWidth: 8, font: { size: 11, weight: '700' } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` ${ctx.dataset.label}: ${formatMemberExpenseMoney(ctx.parsed.x || 0)}`
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(148, 163, 184, 0.18)' },
+                        ticks: { callback: (value) => formatMemberExpenseMoney(value) }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { font: { weight: '700' } }
+                    }
+                },
+                onClick: (_, elements) => {
+                    if (!elements.length) return;
+                    const idx = elements[0].index;
+                    focusMemberExpenseCard(idx, false);
+                }
+            }
+        });
+    }
+
+    function renderMemberExpenseWarnings(rows) {
+        const alertEl = document.getElementById('memberExpenseAlertBox');
+        const warningEl = document.getElementById('memberExpenseWarningBox');
+        if (!warningEl || !alertEl) return;
+
+        const candidates = (Array.isArray(rows) ? rows : [])
+            .map((row, idx) => {
+                const displayAmount = Number(row.display_amount ?? row.total_amount ?? 0);
+                const revenueAmount = Number(row.revenue_amount || 0);
+                const ratio = revenueAmount > 0 ? (displayAmount / revenueAmount) * 100 : null;
+                const severity = getMemberExpenseSeverity(ratio);
+                return {
+                    row_index: idx,
+                    member_name: row.member_name || '미정,
+                    display_amount: displayAmount,
+                    revenue_amount: revenueAmount,
+                    ratio,
+                    severity,
+                };
+            })
+            .filter(row => row.display_amount > 0 && row.ratio !== null)
+            .sort((a, b) => (b.ratio - a.ratio) || (b.display_amount - a.display_amount))
+            .slice(0, 3);
+
+        const alertRows = candidates.filter(row => row.severity.key === 'high');
+        if (!alertRows.length) {
+            alertEl.style.display = 'none';
+            alertEl.innerHTML = '';
+        } else {
+            alertEl.style.display = 'block';
+            alertEl.innerHTML = `
+                <div class="member-expense-alert-head">
+                    <div class="member-expense-alert-title">주의 吏곸썝 빠른 확인</div>
+                    <div class="member-expense-alert-count">${alertRows.length}紐?/div>
+                </div>
+                <div class="member-expense-alert-list">
+                    ${alertRows.map(row => `
+                        <div class="member-expense-alert-item" data-member-expense-idx="${row.row_index}">
+                            <div>
+                                <div class="member-expense-alert-name">${row.member_name}</div>
+                                <div class="member-expense-alert-meta">매출 ${formatMemberExpenseMoney(row.revenue_amount)}</div>
+                            </div>
+                            <div class="member-expense-alert-value">${row.ratio.toFixed(1)}%</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            alertEl.querySelectorAll('[data-member-expense-idx]').forEach(node => {
+                node.addEventListener('click', () => {
+                    const idx = parseInt(node.getAttribute('data-member-expense-idx') || '-1', 10);
+                    focusMemberExpenseCard(idx, true);
+                });
+            });
+        }
+
+        if (!candidates.length) {
+            warningEl.style.display = 'none';
+            warningEl.innerHTML = '';
+            return;
+        }
+
+        warningEl.style.display = 'block';
+        warningEl.innerHTML = `
+            <div class="member-expense-warning-title">지출鍮꾩쑉???믪? 吏곸썝</div>
+            <div class="member-expense-warning-list">
+                ${candidates.map(row => `
+                    <div class="member-expense-warning-item is-${row.severity.key}" data-member-expense-idx="${row.row_index}">
+                        <div>
+                            <div class="member-expense-warning-name">${row.member_name}</div>
+                            <div class="member-expense-warning-meta">매출 ${formatMemberExpenseMoney(row.revenue_amount)}</div>
+                            <div class="member-expense-warning-badge is-${row.severity.key}">${row.severity.label}</div>
+                        </div>
+                        <div class="member-expense-warning-value">${row.ratio.toFixed(1)}%</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        warningEl.querySelectorAll('[data-member-expense-idx]').forEach(node => {
+            node.addEventListener('click', () => {
+                const idx = parseInt(node.getAttribute('data-member-expense-idx') || '-1', 10);
+                focusMemberExpenseCard(idx, true);
+            });
+        });
+    }
+</script>
+
+{% include '/includes/zoom_widget.html' %}
+
+</body>
+</html>

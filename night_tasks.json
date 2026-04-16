@@ -1,0 +1,19 @@
+{
+  "defaults": {
+    "sshTarget": "ubuntu@43.202.209.122",
+    "sshKeyPath": "d:\\dev\\changarum.pem",
+    "serviceName": "mysite"
+  },
+  "tasks": [
+    {
+      "name": "web check",
+      "paths": ["templates\\stats.html"],
+      "url": "http://43.202.209.122/view/6075"
+    },
+    {
+      "name": "python restart and check",
+      "paths": ["main.py"],
+      "url": "http://43.202.209.122/view/6075"
+    }
+  ]
+}

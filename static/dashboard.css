@@ -1,0 +1,1615 @@
+/* Reset & Base */
+:root {
+    --status-req: #6f8672;    /* 요청 */
+    --status-visit: #39b114;  /* 방문 */
+    --status-inst: #1472ec;   /* 시공/설치 */
+    --status-done: #333333;   /* 완료 */
+    --status-as: #9e1dbe;     /* AS */
+    --status-wait: #608f64;   /* 대기 */
+    --status-hold: #555a5f;   /* 보류 */
+    --status-ord1: #3cce10;   /* 주문 */
+    --status-ord2: #4e98fa;   /* 수령 */
+    --status-pay: #eb4646;   /* 입금 */
+    --status-warning: #ff9500;/* 경고/주의 */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+    --radius-md: 12px;
+    --radius-lg: 16px;
+}
+
+
+body { font-family: 'Noto Sans KR', sans-serif; background-color: #f3f4f5; margin: 0; padding: 0; color: #5a5c69; }
+a { text-decoration: none; color: inherit; }
+ul { list-style: none; padding: 0; margin: 0; }
+
+/* Header */
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-top: 20px; flex-wrap: wrap; gap: 10px; }
+.pg-title { font-size: 1.5rem; font-weight: bold; color: #333; display: flex; align-items: center; gap: 10px; }
+.pg-title span { font-size: 1rem; color: #888; font-weight: normal; }
+.dash_top { display: flex; gap: 8px; align-items: center; }
+
+/* Buttons */
+.btn { border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 0.9rem; transition: 0.2s; }
+.btn-cal { background: #fff; border: 1px solid #ddd; color: #555; }
+.btn-aa { background: #4e73df; color: white; }
+.btn-new { background: #1cc88a; color: white; font-weight: bold; }
+.btn-full { width: 100%; padding: 12px; background: #4e73df; color: white; border-radius: 5px; font-size: 1rem; margin-top: 15px; }
+
+/* Search */
+.search-wrap { display: inline-block; }
+.search-box { display: flex; border: 1px solid #ddd; border-radius: 5px; overflow: hidden; background: #fff; }
+.search-input { border: none; padding: 8px; outline: none; font-size: 0.9rem; width: 180px; }
+.search-btn { background: #f8f9fa; border: none; padding: 0 12px; cursor: pointer; border-left: 1px solid #ddd; }
+
+/* KPI Area */
+.kpi-area { display: flex; gap: 15px; margin-bottom: 10px; cursor: pointer; }
+.kpi-box { 
+    /* 기존 스타일 유지하면서 shadow만 변경 */
+    flex: 1; background: #fff; border-radius: 8px; padding: 15px; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1); /* 더 진한 그림자 */
+    display: flex; justify-content: space-between; align-items: center; 
+    border-left: 4px solid #ddd; transition: transform 0.2s; 
+}
+.kpi-box:hover { transform: translateY(-3px); }
+.kpi-box:nth-child(1) { border-left-color: var(--status-done); }
+.kpi-box:nth-child(2) { border-left-color: var(--status-warning); }
+.kpi-box:nth-child(3) { border-left-color: var(--status-as); }
+.kpi-lbl { display: block; font-size: 0.8rem; color: #888; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
+.kpi-val { font-size: 1.2rem; font-weight: bold; color: #333; }
+.kpi-icon { font-size: 1.5rem; opacity: 0.3; }
+
+/* Status Bar */
+.status-bar-wrapper { overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;}
+.status-bar-wrapper::-webkit-scrollbar { display: none; }
+.status-bar { display: flex; gap: 10px; min-width: max-content; }
+.status-item { 
+    background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 8px 15px; display: flex; 
+    align-items: center; gap: 8px; font-size: 0.9rem; color: #555; transition: 0.2s; font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+ }
+.status-item:hover, .status-item.active { background: #eef2ff; border-color: #4e73df; color: #2e59d9; }
+.status-item.active .st-num { font-weight: bold; }
+.st-num { font-weight: bold; }
+.st-divider { width: 1px; background: #ddd; margin: 0 5px; }
+
+/* Cards */
+.card { 
+    background: #fff; border-radius: 20px; 
+    margin: 20px 0; overflow: hidden; 
+}
+.card-head { padding: 12px 15px; border-bottom: 1px solid #f0f0f0; font-weight: bold; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center; }
+.card-body { 
+    padding: 10px 10px 1px 10px;
+    background-color: #eeeeee;
+ }
+.c-cnt { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; font-size: 0.8rem; }
+
+/* List Rows */
+.row { display: flex; justify-content: space-between; padding: 12px 15px; border-bottom: 1px solid #f8f9fa; transition: 0.1s; }
+.row:last-child { border-bottom: none; }
+.row:hover { background: #fafafa; }
+.row-left { flex: 1; min-width: 0; }
+.row-right { text-align: right; margin-left: 10px; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; }
+
+.bdg { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; color: #fff; margin-right: 5px; vertical-align: middle; }
+.b-req { background: var(--status-req); }
+.b-visit { background: var(--status-visit); }
+.b-inst { background: var(--status-inst); }
+.b-done { background: var(--status-done); }
+.b-as { background: var(--status-as); }
+
+.s-ord { color: #fff; background: var(--status-ord1); border-color: var(--status-ord1); } /* 주문: 녹색 */
+.s-recv { color: #fff; background: var(--status-ord2); border-color: var(--status-ord2); } /* 수령: 파랑 */
+.s-pay { color: #fff; background: var(--status-pay); border-color: var(--status-pay); } /* 입금: 빨강 */
+.s-wait { color: #fff; background: var(--status-wait); border-color: var(--status-wait); }
+.s-hold { color: #fff; background: var(--status-hold); border-color: var(--status-hold); }
+.s-as { color: #fff; background: var(--status-as); border-color: var(--status-as); }
+
+.code-span { font-size: 0.75rem; color: #888; margin-right: 5px; }
+
+.row-main { font-weight: bold; font-size: 0.95rem; color: #333; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row-sub { font-weight: normal; font-size: 0.85rem; color: #888; margin-left: 5px; }
+.row-detail-wrap { font-size: 0.85rem; color: #666; display: flex; gap: 5px; align-items: center; }
+.row-items { color: #555; }
+.row-memo { 
+    color: #e74a3b; 
+    display: inline-block;
+    max-width: 300px;
+    vertical-align: bottom;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.row-meta { margin-top: 4px; font-size: 0.85rem; color: #aaa; }
+.amt { color: #333; font-weight: bold; }
+.sep { margin: 0 5px; color: #ddd; }
+
+.btn-icon { width: 30px; height: 30px; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 1px solid #ddd; color: #555; transition: 0.2s; }
+.btn-call:hover { background: #4e73df; color: #fff; border-color: #4e73df; }
+.btn-trash:hover { background: #e74a3b; color: #fff; border-color: #e74a3b; }
+.row-actions { display: flex; gap: 5px; margin-top: 5px; }
+
+/* Week Header */
+.week-header { padding: 0px 10px; font-size: 1rem; font-weight: bold; color: #555; margin-bottom: 0px; margin-top: 5px; }
+.after-week-head { background: #d1cfae; padding: 4px 15px; font-size: 0.85rem; font-weight: bold; color: #555; border-bottom: 1px solid #eee; margin-bottom: 4px; margin-top: 10px; }
+
+/* Modal */
+.modal { display: none; position: fixed; z-index: 999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+.m-con { background-color: #fff; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; }
+.m-con1 { background-color: #fff; padding: 20px; border-radius: 10px; width: 95%; max-width: 1200px; height: auto; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative; }
+.close { position: absolute; right: 15px; top: 10px; font-size: 24px; cursor: pointer; color: #aaa; }
+.close-cal-btn { position: absolute; right: 15px; top: 10px; font-size: 24px; cursor: pointer; color: #aaa; }
+.m-inp { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+
+/* [모달 스타일 - 블루 카드 디자인] */
+    .modal-blue-header {
+        background: #4361ee; /* 쨍한 파란색 */
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
+        padding: 25px 20px;
+        text-align: center;
+        color: #fff;
+    }
+    .mbh-lbl { font-size: 0.9rem; opacity: 0.9; margin-bottom: -5px; }
+    .mbh-val { font-size: 2.2rem; font-weight: 800; letter-spacing: 0px; }
+    .mbh-desc { font-size: 0.8rem; background: rgba(0,0,0,0.2); display: inline-block; padding: 4px 12px; border-radius: 20px; }
+
+    .modal-blue-body {
+        background: #fff;
+        border-bottom-left-radius: 12px;
+        border-bottom-right-radius: 12px;
+        overflow: hidden; /* 모서리 깎임 적용 */
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .m-grid-row { display: flex; }
+    .m-cell {
+        flex: 1;
+        padding: 20px 15px;
+        position: relative; /* 아이콘 배치를 위해 */
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .m-cell:active { background: #f8f9fa; }
+    
+    /* 테두리 처리 */
+    .border-r { border-right: 1px solid #eee; }
+    .border-b { border-bottom: 1px solid #eee; }
+    .wide-cell { flex: 1.2; } /* 왼쪽 칸을 조금 더 넓게 */
+
+    /* 텍스트 스타일 */
+    .mc-head { font-size: 0.95rem; font-weight: bold; color: #333; margin-bottom: 5px; }
+    .mc-head-sm { font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; }
+    .mc-cnt-sm { font-size: 1.1rem; font-weight: 800; margin-bottom: 2px; }
+    
+    .mc-val-lg { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.5px; }
+    .mc-val-sm { font-size: 1.1rem; font-weight: 600; }
+    .mc-val-md { font-size: 1.4rem; font-weight: 800; }
+
+    /* 색상 유틸 */
+    .text-green { color: #28a745; }
+    .text-blue { color: #4361ee; }
+    .text-orange { color: #ff9f1c; }
+    .text-gray { color: #6c757d; }
+
+    /* 배경 아이콘 (워터마크 효과) */
+    .mc-icon {
+        position: absolute;
+        right: 15px;
+        bottom: 15px;
+        font-size: 2.5rem;
+        opacity: 0.15;
+    }
+    .text-green-light { color: #28a745; }
+    .text-orange-light { color: #ffc107; }
+
+    /* 하단 카드 영역 */
+    .modal-footer-row { display: flex; gap: 10px; margin-top:10px;}
+    .mf-card {
+        flex: 1;
+        background: #fff;
+        border-radius: 12px;
+        padding: 15px;
+        position: relative;
+        cursor: pointer;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .mf-card.success { background: #e8f5e9; border: 1px solid #c3e6cb; } /* 연한 초록 배경 */
+    .mf-card.hold { background: #fff; border: 1px solid #ddd; } /* 흰색 배경 */
+    
+    .mf-icon { position: absolute; right: 10px; bottom: 10px; font-size: 2rem; opacity: 0.2; }
+
+
+
+    /* 1. 전체 헤더 레이아웃: 좌우 배치를 위한 Flexbox */
+    .dash-header-wrapper {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        flex-wrap: wrap; /* 모바일 대응 */
+        gap: 15px;
+    }
+
+    /* 2. 좌측 타이틀 영역 */
+    .dash-title-area {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .dash-title {
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: #333;
+        letter-spacing: -0.5px;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .dash-title .date-badge {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #888;
+        background: #f1f3f5;
+        padding: 4px 10px;
+        border-radius: 8px;
+    }
+    
+    /* 달력 버튼 스타일 (뱃지 형태) */
+    .btn-calendar-badge {
+        background: #fff;
+        border: 1px solid #ddd;
+        color: #555;
+        padding: 6px 14px;
+        border-radius: 20px; /* 캡슐 모양 */
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+    }
+    .btn-calendar-badge:hover {
+        border-color: #333;
+        color: #000;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+    }
+
+    /* 3. 우측 툴바 영역 (검색창 + 버튼들) */
+    .search-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #fff;
+        padding: 8px 10px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.04); /* 부드러운 그림자 */
+        border: 1px solid #f0f0f0;
+    }
+
+    /* 검색 그룹 */
+    .search-group {
+        display: flex;
+        align-items: center;
+        background: #f8f9fa;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        padding: 0 12px;
+        height: 42px;
+        width: 300px; /* 검색창 너비 */
+        transition: all 0.3s;
+    }
+    .search-group:focus-within {
+        background: #fff;
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+        width: 320px; /* 포커스 시 살짝 늘어남 */
+    }
+    .search-group input {
+        border: none;
+        background: transparent;
+        outline: none;
+        width: 100%;
+        font-size: 0.95rem;
+        color: #333;
+        padding: 0 5px;
+    }
+    .search-group button {
+        border: none;
+        background: none;
+        color: #adb5bd;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    .search-group button:hover {
+        color: #007bff;
+    }
+
+    /* 버튼 공통 */
+    .btn-tool {
+        height: 42px;
+        padding: 0 18px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    /* 통계 버튼 */
+    .btn-stats {
+        background: #e7f5ff;
+        color: #1971c2;
+    }
+    .btn-stats:hover {
+        background: #d0ebff;
+        color: #1864ab;
+    }
+
+    /* 신규등록 버튼 */
+    .btn-new {
+        background: linear-gradient(135deg, #20c997, #0ca678);
+        color: #fff;
+        box-shadow: 0 3px 6px rgba(32, 201, 151, 0.2);
+    }
+    .btn-new:hover {
+        filter: brightness(1.05);
+        transform: translateY(-1px);
+        box-shadow: 0 5px 10px rgba(32, 201, 151, 0.3);
+    }
+
+    /* 모바일 반응형 */
+    @media (max-width: 900px) {
+        .dash-header-wrapper {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .search-toolbar {
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        .search-group {
+            order: 3; width: 100%; margin-top: 5px;
+        }
+        .search-group:focus-within { width: 100%; }
+        .btn-tool { flex: 1; justify-content: center; }
+    }
+
+
+/* ==========================================================================
+   [리스트 스타일 리뉴얼] image_e5f3c0.png 스타일 완벽 구현
+   ========================================================================== */
+
+/* 1. 리스트 아이템 컨테이너 */
+.row {
+    background: #fff;
+    padding: 15px 18px; /* 내부 여백 넉넉하게 */
+    border-bottom: 1px solid #f1f3f5;
+    cursor: pointer;
+    transition: background 0.1s;
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* 줄 간격 */
+}
+.row:active { background: #f8f9fa; }
+.row:last-child { border-bottom: none; }
+
+/* 2. 공통 라인 스타일 (좌우 정렬) */
+.row-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+}
+
+/* --------------------------------------------------------
+   [첫번째 줄] 상태뱃지 + 이름 + 주소 | 날짜
+   -------------------------------------------------------- */
+.line-1-left {
+    display: flex; align-items: center; gap: 8px;
+    flex: 1; min-width: 0; padding-right: 10px;
+}
+
+/* 메인 상태 뱃지 */
+.main-bdg {
+    font-size: 0.75rem; padding: 2px 4px; border-radius: 4px; color: #fff; font-weight: bold; white-space: nowrap; flex-shrink: 0;
+}
+/* 색상은 common.css 변수 사용 (bg-req 등) */
+
+.r-name { font-size: 1.05rem; font-weight: 800; color: #333; white-space: nowrap; flex-shrink: 0; }
+.r-addr { 
+    font-size: 0.9rem; color: #888; 
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+}
+.r-date { font-size: 0.9rem; font-weight: bold; color: #333; white-space: nowrap; letter-spacing: -0.3px; }
+
+
+/* --------------------------------------------------------
+   [두번째 줄] 품목 태그 | 메모 (한 줄에 배치)
+   -------------------------------------------------------- */
+.line-2 {
+    display: flex; align-items: center; width: 100%; overflow: hidden;
+    margin-top: -5px;
+}
+
+/* 품목 그룹 */
+.item-group {
+    display: flex; gap: 2px; flex-shrink: 0; /* 줄어들지 않음 */
+    overflow-x: auto; scrollbar-width: none; /* 가로 스크롤 */
+    align-items: center; 
+}
+.item-group::-webkit-scrollbar { display: none; }
+
+/* 품목 태그 (이미지 스타일: 흰색 배경 + 테두리) */
+.item-pill {
+    display: inline-block;
+    background: #fff; 
+    color: #000; 
+    border: 1px solid #e0e0e0;
+    padding: 0px 4px; 
+    border-radius: 4px;
+    font-size: 0.8rem; 
+    white-space: nowrap;
+}
+
+.line-1-right{
+    margin-right : 5px;
+}
+
+/* 메모 그룹 */
+.memo-group {
+    flex: 1; min-width: 0; /* 말줄임 필수 */
+    display: flex; align-items: center; gap: 5px;
+    color: #666; font-size: 0.85rem;
+    margin-left: 5px;
+}
+.memo-txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+
+/* --------------------------------------------------------
+   [세번째 줄] 서브뱃지 | 금액 + 전화
+   -------------------------------------------------------- */
+.line-3 {
+    display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: -10px;
+}
+
+/* 날짜 + 전화번호 그룹 */
+.line-3-left {
+    display: flex; align-items: center; gap: 15px; /* 날짜와 번호 사이 간격 */
+    flex-wrap: wrap; /* 화면 좁을 때 줄바꿈 대응 */
+}
+
+/* 서브 뱃지 그룹 */
+.sub-bdgs { display: flex;}
+
+/* 색상은 common.css 변수 사용 */
+
+/* 금액 + 전화 그룹 */
+.price-phone-group {
+    display: flex; align-items: center; gap: 10px;
+}
+
+.r-price { 
+    font-size: 1rem; font-weight: 600; color: #3685ff;
+    letter-spacing: -0.5px; white-space: nowrap;
+}
+
+/* 전화 버튼 */
+.btn-phone-lg {
+    width: 36px; height: 36px; border-radius: 50%; 
+    background: #fff; border: 1px solid #dee2e6; color: #495057;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; text-decoration: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.2s;
+}
+.btn-phone-lg:active { background: #f1f3f5; transform: scale(0.95); }
+
+.phone-group {
+    display: flex; align-items: center;
+    text-decoration: none; color: #333; cursor: pointer;
+    transition: opacity 0.2s; white-space: nowrap;
+
+    background: #fff; 
+    color: #777; 
+    border: 1px solid #777;
+    padding: 2px 6px; 
+    border-radius: 6px;
+    white-space: nowrap;
+
+}
+/* 전화번호 텍스트 (굵게) */
+.phone-group:hover { opacity: 0.7; }
+.phone-icon-sm { font-size: 0.8rem; color: #333; }
+.phone-txt { font-size: 0.8rem; font-weight: 500; color: #333; letter-spacing: -1px; font-family: 'Pretendard', sans-serif; }
+
+/* 모바일 대응 */
+@media (max-width: 480px) {
+    .line-3-left { gap: 8px; } /* 모바일에서 간격 좁힘 */
+    .r-date, .phone-txt { font-size: 0.9rem; }
+}
+
+.btn-del-mini {
+    background: #fff;
+    border: 1px solid #dc3545;
+    color: #dc3545;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+.btn-del-mini:hover {
+    background: #dc3545;
+    color: #fff;
+}
+
+
+/* ==========================================================================
+   [New Modern Swipe List Style]
+   ========================================================================== */
+
+/* 1. 컨테이너: 리스트 간격 및 기본 설정 */
+.swipe-container {
+    position: relative;
+    background-color: #f8f9fc; /* 배경색과 동일하게 */
+    margin-bottom: 7px;
+    overflow: hidden; /* 넘치는 배경 숨김 */
+    user-select: none;
+    touch-action: pan-y; /* 수직 스크롤은 브라우저가 처리 */
+    cursor: pointer;
+}
+
+/* 2. 배경 레이어 (전화/문자) */
+.swipe-bg {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #fff;
+    padding: 0 25px;
+    box-sizing: border-box;
+    z-index: 1; 
+    opacity: 0; /* [수정됨] visibility 대신 opacity를 사용하여 JS 효과와 연동 */
+    transition: opacity 0.1s; /* 부드러운 전환 효과 추가 */
+}
+
+.bg-left {
+    background-color: #28a745; /* 전화: 초록 */
+    justify-content: flex-start;
+    left: 0;
+    gap: 10px;
+}
+
+.bg-right {
+    background-color: #ffc107; /* 문자: 노랑/주황 */
+    justify-content: flex-end;
+    right: 0;
+    gap: 10px;
+    color: #333; /* 문자는 검은 글씨 */
+}
+
+/* 3. 실제 컨텐츠 카드 (흰색) */
+.swipe-content {
+    position: relative;
+    z-index: 10;
+    background: #fff;
+    padding: 8px 10px;
+    border-radius: 12px;
+    border: 1px solid #ececee;
+    transition: transform 0.1s linear, opacity 0.2s linear; /* 부드러운 움직임 */
+}
+
+/* [레이아웃] 상단: 뱃지, 이름, 주소 */
+.sc-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 3px;
+}
+.sc-left {
+    display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden;
+}
+.sc-name {
+    font-size: 1.05rem; font-weight: 700; color: #222;
+    white-space: nowrap; flex-shrink: 0;
+}
+.sc-addr {
+    font-size: 0.9rem; color: #888;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* [레이아웃] 중단: 품목 태그 */
+.sc-body {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 5px;
+}
+.item-scroll-box {
+    display: flex; gap: 2px;
+    scrollbar-width: none; align-items: center;
+}
+.item-scroll-box::-webkit-scrollbar { display: none; }
+
+.item-tag {
+    background: #f8f9fa; border: 1px solid #e9ecef;
+    color: #333; font-size: 0.9rem; padding: 1px 3px; font-weight: 500;
+    border-radius: 4px; white-space: nowrap;
+}
+.sc-memo {
+    font-size: 0.8rem; color: #adb5bd; margin-left: auto; 
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* [레이아웃] 하단: 날짜, 금액 */
+.sc-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 2px; border-top: 1px solid #dadee3;
+}
+.sc-date {
+    font-size: 0.9rem; color: #2b90ff; font-weight: 600;
+}
+.sc-info {
+    display: flex; align-items: center; gap: 10px;
+}
+.sub-badges { display: flex; gap: 1px; }
+.sc-price {
+    font-size: 1rem; font-weight: 700; color: #f00;
+}
+
+/* 삭제 버튼 스타일 */
+.btn-del-mini {
+    background: #fff; border: 1px solid #ff6b6b; color: #ff6b6b;
+    padding: 3px 8px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;
+}
+
+/* 보류 뱃지 색상 (회색/진회색) */
+.bg-hold { background-color: #6c757d !important; color: #fff !important; }
+.main-bdg.bg-hold { background-color: #6c757d; }
+.s-bdg.bg-hold { border: 1px solid #6c757d; color: #6c757d; background: #fff; }
+
+
+/* [스타일 교체] 반응형 헤더 디자인 */
+.dash-header-wrapper {
+    background: #fff;
+    border-bottom: 1px solid #eee;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+}
+
+/* PC 버전 레이아웃: 한 줄로 배치 */
+.header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.header-left { display: flex; align-items: center; gap: 15px; }
+.header-center { flex: 1; max-width: 500px; } /* 검색창 영역 */
+.header-right { display: flex; align-items: center; gap: 10px; }
+
+/* 공통 버튼 스타일 */
+.btn-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fff;
+    color: #555;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+.btn-nav:hover { background: #f8f9fa; border-color: #ccc; }
+.btn-nav i { font-size: 1.1rem; color: #4361ee; }
+
+/* 검색창 스타일 */
+.search-box-new {
+    display: flex;
+    width: 100%;
+    background: #f1f3f5;
+    border-radius: 8px;
+    padding: 5px 15px;
+    align-items: center;
+}
+.search-box-new input {
+    border: none;
+    background: transparent;
+    padding: 8px;
+    width: 100%;
+    outline: none;
+    font-size: 0.95rem;
+}
+.search-box-new button {
+    border: none;
+    background: transparent;
+    color: #888;
+    cursor: pointer;
+}
+
+/* 모바일 전용 (기본 숨김) */
+.mobile-menu-row { display: none; }
+
+/* ★ 모바일 화면 (900px 이하) 설정 */
+@media (max-width: 900px) {
+    .header-row { flex-direction: column; align-items: stretch; gap: 10px; }
+    
+    /* 1단: 로고 + 로그아웃 */
+    .header-left { justify-content: space-between; width: 100%; }
+    
+    /* 2단: 검색창 (PC와 동일 위치지만 줄바꿈됨) */
+    .header-center { max-width: 100%; order: 2; }
+    
+    /* 3단: 메뉴 버튼들 (아이콘 위주로 변경) */
+    .header-right { 
+        display: grid; 
+        grid-template-columns: 1fr 1fr 1fr 1fr; /* 4칸 정렬 */
+        gap: 8px; 
+        order: 3; 
+    }
+    
+    .btn-nav { 
+        justify-content: center; 
+        flex-direction: column; 
+        gap: 4px; 
+        font-size: 0.8rem; 
+        padding: 10px 0;
+    }
+    .btn-nav i { font-size: 1.4rem; margin-bottom: 2px; }
+    
+    /* PC용 로그아웃 버튼 숨기고 모바일 헤더로 이동 */
+    .pc-logout { display: none; }
+}
+
+/* [직원 관리 모달] 세련된 디자인 */
+.staff-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.staff-table th { 
+    text-align: left; color: #8898aa; font-size: 0.85rem; font-weight: 600; 
+    padding: 15px 20px; border-bottom: 1px solid #e9ecef; background: #f6f9fc;
+    letter-spacing: 0.5px; text-transform: uppercase;
+}
+.staff-table td { 
+    padding: 20px; border-bottom: 1px solid #f1f3f5; vertical-align: middle; 
+    font-size: 0.95rem; color: #525f7f; 
+}
+.staff-table tr:last-child td { border-bottom: none; }
+.staff-table tr:hover td { background-color: #fcfcfc; }
+
+/* 유저 정보 (이름+뱃지) */
+.user-info { display: flex; align-items: center; gap: 8px; }
+.user-name { font-weight: bold; color: #32325d; font-size: 1rem; }
+
+/* 역할 뱃지 */
+.badge-role { 
+    padding: 4px 8px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; 
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+.badge-role.internal { background: #e0f2f1; color: #00695c; } /* 정직원: 청록 */
+.badge-role.external { background: #fff3e0; color: #e65100; } /* 외주: 주황 */
+.badge-role.master { background: #e8eaf6; color: #283593; }   /* 대표: 남색 */
+
+/* 권한 태그 */
+.perm-pill {
+    display: inline-block; background: #f0f2f5; color: #555; 
+    padding: 3px 8px; border-radius: 6px; font-size: 0.8rem; margin-right: 4px; margin-bottom: 4px;
+}
+
+/* 관리 버튼 (아이콘) */
+.btn-icon-circle {
+    width: 32px; height: 32px; border-radius: 50%; border: none; 
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s; margin-left: 5px;
+}
+.btn-edit { background: #fff; color: #4361ee; border: 1px solid #e0e0e0; }
+.btn-edit:hover { background: #4361ee; color: #fff; border-color: #4361ee; }
+.btn-del { background: #fff; color: #fa5252; border: 1px solid #e0e0e0; }
+.btn-del:hover { background: #fa5252; color: #fff; border-color: #fa5252; }
+
+/* [로그인 사용자 정보 배지] */
+.user-profile-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    margin-right: 15px;
+    line-height: 1.2;
+}
+.u-name { font-weight: 800; font-size: 0.95rem; color: #333; }
+.u-role { 
+    font-size: 0.75rem; color: #fff; background: #4361ee; 
+    padding: 2px 8px; border-radius: 10px; margin-top: 3px; font-weight: 600;
+}
+.u-role.master { background: #283593; } /* 대표는 남색 */
+
+/* 모바일 화면 (900px 이하) */
+@media (max-width: 900px) {
+    .user-profile-badge {
+        order: 0; /* 순서를 맨 앞으로 */
+        width: 100%;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        margin: 0 0 10px 0;
+        background: #f8f9fa;
+        padding: 10px 15px;
+        border-radius: 8px;
+        box-sizing: border-box;
+    }
+    .u-name { font-size: 1rem; }
+    .u-role { font-size: 0.85rem; padding: 4px 10px; }
+}
+
+/* [dashboard.css] 기존 내용 아래에 추가해주세요 */
+
+/* ==========================================================================
+   [리뉴얼] 갤럭시 스타일 카드 리스트 (External View 통일)
+   ========================================================================== */
+
+
+/* 2. 배경 레이어 (전화/문자) */
+.swipe-bg { 
+    position: absolute; 
+    top: 0; bottom: 0; 
+    width: 100%; 
+    display: flex; 
+    align-items: center; 
+    padding: 0 25px; 
+    font-weight: bold; 
+    font-size: 1.1rem; 
+    color: white; 
+    z-index: 1; 
+    opacity: 0; 
+    transition: opacity 0.1s;
+}
+.bg-call { background: #007bff; justify-content: flex-start; left: 0; }
+.bg-sms  { background: #fe7e14; justify-content: flex-end; right: 0; }
+
+/* 3. 카드 본문 (Task Card) - External View의 .card와 동일 */
+.task-card { 
+    position: relative; 
+    background: #fff; 
+    padding: 0; 
+    z-index: 10; 
+    cursor: pointer;
+    transition: transform 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.7s ease-out;
+    padding: 20px 30px;
+}
+
+/* 4. 헤더 (날짜, 상태뱃지) */
+.c-header {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    display: flex; justify-content: space-between; align-items: center;
+    background: #fff;
+}
+.date-badge-group { display: flex; align-items: center; gap: 6px; }
+.date-box { 
+    color: #555; 
+    font-weight: 600; font-size: 1rem; letter-spacing: -0.5px;
+}
+.time-box {
+    background: #ececec; color: #6e82dd; 
+    padding: 1px 3px; border-radius: 4px; 
+    font-weight: bold; font-size: 0.8rem;
+}
+.status-area { display: flex; gap: 3px; align-items: center; }
+
+/* 5. 바디 (이름, 주소, 품목, 메모) */
+.c-body { padding: 15px; }
+
+.info-row { 
+    margin-bottom: 8px; 
+    line-height: 1.3;
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; 
+}
+.c-name-wrap { display: flex; align-items: center; flex-shrink: 0; } 
+.c-name { font-size: 1.1rem; font-weight: 800; color: #333; margin-right: 6px; }
+.c-addr { 
+    font-size: 0.9rem; color: #666; text-align: right; 
+    word-break: keep-all; margin-left: auto; 
+}
+
+/* 품목 줄 (금액 포함) */
+.item-row { 
+    display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; align-items: center; 
+}
+.item-tag { 
+    padding: 3px 8px; background: #fff; color: #495057; 
+    border: 1px solid #dee2e6; border-radius: 4px; 
+    font-size: 0.85rem; font-weight: bold; 
+}
+
+/* 메모 블록 */
+.info-block { 
+    padding: 10px; border-radius: 6px; font-size: 0.9rem; 
+    display: flex; align-items: center; gap: 8px; line-height: 1.4; overflow: hidden; 
+}
+.ib-memo { background: #fff9db; color: #e67700; border: 1px solid #ffec99; }
+
+/* 서브 상태 뱃지 (버튼형) */
+.s-bdg {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 3px 6px; border-radius: 4px; font-size: 0.75rem; opacity: 0.8;
+    color: #fff; margin-right: 3px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); height: 18px;
+}
+.sb-order { background-color: var(--status-ord1); }
+.sb-recv  { background-color: var(--status-ord2); }
+.sb-pay   { background-color: var(--status-pay); }
+.sb-wait  { background-color: var(--status-wait); }
+.sb-hold  { background-color: var(--status-hold); }
+
+/* [dashboard.css] 추가 및 수정 */
+
+/* 1. 상태 뱃지 (둥근 디자인 + 진한 글씨) */
+.badge {
+    border-radius: 5px !important; /* 둥근 모양 */
+    padding: 3px 6px !important;
+    font-weight: 600 !important;    /* 진한 글씨 */
+    font-size: 0.9rem !important;
+    letter-spacing: -0.5px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    margin-left : 5px
+}
+
+/* 1. 3단 -> 4단 버튼 그룹 */
+.toggle-btn-group {
+    display: flex; 
+    gap: 4px; /* 간격 좁힘 */
+}
+.t-btn {
+    /* ★ 핵심: 4개 배치 시 25% 고정 (간격 고려하여 flex:1 사용하되 min-width 설정) */
+    flex: 1; 
+    width: 25%; /* 강제 4등분 느낌 */
+    padding: 5px 0; /* 높이 약간 확보 */
+    font-size: 0.8rem; /* 글자 크기 조정 */
+    font-weight: bold; 
+    text-align: center;
+    border: 1px solid transparent; 
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    gap: 3px;
+    white-space: nowrap; /* 줄바꿈 방지 */
+}
+
+/* 2. 담당자 버튼 스타일 (파스텔 퍼플) */
+.t-btn.is-manager {
+    background-color: #40bdb1; color: #fff; cursor: default; /* 클릭 안됨 */
+}
+.t-btn.is-manager.undecided {
+    background-color: #f1f3f5; color: #adb5bd; /* 미정일 때 회색 */
+}
+
+/* 3. 기존 버튼 색상 (파스텔) */
+.t-btn.has-site { background-color: #d3f9d8; color: #0b7285; }
+.t-btn.has-site.active { background-color: #0ca678; color: #fff; }
+
+.t-btn.has-memo { background-color: #fff3bf; color: #f08c00; }
+.t-btn.has-memo.active { background-color: #f08c00; color: #fff; }
+
+.t-btn.has-hist { background-color: #e7f5ff; color: #1c7ed6; }
+.t-btn.has-hist.active { background-color: #1c7ed6; color: #fff; }
+
+/* 4. 비활성 버튼 (데이터 없음) */
+.t-btn:disabled {
+    background-color: #fff; 
+    color: #e9ecef; /* 아주 연한 회색 */
+    border: 1px solid #f1f3f5; 
+    cursor: default;
+}
+
+/* 상세 패널 스타일 (기존 유지) */
+.detail-panel {
+    display: none; margin-top: 8px; padding: 12px;
+    background: #fff; border-radius: 8px; border: 1px solid #eee;
+    font-size: 0.9rem; line-height: 1.5; color: #333;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+}
+.detail-panel.show { display: block; animation: fadeIn 0.2s; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
+
+/* 아이콘 간격 미세 조정 */
+.t-btn i { font-size: 0.75rem; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: translateY(0); } }
+
+/* 4. 기록 리스트 스타일 (스크롤 적용) */
+.hist-list-box {
+    max-height: 150px; /* 세로 높이 제한 */
+    overflow-y: auto;  /* 스크롤 생성 */
+    padding-right: 5px;
+}
+.hist-list-box::-webkit-scrollbar { width: 4px; }
+.hist-list-box::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 4px; }
+
+.hist-item {
+    padding: 6px 0;
+    border-bottom: 1px dashed #eee;
+    font-size: 0.9rem;
+    color: #495057;
+    display: flex; gap: 6px; line-height: 1.4;
+}
+.hist-item:last-child { border-bottom: none; }
+.hist-bullet { color: #adb5bd; font-size: 0.5rem; margin-top: 6px; flex-shrink: 0; }
+
+/* [dashboard.css] 버튼 내 카운트 뱃지 스타일 */
+.btn-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    height: 16px;
+    min-width: 16px;
+    padding: 0 4px;
+    border-radius: 10px;
+    margin-left: 3px;
+    background-color: rgba(0,0,0,0.1); /* 은은한 배경 */
+    color: inherit; /* 버튼 글자색 따라감 */
+    line-height: 1;
+}
+
+/* 버튼이 활성화(클릭)되었을 때 뱃지 스타일 */
+.t-btn.active .btn-count {
+    background-color: rgba(255,255,255,0.3);
+    color: #fff;
+}
+
+/* --- [리뉴얼] PC 레이아웃 (세련된 스타일 적용) --- */
+
+/* 전체적인 부드러움과 깊이감 추가 */
+.new-dash-header {
+    background: #fff;
+    padding: 25px 30px; /* 패딩 증가로 여유로운 공간감 */
+    border-radius: 0 0 24px 24px; /* 더 둥글게 */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05); /* 더 부드럽고 넓은 그림자 */
+    border: 1px solid rgba(0,0,0,0.02); /* 미세한 테두리로 마감 */
+    margin-bottom:15px
+}
+
+/* 1행: 브랜드/검색 - 간격 및 정렬 개선 */
+.header-top-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.header-brand-area {
+    display: flex;
+    align-items: center;
+    gap: 20px; /* 로고와 프로필 사이 간격 증가 */
+}
+
+.brand-logo {
+    font-size: 1.8rem; /* 로고 크기 약간 확대 */
+    font-weight: 800;
+    color: #222; /* 더 진한 검정 */
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    letter-spacing: -0.5px;
+}
+.brand-logo i {
+    color: #4361ee;
+    filter: drop-shadow(0 2px 4px rgba(67, 97, 238, 0.3)); /* 아이콘에 미세한 그림자 */
+}
+
+/* 프로필 영역 디자인 개선 */
+.user-profile-mini {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f1f5f9; /* 더 밝고 깨끗한 배경색 */
+    padding: 8px 18px;
+    border-radius: 30px; /* 완전 둥근 형태 */
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.03); /* 내부 그림자로 깊이감 */
+}
+
+.u-role-tag {
+    background: linear-gradient(135deg, #4361ee, #3a56d4); /* 그라데이션 적용 */
+    color: #fff;
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-weight: 700;
+    box-shadow: 0 2px 4px rgba(67, 97, 238, 0.2);
+}
+
+.u-name-text {
+    font-weight: 700;
+    color: #333;
+    font-size: 1rem;
+}
+
+.btn-logout {
+    color: #adb5bd;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.1rem;
+    border-radius: 50%;
+}
+.btn-logout:hover {
+    color: #fa5252;
+    background: rgba(250, 82, 82, 0.1);
+    transform: rotate(90deg); /* 호버 시 회전 효과 */
+}
+
+/* 검색창 디자인 개선 */
+.search-container-pc .search-bar {
+    background: #f8f9fa;
+    border-radius: 16px;
+    padding: 8px 20px;
+    display: flex;
+    align-items: center;
+    width: 400px;
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+}
+.search-container-pc .search-bar:focus-within {
+    background: #fff;
+    border-color: #4361ee;
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.15); /* 포커스 시 강조 */
+}
+
+.search-bar input {
+    background: transparent;
+    border: none;
+    font-size: 1rem;
+    width: 100%;
+    padding: 8px;
+    outline: none;
+    color: #495057;
+}
+.search-bar input::placeholder { color: #adb5bd; }
+.search-bar button {
+    background: transparent;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: color 0.3s;
+}
+.search-bar button:hover { color: #4361ee; }
+
+
+/* 2행: 메뉴 버튼 및 신규 접수 - 입체감 및 인터랙션 강화 */
+.header-nav-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch; /* 높이 통일 */
+    gap: 25px;
+    flex-wrap: wrap;
+}
+
+.menu-button-group {
+    display: flex;
+    gap: 15px;
+    flex: 1;
+}
+
+.menu-btn {
+    flex: 1;
+    max-width: 120px;
+    height: 100px; /* 높이 약간 증가 */
+    background: #fff;
+    border: none; /* 테두리 제거 */
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-decoration: none;
+    color: #495057;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); /* 부드러운 애니메이션 */
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1); /* 기본 상태 그림자 */
+    position: relative;
+    overflow: hidden;
+}
+.menu-btn::before { /* 호버 시 배경 빛나는 효과 */
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(135deg, rgba(255,255,255,0.07), rgba(255,255,255,0));
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.menu-btn:hover {
+    transform: translateY(-5px) scale(1.02); /* 위로 떠오르며 살짝 커짐 */
+    box-shadow: 0 12px 25px rgba(0,0,0,0.1);
+    color: #4361ee;
+}
+.menu-btn:hover::before { opacity: 1; }
+.menu-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f1f3f5;
+    box-shadow: none;
+}
+.menu-btn.disabled:hover { transform: none; box-shadow: none; color: #495057; }
+.menu-btn i {
+    font-size: 1.8rem;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* 아이콘 톡 튀는 효과 */
+}
+.menu-btn:hover i:not(.text-gray) { transform: scale(1.2); }
+
+/* 신규 접수 버튼 - 그라데이션 및 강력한 강조 */
+.action-area { flex-shrink: 0; }
+.btn-primary-new {
+    background: linear-gradient(135deg, #4361ee, #364fc7); /* 세련된 블루 그라데이션 */
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 0 40px;
+    height: 100px; /* 메뉴 버튼과 높이 통일 */
+    font-size: 1.3rem;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 8px 20px rgba(67, 97, 238, 0.3);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    letter-spacing: -0.5px;
+    position: relative;
+    overflow: hidden;
+}
+.btn-primary-new::after { /* 광택 효과 */
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%; width: 200%; height: 200%;
+    background: linear-gradient(to bottom right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 100%);
+    transform: rotate(30deg);
+    opacity: 0.7;
+    transition: opacity 0.3s;
+}
+.btn-primary-new:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(67, 97, 238, 0.4);
+}
+.btn-primary-new:hover::after { opacity: 0.9; }
+.btn-primary-new i { font-size: 1.5rem; }
+
+
+/* 3행: KPI 카드 - 모던하고 깨끗한 디자인 */
+.kpi-wrapper-pc {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 5px 0px 5px 0px; /* 그림자 잘림 방지 패딩 */
+    margin-bottom:2px;
+}
+.kpi-wrapper-pc::-webkit-scrollbar { display: none; } /* 스크롤바 숨김 */
+.kpi-card {
+    flex: 1;
+    min-width: 170px;
+    background: #fff;
+    border-radius: 18px;
+    padding: 15px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 6px 5px rgba(0,0,0,0.04);
+    border: none; /* 테두리 제거 */
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.kpi-card:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+}
+.kpi-head {
+    font-size: 0.95rem;
+    color: #888;
+    font-weight: 700;
+    position: relative;
+    z-index: 2;
+    letter-spacing: -0.3px;
+}
+.kpi-val {
+    font-size: 1.4rem;
+    font-weight: 800;
+    position: relative;
+    z-index: 2;
+    letter-spacing: -0.8px;
+    line-height: 1.2;
+}
+.kpi-bg-icon {
+    position: absolute;
+    right: -5px;
+    bottom: -5px;
+    font-size: 3.5rem;
+    opacity: 0.06; /* 불투명도 낮춰서 더 은은하게 */
+    z-index: 1;
+    transform: rotate(-10deg); /* 약간 기울여서 역동감 */
+    transition: all 0.3s;
+}
+.kpi-card:hover .kpi-bg-icon {
+    opacity: 0.1;
+    transform: rotate(0deg) scale(1.1); /* 호버 시 아이콘 강조 */
+}
+
+
+/* 4행: 하단 상태바 - 깔끔한 분할 디자인 */
+.status-bar-full {
+    display: flex;
+    flex-wrap: nowrap; /* 줄바꿈 방지 */
+    overflow-x: auto; /* 필요시 스크롤 */
+    box-sizing: border-box;
+    gap: 10px;
+    padding: 5px 0px 5px 0px; /* 그림자 잘림 방지 패딩 */
+}
+.status-bar-full::-webkit-scrollbar { display: none; } /* 얇은 스크롤바 */
+
+.sb-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 5px;
+    border-radius: 16px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    min-width: 75px;
+    border: 1px solid transparent;
+    background: #fff; /* 기본 배경색 추가 */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.sb-item:hover {
+    background: #fff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    transform: translateY(-2px);
+}
+.sb-item.active {
+    background: #e7f5ff;
+    border-color: #4361ee;
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.15);
+    color: #4361ee;
+}
+.sb-lbl {
+    font-size: 0.85rem;
+    color: #888;
+    font-weight: 700;
+    margin-bottom: 4px;
+    transition: color 0.2s;
+}
+.sb-item.active .sb-lbl { color: #4361ee; }
+.sb-val {
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+/* 색상 유틸 */
+.text-purple { color: #9775fa; }
+.text-gray { color: #adb5bd; }
+.c-req { color: #6f8672; }
+.c-visit { color: #39b114; }
+.c-inst { color: #1472ec; }
+.c-as { color: #9e1dbe; }
+.c-done { color: #333; }
+.c-pay { color: #eb4646; }
+.c-wait { color: #9775fa; }
+.c-miss { color: #fa5252; }
+.c-hold { color: #868e96; }
+
+/* [dashboard.css] 맨 하단 모바일 반응형 부분 교체 */
+
+@media (max-width: 900px) {
+    /* 1. 헤더 전체 패딩 조절 */
+    .new-dash-header { 
+        padding: 15px 15px 20px 15px; 
+        border-radius: 0 0 20px 20px;
+        margin-bottom:5px;
+    }
+
+    /* 2. 상단 라인 (로고+유저 / 검색창) 레이아웃 변경 */
+    .header-top-line { 
+        flex-direction: column; /* 세로 배치로 변경 */
+        align-items: stretch;   /* 가로 꽉 차게 */
+        gap: 15px; 
+        margin-bottom: 10px; 
+    }
+
+    /* 3. [1행] 로고와 유저 정보를 양옆으로 배치 (줄바꿈 방지) */
+    .header-brand-area {
+        width: 100%;
+        display: flex;
+        justify-content: space-between; /* 양쪽 끝 정렬 */
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* 로고 스타일 단순화 */
+    .brand-logo { 
+        font-size: 1.4rem; 
+        white-space: nowrap; /* 줄바꿈 강제 방지 */
+    }
+
+    /* 유저 정보 스타일 단순화 (배경 제거하여 심플하게) */
+    .user-profile-mini { 
+        padding: 0; 
+        background: transparent; /* 배경색 제거 */
+        box-shadow: none;        /* 그림자 제거 */
+        gap: 6px;
+        white-space: nowrap;     /* 줄바꿈 강제 방지 */
+    }
+    
+    /* 직책 뱃지 작게 */
+    .u-role-tag {
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        border-radius: 6px;
+    }
+    
+    /* 이름 폰트 조정 */
+    .u-name-text {
+        font-size: 0.95rem;
+    }
+
+    /* 4. [2행] 검색창 꽉 차게 설정 */
+    .search-container-pc { 
+        width: 100%; 
+    }
+    .search-container-pc .search-bar { 
+        width: 100% !important; /* 강제 100% */
+        box-sizing: border-box; /* 패딩 포함 크기 계산 */
+        padding: 10px 15px;
+        font-size: 1rem;
+    }
+
+    /* 5. 하단 메뉴 버튼들 (기존 유지하되 간격 조정) */
+    .header-nav-line { 
+        flex-direction: column; 
+        gap: 10px; 
+    }
+    .menu-button-group { 
+        width: 100%; 
+        gap: 8px; 
+    }
+    .menu-btn { 
+        height: 70px; /* 높이 약간 줄임 */
+        border-radius: 12px; 
+    }
+    .menu-btn i { font-size: 1.4rem; }
+    .menu-btn span { font-size: 0.85rem; }
+    
+    .action-area { width: 100%; }
+    .btn-primary-new { 
+        width: 100%; 
+        height: 55px; 
+        justify-content: center; 
+        font-size: 1.1rem; 
+        border-radius: 12px; 
+    }
+    
+    /* KPI 및 상태바 스크롤 영역 */
+    .kpi-card { min-width: 140px; padding: 15px; }
+    .kpi-val { font-size: 1.3rem; }
+    
+    .status-bar-full { gap: 6px; }
+    .sb-item { min-width: 60px; padding: 8px 4px;  }
+    .sb-lbl { font-size: 0.75rem; }
+    .sb-val { font-size: 1rem; }
+
+    .card { 
+    border-radius: 15px; 
+    margin: 20px 0; overflow: hidden; 
+    }
+    .card-body { 
+        background-color: #eeeeee;
+    }
+    .task-card { 
+    padding: 10px;
+    }
+}
+
+/* [1] 스와이프 래퍼 (기존 코드 유지) */
+.swipe-wrapper { 
+    position: relative; 
+    border-radius: 12px; /* 부모도 둥글게 */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2); 
+    background: #fff; 
+    margin-bottom: 12px; 
+    overflow: visible !important; /* 배지 노출용 */
+    z-index: auto;
+}
+
+/* [2] 내부 카드 (여기에 border-radius 추가!) */
+.task-card {
+    position: relative !important;
+    overflow: visible !important;
+    z-index: 1;
+    background-color: #fff;
+    
+    /* ★ 핵심 수정: 부모와 똑같이 둥글게 처리해야 튀어나오지 않음 */
+    border-radius: 12px !important; 
+}
+
+/* [3] 스와이프 배경 (전화/문자 버튼) - 선택 사항 */
+/* 배경색이 튀어나오는 것을 방지하려면 이것들도 둥글게 처리 */
+.swipe-bg {
+    border-radius: 12px;
+}
+
+/* [3] 텍스트 영역: 배지 위치에 영향 안 받게 */
+.date-trigger {
+    position: static !important;
+}
+
+/* [4] 배지: 카드 밖으로 튀어나오게 (음수 좌표 사용) */
+.d-badge {
+    position: absolute !important; /* 강제 절대 위치 */
+    
+    /* 위치 조정: 카드 밖으로 내보내기 (음수 값) */
+    top: -7px;
+    right: -10px;
+    
+    /* 디자인 */
+    font-size: 0.75rem;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 20px; /* 둥글게 */
+    letter-spacing: -0.5px;
+    
+    /* 입체감 & 우선순위 */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15); /* 그림자 */
+    z-index: 100; /* 무조건 맨 위 */
+    background-color: #fff; /* 배경색 필수 */
+}
+
+/* 색상 스타일 (기존 유지) */
+.d-future { background-color: #e7f5ff; color: #1c7ed6; border: 1px solid #d0ebff; }
+.d-today  { background-color: #e6fcf5; color: #0ca678; border: 1px solid #c3fae8; }
+.d-missed { background-color: #fff5f5; color: #fa5252; border: 1px solid #ffc9c9; }
+
+/* ==========================================================================
+   [테마] 대시보드 시맨틱 카드 테마 (Semantic Card Themes)
+   ========================================================================== */
+
+/* 1. Theme-Blue (오늘 할 일) */
+.card.theme-blue { border: 1px solid rgba(67, 97, 238, 0.4) !important; box-shadow: 0 4px 15px rgba(67, 97, 238, 0.08) !important; }
+.card.theme-blue .card-head { color: #4361ee !important; border-bottom: 1px solid rgba(67, 97, 238, 0.1); }
+
+/* 2. Theme-Red (놓친 일정) */
+.card.theme-red { border: 1px solid rgba(255, 107, 107, 0.4) !important; box-shadow: 0 4px 15px rgba(255, 107, 107, 0.08) !important; }
+.card.theme-red .card-head { color: #ff6b6b !important; border-bottom: 1px solid rgba(255, 107, 107, 0.1); }
+
+/* 3. Theme-Orange (장기 지연 / 관리) */
+.card.theme-orange { border: 1px solid rgba(253, 126, 20, 0.4) !important; box-shadow: 0 4px 15px rgba(253, 126, 20, 0.08) !important; }
+.card.theme-orange .card-head { color: #fd7e14 !important; border-bottom: 1px solid rgba(253, 126, 20, 0.1); }
+
+/* 4. Theme-Teal (시공 대기 / 예정 등) */
+.card.theme-teal { border: 1px solid rgba(32, 201, 151, 0.4) !important; box-shadow: 0 4px 15px rgba(32, 201, 151, 0.08) !important; }
+.card.theme-teal .card-head { color: #20c997 !important; border-bottom: 1px solid rgba(32, 201, 151, 0.1); }
+
+/* 5. Theme-Purple (미수금 관리) */
+.card.theme-purple { border: 1px solid rgba(151, 117, 250, 0.4) !important; box-shadow: 0 4px 15px rgba(151, 117, 250, 0.08) !important; }
+.card.theme-purple .card-head { color: #9775fa !important; border-bottom: 1px solid rgba(151, 117, 250, 0.1); }
+
+/* 6. Theme-Gray (검색 및 필터 결과) */
+.card.theme-gray { border: 1px solid rgba(108, 117, 125, 0.4) !important; box-shadow: 0 4px 15px rgba(108, 117, 125, 0.08) !important; }
+.card.theme-gray .card-head { color: #495057 !important; border-bottom: 1px solid rgba(108, 117, 125, 0.1); }

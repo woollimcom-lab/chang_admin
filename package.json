@@ -1,0 +1,20 @@
+{
+  "name": "chang_admin",
+  "version": "1.0.0",
+  "description": "",
+  "main": "tmp_ledger_inline.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  },
+  "dependencies": {
+    "playwright": "^1.58.2",
+    "playwright-core": "^1.58.2"
+  }
+}

@@ -1,0 +1,2177 @@
+/* ==========================================================================
+   [1] 초기화 및 전역 설정
+   ========================================================================== */
+var g_orderId = null;
+var g_fpInstance = null;
+var g_scheduleData = {};
+var g_blindHeightState = {};
+var isProcessing = false;
+
+document.addEventListener("DOMContentLoaded", function() {
+    
+    // 외주팀 접속 키 처리
+    var key = document.getElementById('extAccessKey')?.value;
+    if(key) {
+        var memoForm = document.getElementById('memoForm');
+        if(memoForm) {
+            var input = document.createElement("input");
+            input.type = "hidden";
+            input.name = "access_key";
+            input.value = key;
+            memoForm.appendChild(input);
+        }
+    }
+
+    // 1. 주문 번호 가져오기
+    var idEl = document.getElementById('srv-order-id');
+    if (idEl) {
+        g_orderId = parseInt(idEl.value);
+    } else {
+        var path = window.location.pathname.split('/');
+        var last = path[path.length - 1];
+        if(!isNaN(last)) g_orderId = parseInt(last);
+    }
+
+    // 2. 스크롤 위치 복원
+    var scrollPos = sessionStorage.getItem('scrollPos');
+    if (scrollPos) window.scrollTo(0, scrollPos);
+    
+    // 3. 기능 초기화
+    if(typeof initSortable === 'function') initSortable();
+    if(typeof initPage === 'function') initPage();
+    if(typeof checkSmsTrigger === 'function') checkSmsTrigger();
+    if(typeof fetchSchedules === 'function') fetchSchedules();
+    if(typeof initFontControl === 'function') initFontControl();
+    
+    // 스크롤 저장 리스너
+    window.addEventListener("beforeunload", function() {
+        sessionStorage.setItem('scrollPos', window.scrollY);
+    });
+
+    // 4. 탭 설정 (기본: '메모' 탭 활성화)
+    var btnMemo = document.getElementById('btnTabMemo');
+    if(btnMemo && typeof filterHistory === 'function') {
+        filterHistory('메모', btnMemo);
+    }
+    
+    // 5. 현장체크(설치면) 데이터 복원
+    var surfVal = document.getElementById('srv-site-surf') ? document.getElementById('srv-site-surf').value : "";
+    if(surfVal) {
+        surfVal.split(',').forEach(function(val) {
+            var cleanVal = val.trim();
+            if(cleanVal) {
+                var cb = document.querySelector(`input[name="site_surf"][value="${cleanVal}"]`);
+                if(cb) cb.checked = true;
+            }
+        });
+    }
+
+    // 6. 레일/부자재 값 복원 및 자동계산
+    var checkVal = document.getElementById('srv-checklist') ? document.getElementById('srv-checklist').value : "";
+    var inpCheck = document.getElementById('inpChecklist');
+    
+    if(inpCheck) {
+        if(checkVal) inpCheck.value = checkVal;
+        if(typeof autoCalcRails === 'function') autoCalcRails(); 
+    }
+
+    // 7. 사진 목록 로드
+    if(typeof loadPhotos === 'function') loadPhotos();
+
+    // 8. 버튼 중복 방지 리스너 (주문/수령 버튼)
+    const subBtns = ['btnSub_order', 'btnSub_receive'];
+    subBtns.forEach(id => {
+        let el = document.getElementById(id);
+        if(el) {
+            let originClick = el.getAttribute('onclick');
+            el.removeAttribute('onclick');
+            
+            el.addEventListener('click', function(e) {
+                if(isProcessing) { e.preventDefault(); return; }
+                isProcessing = true;
+                setTimeout(() => isProcessing = false, 1000);
+                
+                if(originClick && typeof toggleSubStatus === 'function') {
+                    if(originClick.includes('order')) toggleSubStatus('order');
+                    else if(originClick.includes('receive')) toggleSubStatus('receive');
+                }
+            });
+        }
+    });
+
+    setTimeout(function() {
+        var btnMemo = document.getElementById('btnTabMemo');
+        if (btnMemo) {
+            filterHistory('메모', btnMemo);
+        } else {
+            // 버튼 ID를 못 찾을 경우를 대비해 타입만이라도 필터링 수행
+            filterHistory('메모', null);
+        }
+    }, 150); // HTML 요소가 완전히 로드된 후 실행되도록 넉넉하게 지연
+});
+
+/* [view.js] initPage 함수 */
+function initPage() { 
+    changeCategory('커튼'); 
+    renderBlindButtons(); 
+    if(typeof calcFinalPrice === 'function') calcFinalPrice();
+    if(typeof renderBlindListSizes === 'function') renderBlindListSizes();
+    renderSupplierButtons();
+}
+
+// 안전장치: 페이지 로드 후 리스트 줄바꿈 강제 실행
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        if(typeof renderBlindListSizes === 'function') renderBlindListSizes();
+    }, 100);
+});
+
+/* ==========================================================================
+   [2] 발주처 복사 기능
+   ========================================================================== */
+function renderSupplierButtons() {
+    var container = document.getElementById('supplierBtnContainer');
+    if (!container) return;
+    
+    var rows = document.querySelectorAll('.excel-table tbody tr');
+    var suppliers = new Set();
+    var hasEmptySup = false;
+    
+    rows.forEach(function(row) {
+        var sup = row.getAttribute('data-sup');
+        if (sup && sup.trim() !== "") suppliers.add(sup);
+        else hasEmptySup = true;
+    });
+    
+    var html = "";
+    suppliers.forEach(function(sup) {
+        html += `<button type="button" class="btn" style="background:#17a2b8; font-size:13px !important;" onclick="copySmart('supplier', '${sup}')">
+            <i class="far fa-copy"></i> ${sup} 주문
+         </button>`;
+    });
+
+    if (hasEmptySup) {
+        html += `<button type="button" class="btn" style="background:#6c757d; font-size:13px !important;" onclick="copySmart('empty', '')">
+                    <i class="fas fa-question-circle"></i> 발주처 미기입 주문
+                 </button>`;
+    }
+    container.innerHTML = html;
+}
+
+function copySmart(type, targetVal) {
+    var cName = document.getElementById('srv-cust-name')?.value || '고객';
+    var header = (type === 'supplier') ? targetVal : '미지정';
+    var clipText = `[${header}] ${cName}\n----------------------------------------\n`;
+    
+    var rows = document.querySelectorAll('.excel-table tbody tr');
+    var count = 0;
+
+    rows.forEach(function(row) {
+        var btn = row.querySelector('.btn-edit');
+        if (!btn) return;
+
+        var rowSup = btn.getAttribute('data-sup') || "";
+        var isMatch = false;
+        if (type === 'supplier') {
+            if (rowSup === targetVal) isMatch = true;
+        } else if (type === 'empty') {
+            if (!rowSup || rowSup.trim() === "") isMatch = true;
+        }
+
+        if (isMatch) {
+            count++;
+            var cat = btn.getAttribute('data-cat');
+            var loc = btn.getAttribute('data-loc') || "";
+            var sub = btn.getAttribute('data-sub') || "";
+            var prod = btn.getAttribute('data-prod') || "";
+            var opt = btn.getAttribute('data-opt') || "";
+            var qty = btn.getAttribute('data-qty') || "0";
+            
+            if (cat === '블라인드') {
+                var bSize = btn.getAttribute('data-bsize') || "";
+                var bCount = btn.getAttribute('data-bcount') || "";
+                var line = `${loc}`;
+                if (sub && sub.trim() !== "") line += ` | ${sub}`;
+                line += ` | ${prod}`;
+                if (opt) line += ` | ${opt}`;
+                line += ` | `; 
+
+                if (bSize) {
+                    var formattedSize = bSize.split(',').map(s => s.trim()).join(',\n');
+                    line += `\n${formattedSize}`;
+                }
+                if (bCount && parseInt(bCount) > 1) {
+                    line += `\n(${bCount}창)`;
+                }
+                clipText += line + "\n";
+            } 
+            else {
+                var rawW = btn.getAttribute('data-w') || "0";
+                var rawH = btn.getAttribute('data-h') || "0";
+                var smartW = parseFloat(rawW);
+                var smartH = parseFloat(rawH);
+                var unit = (cat === '커튼') ? "폭" : "";
+                var smartQty = parseFloat(qty);
+
+                var line = `${loc}`;
+                if (sub) line += ` | ${sub}`;
+                line += ` | ${prod}`;
+                if (opt) line += ` | ${opt}`;
+                line += ` | ${smartQty}${unit}`;
+                line += ` | ${smartW} x ${smartH}`;
+                clipText += line + "\n";
+            }
+        }
+    });
+
+    if (count === 0) { alert("복사할 항목이 없습니다."); return; }
+
+    var cDate = document.getElementById('srv-const-date')?.value || '미정';
+    clipText += "----------------------------------------\n";
+    clipText += `[시공예정] : ${cDate}\n`;
+
+    copyToClipboard(clipText);
+}
+
+function copyItemInfo(cat, sub, loc, prod, opt, unit, w, h) {
+    var text = "";
+    if (cat === '블라인드') {
+        var sizeText = String(w).replace(/,\s*/g, ",\n");
+        text = loc;
+        if (sub && sub !== 'undefined' && sub.trim() !== "") text += ` | ${sub}`;
+        text += ` | ${prod}`;
+        if (opt) text += ` | ${opt}`;
+        text += ` | \n${sizeText}`;
+    } else {
+        var smartW = parseFloat(w);
+        var smartH = parseFloat(h);
+        var sizeText = `${smartW} x ${smartH}`;
+        var cleanUnit = String(unit).replace(/\.0+([가-힣a-zA-Z]+)/, "$1");
+        var optText = opt ? ` | ${opt}` : "";
+        text = `${loc} | ${prod}${optText} | ${cleanUnit} | ${sizeText}`;
+    }
+    executeCopy(text);
+}
+
+/* ==========================================================================
+   [3] UI 렌더링
+   ========================================================================== */
+function renderBlindButtons() {
+    var html = '<div class="blind-btns">';
+    for(var i=1; i<=6; i++) html += `<button type="button" class="btn-blind-num" id="bBtn_${i}" onclick="setBlindCount(${i})">${i}</button>`;
+    html += '</div><select id="blindSelect" class="blind-select" onchange="setBlindCount(this.value)">';
+    for(var j=7; j<=20; j++) html += `<option value="${j}">${j}</option>`;
+    html += `</select>`;
+    document.getElementById('blindBtnGroup').innerHTML = html;
+}
+
+function setBlindCount(cnt) {
+    cnt = parseInt(cnt); 
+    if(!cnt) return;
+
+    var currentItems = [];
+    var prevCount = parseInt(document.getElementById('blindSplit').value) || 0;
+    
+    var mProd = document.getElementById('Master_Prod')?.value || "";
+    var mOpt = document.getElementById('Master_Opt')?.value || "";
+    var mPrice = document.getElementById('Master_Price')?.value || "";
+    var mMemo = document.getElementById('Master_Memo')?.value || "";
+
+    if (prevCount > 0) {
+        for(var i=1; i<=prevCount; i++) {
+            var w = document.getElementById('RawW_' + i)?.value || "";
+            var h = document.getElementById('RawH_' + i)?.value || "";
+            var q = document.getElementById('Qty_' + i)?.value || "";
+            var handle = document.getElementById('Handle_' + i)?.value || "우"; 
+            var cord = document.getElementById('CordLen_' + i)?.value || "150";
+            var id = document.querySelector(`input[name="ItemID_${i}"]`)?.value || "";
+
+            currentItems.push({ 
+                w: w, h: h, q: q, 
+                handle: handle, cord: cord, id: id,
+                prod: mProd, opt: mOpt, p: cleanNum(mPrice), memo: mMemo
+            });
+        }
+    }
+
+    document.getElementById('blindSplit').value = cnt;
+    document.querySelectorAll('.btn-blind-num').forEach(b => b.classList.remove('active'));
+    document.getElementById('blindSelect').classList.remove('active');
+    
+    if(cnt <= 5) {
+        var btn = document.getElementById('bBtn_' + cnt);
+        if(btn) btn.classList.add('active');
+        document.getElementById('blindSelect').value = "";
+    } else {
+        var sel = document.getElementById('blindSelect');
+        sel.value = cnt;
+        sel.classList.add('active');
+    }
+
+    if (cnt > currentItems.length) {
+        var lastH = currentItems.length > 0 ? currentItems[currentItems.length-1].h : "";
+        for (var k = currentItems.length; k < cnt; k++) {
+            currentItems.push({ 
+                w: "", h: lastH, q: "", 
+                handle: "우",
+                cord: "150",
+                prod: mProd, opt: mOpt, p: cleanNum(mPrice), memo: mMemo 
+            });
+        }
+    }
+
+    if (cnt > 1 && currentItems.length > 0) {
+        currentItems[0].handle = "좌";
+    } else if (cnt === 1 && currentItems.length > 0) {
+        currentItems[0].handle = "우";
+    }
+
+    var container = document.getElementById('dynamicArea');
+    renderBlindUI(container, cnt, currentItems);
+    
+    setTimeout(function() {
+        if(typeof updateBlindAggregates === 'function') updateBlindAggregates();
+    }, 10);
+}
+
+function changeCategory(cat) {
+    var btns = document.querySelectorAll('.btn-cat-type');
+    btns.forEach(function(btn) {
+        if (btn.innerText.trim() === cat) btn.classList.add('active');
+        else btn.classList.remove('active');
+    });
+
+    var hiddenInput = document.getElementById('catSelect');
+    if(hiddenInput && hiddenInput.value !== cat) hiddenInput.value = cat;
+
+    var cDiv = document.getElementById('curtainTypeDiv');
+    var bDiv = document.getElementById('blindTypeDiv');
+    var eDiv = document.getElementById('etcTypeDiv');
+    
+    cDiv.style.display = 'none'; bDiv.style.display = 'none';
+    if(eDiv) eDiv.style.display = 'none';
+
+    if(cat === '커튼') { cDiv.style.display = 'flex'; } 
+    else if(cat === '블라인드') { bDiv.style.display = 'block'; setBlindCount(1); reCalcBlindQty(); } 
+    else { 
+        if(eDiv) { eDiv.style.display = 'block'; document.getElementById('inpEtcKind').value = ""; }
+    }
+    
+    if(document.getElementById('hidItemID').value === "") renderRows();
+}
+
+function renderRows() {
+    var cat = document.getElementById('catSelect').value;
+    var container = document.getElementById('dynamicArea');
+    var html = "";
+
+    if (cat === '커튼') {
+        var type = document.querySelector('input[name="CurtainType"]:checked').value;
+        if (type === 'mix') {
+            html += makeRowHTML(1, '속지', 'label-inner', '나비주름(2배)', null, '속지');
+            html += makeRowHTML(2, '겉지', 'label-outer', '평식(형상)', null, '겉지');
+        } else if (type === 'outer') {
+            html += makeRowHTML(1, '겉지', 'label-outer', '평식(형상)', null, '겉지');
+        } else {
+            html += makeRowHTML(1, '속지', 'label-inner', '나비주름(2배)', null, '속지');
+        }
+        container.innerHTML = html;
+    } else if (cat === '블라인드') {
+        var cnt = parseInt(document.getElementById('blindSplit').value);
+        renderBlindUI(container, cnt, null);
+    } else {
+        html += makeRowHTML(1, '기타', 'label-badge', '', null, '기타');
+        container.innerHTML = html;
+    }
+}
+
+// 블라인드 UI 렌더링
+function renderBlindUI(container, count, items) {
+    g_blindHeightState = {}; 
+    var mProd="", mOpt="", mPrice="", mMemo="";
+    var firstH = ""; 
+
+    if(items && items.length > 0) {
+        mProd = items[0].prod; mOpt = items[0].opt; mPrice = items[0].p; mMemo = items[0].memo;
+        if(items[0].h) firstH = items[0].h;
+    }
+    
+    var subCatVal = document.getElementById('blindSubKind') ? document.getElementById('blindSubKind').value : "콤비";
+    var hasLBracket = (mOpt && mOpt.indexOf("[ㄱ자 꺽쇠]") > -1);
+
+    var html = `
+    <input type="hidden" name="BlindSize" id="TotalBlindSize" value="">
+    <input type="hidden" name="BlindQty" id="TotalBlindQty" value="">
+    
+    <div style="margin-top:10px;">
+        <div class="size-layout">
+            <div style="flex:1;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:5px;">
+                    <div style="font-size:13px; font-weight:bold; color:#666;">📐 창별 사이즈 (<span style="color:#007bff;">가로 x 세로</span>)</div>
+                    <label style="font-size:12px; cursor:pointer; display:flex; align-items:center; gap:3px; background:#f8f9fa; padding:2px 6px; border-radius:4px; border:1px solid #ddd; margin:0;">
+                        <input type="checkbox" id="chkLBracket" onchange="toggleLBracket(this)" ${hasLBracket ? 'checked' : ''}>
+                        <span style="font-weight:bold; color:#d63384;">ㄱ자 꺽쇠</span>
+                    </label>
+                </div>
+                <div class="w-grid" style="display:flex; flex-direction:column; gap:6px;">`;
+
+    for(var i=1; i<=count; i++) {
+        var valW="", valH="", valID="", valQty="", valHandle="우", valCord="150";
+        if (count > 1 && i === 1) valHandle = "좌";
+
+        if(items && items[i-1]) {
+            var it = items[i-1];
+            valID = it.id || "";
+            valW = (it.w && !isNaN(it.w)) ? parseFloat(it.w) : "";
+            valH = (it.h && !isNaN(it.h)) ? parseFloat(it.h) : "";
+            valQty = (it.q && !isNaN(it.q)) ? parseFloat(it.q) : "";
+            valHandle = it.handle || valHandle;
+            valCord = it.cord || "150"; 
+        } else {
+            valH = (firstH && !isNaN(firstH)) ? parseFloat(firstH) : "";
+        }
+
+        if(valW === 0) valW = ""; if(valH === 0) valH = ""; if(valQty === 0) valQty = "";
+
+        var evtCalc = `oninput="calcBlindRowArea(${i}); updateBlindAggregates();"`;
+        var evtHeight = (i === 1) 
+            ? `oninput="syncBlindHeight(this.value); calcBlindRowArea(1); updateBlindAggregates();"` 
+            : `oninput="g_blindHeightState[${i}]=true; calcBlindRowArea(${i}); updateBlindAggregates();"`;
+        var highlightStyle = (i === 1) ? "color:#007bff; border-color:#007bff;" : "";
+
+        html += `
+        <div class="w-item" style="display:flex; align-items:center; gap:5px;">
+            <span style="font-size:12px; color:#888; width:15px; text-align:center; flex-shrink:0;">${i}</span>
+            <input type="number" step="0.1" name="W_${i}" id="RawW_${i}" class="inp-size" value="${valW}" placeholder="W" style="flex:1; min-width:65px; text-align:center; font-weight:bold;" ${evtCalc} onfocus="this.select()">
+            <span style="color:#ccc; font-size:12px; flex-shrink:0;">x</span>
+            <input type="number" step="0.1" name="H_${i}" id="RawH_${i}" class="inp-size" value="${valH}" placeholder="H" style="flex:1; min-width:65px; text-align:center; font-weight:bold; ${highlightStyle}" ${evtHeight} onfocus="this.select()">
+            <select id="Handle_${i}" onchange="updateBlindAggregates()" style="width:50px; height:34px; font-size:12px; font-weight:bold; border:1px solid #ced4da; border-radius:4px; text-align:center; flex-shrink:0;">
+                <option value="좌" ${valHandle==='좌'?'selected':''}>좌</option>
+                <option value="우" ${valHandle==='우'?'selected':''}>우</option>
+            </select>
+            <div style="position:relative; width:65px; flex-shrink:0;">
+                <span style="position:absolute; left:6px; top:50%; transform:translateY(-50%); font-size:11px; color:#888; pointer-events:none;">줄</span>
+                <input type="text" id="CordLen_${i}" value="${valCord}" style="width:100%; height:34px; text-align:center; font-size:12px; border:1px solid #ced4da; border-radius:4px; font-weight:bold;" oninput="updateBlindAggregates()" onfocus="this.select()">
+            </div>
+            <div style="width:75px; flex-shrink:0;">
+                <input type="number" step="0.01" name="Qty_${i}" id="Qty_${i}" class="inp-area-mini" value="${valQty}" placeholder="㎡" style="width:100%; text-align:center; background:#f8f9fa; border:1px solid #e9ecef; color:#007bff; font-weight:bold; height:34px; border-radius:4px;" oninput="calcBlindTotalPrice(); updateBlindAggregates();" onfocus="this.select()">
+            </div>
+            <input type="hidden" name="RowIdx" value="${i}">
+            <input type="hidden" name="ItemID_${i}" value="${valID}">
+            <input type="hidden" name="SubCat_${i}" value="${subCatVal}">
+            <input type="hidden" name="ProdName_${i}" class="sync-prod" value="${mProd}">
+            <input type="hidden" name="Option_${i}" class="sync-opt" value="${mOpt}">
+            <input type="hidden" name="Price_${i}" class="sync-price" value="${mPrice}">
+            <input type="hidden" name="Memo_${i}" class="sync-memo" value="${mMemo}">
+        </div>`;
+    }
+    
+    html += `</div></div></div>
+    <div class="common-box" style="margin-top:15px;">
+        <div class="common-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-weight:bold; color:#333;"><i class="fas fa-bullhorn"></i> 공통 정보</span>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span id="blindRealtimeTotal" style="color:#d63384; font-size:1.1em; font-weight:800;">0원</span>
+            </div>
+        </div>
+        <div class="common-row" style="display:flex; gap:5px; margin-bottom:5px;">
+            <input type="text" id="Master_Prod" class="inp-prod" placeholder="제품명" value="${mProd}" style="flex:1; font-weight:bold;" oninput="syncBlindData(${count}, 'ProdName')" onfocus="this.select()">
+            <input type="text" id="Master_Opt" class="sel-opt" placeholder="옵션/색상" value="${mOpt}" style="flex:1;" oninput="syncBlindData(${count}, 'Option')" onfocus="this.select()">
+        </div>
+        <div class="common-row" style="display:flex; gap:5px; margin-bottom:5px;">
+            <input type="text" inputmode="numeric" id="Master_Price" class="inp-price" placeholder="단가" value="${formatComma(mPrice)}" style="flex:1; border:2px solid #ffc107;" oninput="this.value=formatComma(this.value); syncBlindData(${count}, 'Price')" onfocus="this.select()">
+            <input type="text" id="Master_Memo" class="inp-memo" placeholder="비고" value="${mMemo}" style="flex:2;" oninput="syncBlindData(${count}, 'Memo')" onfocus="this.select()">
+        </div>
+    </div>`;
+    
+    container.innerHTML = html;
+    setTimeout(function() { 
+        if(typeof calcBlindTotalPrice === 'function') calcBlindTotalPrice(); 
+        if(typeof updateBlindAggregates === 'function') updateBlindAggregates(); 
+    }, 50);
+}
+
+function syncBlindHeight(val) {
+    var count = parseInt(document.getElementById('blindSplit').value) || 1;
+    for(var i=2; i<=count; i++) {
+        if(!g_blindHeightState[i]) {
+            var el = document.getElementById('RawH_'+i);
+            if(el) { el.value = val; calcBlindRowArea(i); }
+        }
+    }
+    if(typeof updateBlindAggregates === 'function') updateBlindAggregates();
+}
+
+function calcBlindRowArea(idx) {
+    var elW = document.getElementById('RawW_' + idx);
+    var elH = document.getElementById('RawH_' + idx);
+    var elQty = document.getElementById('Qty_' + idx);
+    if(!elW || !elH || !elQty) return;
+
+    var w = parseFloat(elW.value) || 0;
+    var h = parseFloat(elH.value) || 0;
+    
+    checkLadderSafety(h);
+
+    if (w > 0 && h > 0) {
+        var calcH = (h < 150) ? 150 : h;
+        var rawQty = (w * calcH) / 10000;
+        var minInput = document.getElementById('blindSubKind');
+        var minVal = minInput ? (parseFloat(minInput.getAttribute('data-min')) || 0) : 0;
+        var finalQty = (rawQty < minVal) ? minVal : rawQty;
+        elQty.value = parseFloat(finalQty.toFixed(2));
+    } else {
+        elQty.value = "";
+    }
+    if(typeof calcBlindTotalPrice === 'function') calcBlindTotalPrice();
+}
+
+function toggleLBracket(chk) {
+    var optInput = document.getElementById('Master_Opt');
+    var current = optInput.value;
+    var tag = " [ㄱ자 꺽쇠]";
+    if(chk.checked) { if(current.indexOf("[ㄱ자 꺽쇠]") === -1) optInput.value = current + tag; } 
+    else { optInput.value = current.replace(tag, "").replace("ㄱ자 꺽쇠", "").trim(); }
+    var count = parseInt(document.getElementById('blindSplit').value) || 1;
+    syncBlindData(count, 'Option');
+}
+
+function makeRowHTML(idx, label, badgeClass, defOpt, item, subCatVal) {
+    var valProd="", valW="", valH="", valQ="", valP="", valMemo="", valID="";
+    if(item) { 
+        valProd=item.prod; 
+        valW = smartFloat(item.w, 1);
+        valH = smartFloat(item.h, 1); 
+        valQ = smartFloat(item.q, 2);
+        valP=item.p; valMemo=item.memo; valID=item.id; 
+        if(item.subCat) subCatVal = item.subCat;
+    }
+    if(!subCatVal) subCatVal = ""; 
+
+    var currentCat = document.getElementById('catSelect').value;
+    var optHtml = "";
+    var stepVal = (currentCat === '커튼') ? "1" : "0.01";
+
+    if (valW !== "") valW = smartFloat(valW, 1);
+    if (valH !== "") valH = smartFloat(valH, 1);
+    if (valQ !== "") valQ = smartFloat(valQ, 2);
+
+    if(valW == 0) valW = ""; if(valH == 0) valH = ""; if(valQ == 0) valQ = ""; if(valP == 0) valP = "";
+    
+    if(currentCat === '커튼' && (label.indexOf('속지')>-1 || label.indexOf('겉지')>-1 || label==='수정')) {
+        optHtml = `<select name="Option_${idx}" class="sel-opt" onchange="calcQty(${idx})">
+            <option value="나비주름(2배)" ${defOpt.indexOf('나비')>-1?'selected':''}>나비주름(2배)</option>
+            <option value="나비주름+형상" ${defOpt.indexOf('나비')>-1 && defOpt.indexOf('형상')>-1?'selected':''}>나비+형상(2배)</option>
+            <option value="평식(형상)" ${defOpt.indexOf('평식')>-1?'selected':''}>평식(형상)(1.5배)</option>
+        </select>`;
+    } else {
+        optHtml = `<input type="text" name="Option_${idx}" class="sel-opt" placeholder="옵션" value="${defOpt}" onfocus="this.select()">`;
+    }
+    var syncEvent = `oninput="syncInput(this, '${idx}', '${label}')"`;
+
+    return `
+    <div class="dynamic-row">
+        <input type="hidden" name="RowIdx" value="${idx}">
+        <input type="hidden" name="ItemID_${idx}" value="${valID}">
+        <input type="hidden" name="SubCat_${idx}" value="${subCatVal}">
+        <input type="hidden" name="LocSuffix_${idx}" value="${(label=='속지')?'(속지)':(label=='겉지'?'(겉지)':'')}">
+        <div class="row-line-1" style="flex-wrap:wrap;">
+            <span class="label-badge ${badgeClass}">${label}</span>
+            <input type="text" name="ProdName_${idx}" class="inp-prod" placeholder="제품명" value="${valProd}" ${syncEvent} style="min-width:110px;" onfocus="this.select()">
+            <div style="flex:1; min-width:110px;">${optHtml.replace('class="sel-opt"', 'class="sel-opt" style="width:100%;"')}</div>
+        </div>
+        <div class="row-line-2" style="align-items:center;">
+            <input type="number" name="W_${idx}" class="inp-size" placeholder="가로" step="0.1" value="${valW}" oninput="syncInput(this, '${idx}', 'W'); calcQty(${idx});" onfocus="this.select()"> x 
+            <input type="number" name="H_${idx}" class="inp-size" placeholder="세로" step="0.1" value="${valH}" oninput="syncInput(this, '${idx}', 'H'); calcQty(${idx});" onfocus="this.select()">
+            <input type="number" name="Qty_${idx}" id="Qty_${idx}" class="inp-qty" placeholder="수량" step="${stepVal}" value="${valQ}" oninput="calcCurtainEtcTotal('${idx}')" onfocus="this.select()">
+            <input type="text" inputmode="numeric" name="Price_${idx}" class="inp-price" placeholder="단가" style="border: 2px solid #ffc107;" value="${formatComma(valP)}" oninput="this.value=formatComma(this.value); syncInput(this, '${idx}', '${label}'); calcCurtainEtcTotal('${idx}')" onfocus="this.select()">
+            <input type="text" name="Memo_${idx}" class="inp-memo" placeholder="비고" value="${valMemo}" onfocus="this.select()">
+        </div>
+        <span id="RowTotal_${idx}" style="font-size:0.9rem; font-weight:bold; color:#d63384; min-width:60px; text-align:right; margin-left:5px;">0원</span>
+    </div>`;
+}
+
+function calcCurtainEtcTotal(idx) {
+    var qtyInput = document.getElementById(`Qty_${idx}`);
+    var qty = parseFloat(qtyInput ? qtyInput.value : 0) || 0;
+    var priceInput = document.querySelector(`input[name="Price_${idx}"]`);
+    var priceStr = priceInput ? priceInput.value : "0";
+    var price = parseFloat(priceStr.replace(/,/g, "")) || 0;
+    var total = Math.round(qty * price);
+    var span = document.getElementById(`RowTotal_${idx}`);
+    if (span) {
+        if (total > 0) span.innerText = total.toLocaleString() + "원";
+        else span.innerText = "0원";
+    }
+}
+
+/* ==========================================================================
+   [4] 계산 및 동기화
+   ========================================================================== */
+function syncBlindData(count, type, isInit) {
+    var types = (type === 'ALL') ? ['ProdName', 'Option', 'Price', 'Memo', 'H'] : [type];
+    types.forEach(function(t) {
+        var suffix = (t === 'ProdName') ? 'Prod' : (t === 'Option' ? 'Opt' : t);
+        var masterInput = document.getElementById('Master_' + suffix);
+        if (!masterInput) return;
+        var masterVal = masterInput.value;
+
+        if(t === 'H') {
+            for(var i=1; i<=count; i++) {
+                var hidden = document.querySelector(`input[name="H_${i}"]`);
+                if(hidden) hidden.value = masterVal;
+                if (!isInit) {
+                    if(typeof calcBlindRowArea === 'function') calcBlindRowArea(i);
+                }
+            }
+        } else {
+            var targetClass = 'sync-' + ((t === 'ProdName') ? 'prod' : (t === 'Option' ? 'opt' : t.toLowerCase()));
+            document.querySelectorAll('.' + targetClass).forEach(function(el) { el.value = masterVal; });
+            if (t === 'Price' && typeof calcBlindTotalPrice === 'function') calcBlindTotalPrice();
+        }
+    });
+}
+
+function syncInput(el, idx, type) {
+    var cat = document.getElementById('catSelect').value;
+    var val = el.value;
+    if (type === 'H') {
+        checkLadderSafety(val);
+    }
+
+    if (cat === '커튼' && document.getElementById('typeMix').checked && idx == '1') {
+        if(type === 'W') { document.querySelector(`input[name="W_2"]`).value = val; calcQty(2); }
+        if(type === 'H') { document.querySelector(`input[name="H_2"]`).value = val; calcQty(2); }
+    }
+    if (cat === '블라인드') {
+        var cnt = parseInt(document.getElementById('blindSplit').value);
+        if(el.name.indexOf('ProdName') > -1 || el.name.indexOf('Price') > -1 || el.name.indexOf('H_') > -1) {
+            var targetName = el.name.split('_')[0];
+            for(var i=1; i<=cnt; i++) {
+                if(i != idx) {
+                    var target = document.querySelector(`input[name="${targetName}_${i}"]`);
+                    if(target) { target.value = val; if(targetName==='H') calcQty(i); }
+                }
+            }
+        }
+    }
+}
+
+function syncEtcData() {
+    var val = document.getElementById('inpEtcKind').value.trim();
+    var hiddenInput = document.querySelector('input[name="SubCat_1"]');
+    if(hiddenInput) hiddenInput.value = val;
+    var badge = document.querySelector('.dynamic-row .label-badge');
+    if(badge) badge.innerText = val || "기타";
+}
+
+function calcQty(idx) {
+    var w = parseFloat(document.querySelector(`input[name="W_${idx}"]`).value) || 0;
+    var h = parseFloat(document.querySelector(`input[name="H_${idx}"]`).value) || 0;
+    var cat = document.getElementById('catSelect').value;
+    var qtyField = document.getElementById(`Qty_${idx}`);
+    
+    if (w > 0) {
+        if (cat === '커튼') {
+            var optElem = document.querySelector(`select[name="Option_${idx}"]`);
+            var ratio = 1.5; 
+            if(optElem) { if(optElem.value.indexOf('나비') > -1) ratio = 2.0; }
+            else { 
+                var optInput = document.querySelector(`input[name="Option_${idx}"]`);
+                if(optInput && optInput.value.indexOf('나비') > -1) ratio = 2.0;
+            }
+            qtyField.value = Math.ceil((w * ratio) / 150); 
+        } else if (cat === '블라인드') {
+            if (h > 0) qtyField.value = ((w * h) / 10000).toFixed(2);
+        }
+    }
+    if (cat !== '블라인드') calcCurtainEtcTotal(idx);
+}
+
+function reCalcBlindQty() {
+    var cnt = parseInt(document.getElementById('blindSplit').value) || 1;
+    for(var i=1; i<=cnt; i++) {
+        if(typeof calcBlindRowArea === 'function') calcBlindRowArea(i);
+    }
+}
+
+function calcBlindTotalPrice() {
+    var totalQty = 0.0;
+    var priceStr = document.getElementById('Master_Price').value;
+    var price = parseFloat(priceStr.replace(/,/g, "")) || 0;
+    document.querySelectorAll('input[name^="Qty_"]').forEach(function(el) {
+        totalQty += parseFloat(el.value) || 0;
+    });
+    var totalAmt = Math.round(totalQty * price);
+    var disp = document.getElementById('blindRealtimeTotal');
+    if(disp) {
+        if(totalAmt > 0) disp.innerText = totalAmt.toLocaleString() + "원";
+        else disp.innerText = "0원";
+    }
+}
+
+function calcFinalPrice() {
+    // 1. 숫자 추출 헬퍼
+    var getNum = function(id) { 
+        var el = document.getElementById(id); 
+        return el ? (parseFloat(String(el.value).replace(/,/g, "")) || 0) : 0; 
+    };
+
+    // 2. 입력값 가져오기
+    var subTotal = getNum('raw-total-amt'); // 합계
+    var discount = getNum('inp-discount');  // 할인
+    var deposit  = getNum('inp-deposit');   // 선금
+    var isVat = document.getElementById('chk-vat') ? document.getElementById('chk-vat').checked : false;
+    
+    // 3. 계산 로직
+    var supplyPrice = subTotal - discount; 
+    var vat = isVat ? Math.round(supplyPrice * 0.1) : 0;
+    
+    // [A] 총 견적 금액 (상단 표시용)
+    var finalTotal = supplyPrice + vat;
+    
+    // [B] 실 결제 잔액 (결제 카드 표시용: 총액 - 선금)
+    var balance = finalTotal - deposit;
+    
+    // 4. 화면 업데이트
+    var strTotal = finalTotal.toLocaleString() + "원";
+    var strBalance = balance.toLocaleString() + "원";
+
+    // (1) 상단 헤더 & 모바일 헤더 -> [총 견적 금액] 표시 (선금 미차감)
+    if(document.getElementById('live-price')) document.getElementById('live-price').innerText = finalTotal.toLocaleString();
+    
+    // pcDispFinal 내부에 live-price가 없는 경우를 대비한 안전장치
+    if(document.getElementById('pcDispFinal') && !document.getElementById('live-price')) {
+        document.getElementById('pcDispFinal').innerText = strTotal;
+    }
+    if(document.getElementById('mobileDispFinal')) document.getElementById('mobileDispFinal').innerText = strTotal;
+    
+    // (2) 결제 금액 카드 (우측/하단 박스) -> [잔액] 표시 (선금 차감)
+    // "결제금액"이라는 타이틀 옆에는 실제로 받아야 할 돈(잔금)을 보여줍니다.
+    if(document.getElementById('dispFinal')) document.getElementById('dispFinal').innerText = strBalance;
+
+    // (3) 카드 내부 상세 내역
+    if(document.getElementById('dispSubTotal')) document.getElementById('dispSubTotal').innerText = subTotal.toLocaleString() + "원";
+    if(document.getElementById('dispVat')) document.getElementById('dispVat').innerText = isVat ? vat.toLocaleString() + "원" : "별도";
+}
+
+function calcModalPrice() {
+    // 콤마 제거 후 숫자 변환 헬퍼
+    var getNum = function(id) { 
+        var el = document.getElementById(id); 
+        return el ? (parseFloat(String(el.value).replace(/,/g, "")) || 0) : 0; 
+    };
+
+    // 메인 화면의 입력값 ID를 정확히 참조하도록 수정
+    var subTotal = getNum('raw-total-amt');  // 기존: baseTotalAmount (X)
+    var discount = getNum('inp-discount');   // 기존: discountInput (X)
+    var deposit  = getNum('inp-deposit');    // 기존: depositInput (X)
+    
+    var isVat = document.getElementById('payVatInput').checked;
+    
+    // 공급가 = 합계 - 할인
+    var supplyPrice = subTotal - discount;
+    // 부가세 계산
+    var vat = isVat ? Math.round(supplyPrice * 0.1) : 0;
+    // 최종 금액
+    var finalTotal = supplyPrice + vat;
+    // 결제 할 금액 (잔금) = 최종 금액 - 선금
+    var amountToPay = finalTotal - deposit;
+
+    var dispEl = document.getElementById('modalFinalPrice');
+    if (dispEl) dispEl.innerText = amountToPay.toLocaleString() + "원";
+}
+
+/* ==========================================================================
+   [5] 모달, 상태변경, 아파트DB, 유틸
+   ========================================================================== */
+function openManualModal(mode) {
+    document.getElementById('manualModal').style.display = 'flex';
+    if(mode !== 'edit') {
+        document.getElementById('manualTitle').innerText = "품목 등록";
+        document.getElementById('manualForm').reset();
+        document.getElementById('hidItemID').value = "";
+        document.getElementById('hidGroupID').value = "";
+        changeCategory('커튼'); 
+    } else {
+        document.getElementById('manualTitle').innerText = "품목 수정";
+    }
+}
+function closeManualModal() { document.getElementById('manualModal').style.display = 'none'; }
+
+function editItem(id, loc, cat, prod, opt, w, h, qty, price, memo, sup, groupId, category1, bSize, bCount, bQtyList) {
+    openManualModal('edit');
+    document.getElementById('hidItemID').value = id;
+    document.getElementById('inpSupplier').value = sup;
+
+    var cleanLoc = loc.replace(/\s*\(.*\)/g, "").trim();
+    var selLoc = document.getElementById('selLocation');
+    var found = false;
+    for (var i = 0; i < selLoc.options.length; i++) { if (selLoc.options[i].value === cleanLoc) { found = true; break; } }
+    if (found) { selLoc.value = cleanLoc; selLoc.style.display = "block"; document.getElementById('divDirectLoc').style.display = "none"; } 
+    else { selLoc.value = "direct"; selLoc.style.display = "none"; document.getElementById('divDirectLoc').style.display = "flex"; document.getElementById('inpLocation').value = cleanLoc; }
+
+    var cleanCat = (cat || "").trim(); 
+    document.getElementById('catSelect').value = cleanCat;
+    var cleanCat1 = (category1 || "").trim();
+
+    if (cleanCat === '블라인드') {
+        changeCategory('블라인드'); 
+        if (cleanCat1) {
+            var btnFound = false;
+            document.querySelectorAll('.btn-kind').forEach(function(btn) {
+                if (btn.innerText.trim() === cleanCat1) { btn.click(); btnFound = true; }
+            });
+            if(!btnFound) document.getElementById('blindSubKind').value = cleanCat1;
+        }
+
+        var items = [];
+        var cnt = 1; 
+        var useGroupLogic = false;
+        
+        if (groupId && typeof g_groupData !== 'undefined' && g_groupData[groupId]) {
+            var grp = g_groupData[groupId];
+            if (grp.length === 1 && grp[0].BlindSize && /[,/\n\r]/.test(grp[0].BlindSize)) {
+                useGroupLogic = false; 
+            } else {
+                useGroupLogic = true;
+            }
+        }
+
+        if (useGroupLogic) {
+            var grpItems = g_groupData[groupId];
+            items = grpItems.map(item => ({
+                w: item.w, h: item.h, q: item.q,
+                handle: (item.BlindSize || "").match(/\(([^)]+)\)/)?.[1] || "",
+                cord: (item.BlindSize || "").match(/줄\s*([0-9]+)/)?.[1] || "150",
+                prod: prod, opt: opt, p: price, memo: memo, id: item.id
+            }));
+            cnt = items.length;
+        } else {
+            var parsedSizes = [];
+            if (bSize && bSize.trim() !== "") {
+                var rawChunks = bSize.split(/[,/\n\r]+/); 
+                var chunks = rawChunks.filter(s => s && s.trim() !== ""); 
+                var lastValidH = ""; 
+                chunks.forEach(function(chunk) {
+                    chunk = chunk.trim();
+                    var cleanChunk = chunk.replace(/줄\s*[0-9]+/, "").replace(/\([^)]+\)/, "");
+                    var sizeMatch = cleanChunk.match(/([0-9.]+)\s*[xX*]\s*([0-9.]+)/);
+                    var tW = "", tH = "", hasH = false; 
+
+                    if (sizeMatch) {
+                        tW = sizeMatch[1]; tH = sizeMatch[2]; hasH = true; lastValidH = tH;
+                    } else {
+                        tW = cleanChunk.replace(/[^0-9.]/g, ""); tH = h;
+                    }
+                    var handMatch = chunk.match(/\(([^)]+)\)/);
+                    var tHand = handMatch ? handMatch[1] : ""; 
+                    var cordMatch = chunk.match(/줄\s*([0-9]+)/);
+                    var tCord = cordMatch ? cordMatch[1] : "150";
+                    parsedSizes.push({ w: tW, h: tH, handle: tHand, cord: tCord, hasH: hasH });
+                });
+                parsedSizes.forEach(function(item) {
+                    if (!item.hasH && (!item.h || item.h == 0) && lastValidH) item.h = lastValidH;
+                });
+            }
+            cnt = parsedSizes.length > 0 ? parsedSizes.length : 1;
+            var parsedQtys = [];
+            if (bQtyList && bQtyList.trim() !== "") {
+                parsedQtys = bQtyList.split(/[,/\n\r]+/).map(s => s.trim()).filter(s => s !== "");
+            }
+            for(var i=0; i<cnt; i++) {
+                var sizeObj = parsedSizes[i] || { w: w, h: h, handle: "", cord: "150" };
+                if (!sizeObj.handle) sizeObj.handle = (cnt > 1 && i === 0) ? "좌" : "우";
+                var qtyVal = parsedQtys[i] || "";
+                if(!qtyVal && sizeObj.w && sizeObj.h) {
+                    qtyVal = (parseFloat(sizeObj.w) * parseFloat(sizeObj.h) / 10000).toFixed(2);
+                }
+                items.push({ 
+                    w: sizeObj.w, h: sizeObj.h, q: qtyVal,
+                    handle: sizeObj.handle, cord: sizeObj.cord,     
+                    prod: prod, opt: opt, p: price, memo: memo, id: id 
+                });
+            }
+        }
+
+        var splitInput = document.getElementById('blindSplit');
+        if(splitInput) splitInput.value = cnt;
+        document.querySelectorAll('.btn-blind-num').forEach(b => b.classList.remove('active'));
+        var blindSelect = document.getElementById('blindSelect');
+        if(blindSelect) blindSelect.classList.remove('active');
+        if(cnt <= 6) {
+            var targetBtn = document.getElementById('bBtn_' + cnt);
+            if(targetBtn) targetBtn.classList.add('active');
+            if(blindSelect) blindSelect.value = "";
+        } else {
+            if(blindSelect) { blindSelect.value = cnt; blindSelect.classList.add('active'); }
+        }
+        renderBlindUI(document.getElementById('dynamicArea'), cnt, items);
+        
+    } else {
+        changeCategory(cleanCat);
+        var container = document.getElementById('dynamicArea');
+        if (cleanCat === '기타') document.getElementById('inpEtcKind').value = cleanCat1;
+
+        if (groupId && typeof g_groupData !== 'undefined' && g_groupData[groupId]) {
+            var grpItems = g_groupData[groupId];
+            document.getElementById('hidGroupID').value = groupId;
+            if (cleanCat === '커튼') {
+                document.getElementById('typeMix').checked = true;
+                var html = "";
+                grpItems.forEach((item, i) => {
+                    var isInner = false;
+                    if (item.category1 === '속지') isInner = true;
+                    else if (item.category1 === '겉지') isInner = false;
+                    else if (item.loc.indexOf('속지') > -1) isInner = true;
+                    else if (item.loc.indexOf('겉지') > -1) isInner = false;
+                    else { if (i === 0) isInner = true; else isInner = false; }
+                    var lbl = isInner ? '속지' : '겉지';
+                    var cls = isInner ? 'label-inner' : 'label-outer';
+                    html += makeRowHTML(i+1, lbl, cls, item.opt, item, item.category1 || lbl);
+                });
+                container.innerHTML = html;
+            }
+        } else {
+            document.getElementById('hidGroupID').value = "";
+            var defItem = { w:w, h:h, q:qty, p:price, prod:prod, memo:memo, id:id };
+            var labelName = '수정', labelClass = 'label-badge', subVal = cleanCat1;
+
+            if (cleanCat === '커튼') {
+                if (cleanCat1 === '속지') { labelName = '속지'; labelClass = 'label-inner'; document.getElementById('typeInner').checked = true; } 
+                else if (cleanCat1 === '겉지') { labelName = '겉지'; labelClass = 'label-outer'; document.getElementById('typeOuter').checked = true; } 
+                else if (loc.indexOf('속지') > -1) { labelName = '속지'; labelClass = 'label-inner'; subVal = '속지'; document.getElementById('typeInner').checked = true; } 
+                else if (loc.indexOf('겉지') > -1) { labelName = '겉지'; labelClass = 'label-outer'; subVal = '겉지'; document.getElementById('typeOuter').checked = true; }
+                else { labelName = '커튼'; document.getElementById('typeMix').checked = true; }
+            } else if (cleanCat === '기타') { labelName = cleanCat1 || '기타'; }
+            document.getElementById('dynamicArea').innerHTML = makeRowHTML(1, labelName, labelClass, opt, defItem, subVal);
+        }
+        setTimeout(function() {
+            if (groupId && typeof g_groupData !== 'undefined' && g_groupData[groupId]) {
+                g_groupData[groupId].forEach((item, i) => { calcCurtainEtcTotal(i + 1); });
+            } else { calcCurtainEtcTotal(1); }
+        }, 50);
+    }
+}
+
+function toggleStatusAjax(btn) {
+    var itemId = btn.getAttribute('data-id');
+    var currentStep = parseInt(btn.getAttribute('data-step'));
+    var nextStep = (currentStep + 1) % 4;
+    var btnInfo = [{t:'대기', c:'stat-0'}, {t:'주문', c:'stat-1'}, {t:'수령', c:'stat-2'}, {t:'AS', c:'stat-3'}];
+    
+    btn.className = "btn-status-toggle item-stat-btn " + btnInfo[nextStep].c;
+    btn.innerText = btnInfo[nextStep].t;
+    btn.setAttribute('data-step', nextStep);
+    
+    fetch(`/api/item/update-step?id=${itemId}&step=${nextStep}`)
+        .then(() => { checkAndSyncSubStatus(); })
+        .catch(err => { console.error(err); alert("오류 발생. 새로고침합니다."); location.reload(); });
+}
+
+function checkAndSyncSubStatus() {
+    var btns = document.querySelectorAll('.item-stat-btn');
+    if(btns.length === 0) return;
+    var total = btns.length, cntOrder = 0, cntReceive = 0;
+    btns.forEach(function(b) {
+        var step = parseInt(b.getAttribute('data-step'));
+        if(step === 1) cntOrder++;
+        if(step === 2) cntReceive++;
+    });
+    if(cntOrder === total) forceActivateSubBtn('order');
+    if(cntReceive === total) forceActivateSubBtn('receive');
+}
+
+function forceActivateSubBtn(type) {
+    var btnId = (type === 'order') ? 'btnSub_order' : 'btnSub_receive';
+    var btn = document.getElementById(btnId);
+    if(!btn) return;
+    var computed = window.getComputedStyle(btn).backgroundColor;
+    var isActive = (computed !== 'rgb(255, 255, 255)' && computed !== 'rgba(0, 0, 0, 0)' && computed !== 'transparent');
+    if (isActive) return;
+
+    fetch(`/api/status/update?id=${g_orderId}&type=sub&val=${type}&v=${new Date().getTime()}`)
+        .then(() => {
+            btn.style.background = (type === 'order') ? "#5ed046" : "#448aff"; 
+            btn.style.color = "#fff";
+        });
+}
+
+function toggleSubStatus(subType) {
+    var statusMap = { 'order': '제품주문', 'receive': '제품수령', 'as': 'AS요청', 'wait': '작업대기', 'hold': '작업보류' };
+    if (confirm("'" + statusMap[subType] + "' 상태를 변경하시겠습니까?")) {
+        fetch("/api/status/update?id=" + g_orderId + "&type=sub&val=" + encodeURIComponent(subType))
+            .then(res => { if(res.ok) location.reload(); else alert("변경 실패"); })
+            .catch(e => alert("오류: " + e));
+    }
+}
+
+function initSortable() {
+    var el = document.querySelector('.excel-table tbody');
+    if (!el) return;
+    new Sortable(el, {
+        handle: '.handle', animation: 150, delay: 0,
+        onEnd: function (evt) {
+            var ids = Array.from(document.querySelectorAll('.excel-table tbody tr')).map(row => row.getAttribute('data-id'));
+            fetch('/api/item/reorder', {
+                method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'ids=' + ids.join(',')
+            });
+        }
+    });
+}
+
+function printEstimate() { window.open('/view-print/' + g_orderId, '_blank', 'width=850,height=1000,scrollbars=yes'); }
+
+function setBlindKind(btn, kindName, minVal) {
+    document.querySelectorAll('.btn-kind').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    
+    var input = document.getElementById('blindSubKind');
+    input.value = kindName; 
+    input.setAttribute('data-min', minVal);
+    
+    var msgEl = document.getElementById('blindMinMsg');
+    if(msgEl) msgEl.innerText = "※ " + kindName + " 기본: " + minVal + "㎡ / 세로150";
+    
+    document.querySelectorAll('input[name^="SubCat_"]').forEach(function(el) { el.value = kindName; });
+
+    var cnt = parseInt(document.getElementById('blindSplit').value) || 1;
+    for(var i=1; i<=cnt; i++) {
+        if(typeof calcBlindRowArea === 'function') calcBlindRowArea(i); 
+    }
+    
+    if(typeof updateBlindAggregates === 'function') updateBlindAggregates();
+    if(typeof calcBlindTotalPrice === 'function') calcBlindTotalPrice();
+}
+
+function confirmGroupDelete(groupId) {
+    var msg = "이 항목을 삭제하시겠습니까?";
+    if (groupId && groupId !== "") msg = "⚠️ 이 항목은 그룹(세트)으로 묶여 있습니다.\n\n삭제 시 같은 그룹의 모든 항목이 함께 삭제됩니다.\n계속하시겠습니까?";
+    return confirm(msg);
+}
+
+function formatComma(str) { return String(str).replace(/[^\d]/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+function cleanNum(str) { return parseFloat(String(str).replace(/,/g, "")) || 0; }
+function formatPhoneDot(el) {
+    var str = el.value.replace(/[^0-9]/g, ''); var tmp = '';
+    if(str.length < 4) tmp = str;
+    else if(str.length < 7) tmp = str.substr(0, 3) + '.' + str.substr(3);
+    else if(str.length < 11) tmp = str.substr(0, 3) + '.' + str.substr(3, 3) + '.' + str.substr(6);
+    else tmp = str.substr(0, 3) + '.' + str.substr(3, 4) + '.' + str.substr(7);
+    el.value = tmp;
+}
+
+function toggleLocation(val) {
+    var sel = document.getElementById('selLocation'), divDirect = document.getElementById('divDirectLoc'), inp = document.getElementById('inpLocation');
+    if (val === "direct") { sel.style.display = "none"; divDirect.style.display = "flex"; inp.value = ""; inp.focus(); } 
+    else { sel.style.display = "block"; divDirect.style.display = "none"; inp.value = val; }
+}
+function resetLocation() {
+    var sel = document.getElementById('selLocation'), divDirect = document.getElementById('divDirectLoc'), inp = document.getElementById('inpLocation');
+    divDirect.style.display = "none"; sel.style.display = "block"; sel.value = ""; inp.value = "";
+}
+
+function showToast(msg, isCopyContent) {
+    var x = document.getElementById("toast-container"); if (!x) return;
+    if (isCopyContent) {
+        var preview = msg.length > 150 ? msg.substring(0, 150) + "..." : msg;
+        x.innerHTML = "<div style='font-weight:bold; margin-bottom:5px;'>✅ 클립보드 복사 완료!</div><div style='font-size:12px; text-align:left; opacity:0.9; line-height:1.4;'>" + preview.replace(/\n/g, '<br>') + "</div>";
+    } else { x.innerText = msg; }
+    x.className = "show"; setTimeout(function(){ x.className = x.className.replace("show", ""); }, 4000);
+}
+
+// 아파트 DB 관련
+function openDbModal() { document.getElementById('dbModal').style.display = 'flex'; if(document.getElementById('mdlComplex').options.length <= 1) mdlLoadComplexes(); }
+function closeDbModal() { document.getElementById('dbModal').style.display = 'none'; }
+
+function mdlLoadComplexes() {
+    fetch('/api/apt/complexes').then(r=>r.json()).then(d=>{
+        var html = '<option value="">1. 단지 선택</option>';
+        d.forEach(i => html += `<option value="${i.ComplexID}">${i.ComplexName}</option>`);
+        document.getElementById('mdlComplex').innerHTML = html;
+    });
+}
+function mdlLoadPlans(cid) {
+    var sel = document.getElementById('mdlPlan'); sel.disabled = true; sel.innerHTML = '<option>로딩중...</option>';
+    fetch('/api/apt/plans/'+cid).then(r=>r.json()).then(d=>{
+        var html = '<option value="">2. 평형 선택</option>';
+        d.forEach(i => html += `<option value="${i.PlanID}">${i.PlanName}${i.IsRepresentative=='Y'?' (대표)':''}</option>`);
+        sel.innerHTML = html; sel.disabled = false;
+    });
+}
+function mdlLoadWindows(pid) {
+    var con = document.getElementById('mdlListContainer'); con.innerHTML = '로딩중...';
+    fetch('/api/apt/windows/'+pid).then(r=>r.json()).then(d=>{
+        if(d.length === 0) { con.innerHTML = '<div style="padding:40px; text-align:center;">데이터 없음</div>'; return; }
+        var grouped = {}; 
+        d.forEach(i => { if(!grouped[i.LocationName]) grouped[i.LocationName]=[]; grouped[i.LocationName].push(i); });
+        
+        var html = '';
+        for(var loc in grouped) {
+            html += `<div class="loc-section"><div class="loc-header"><i class="fas fa-map-marker-alt"></i> ${loc}</div><div class="item-flex-row">`;
+            grouped[loc].forEach(item => {
+                var detail = (item.WinType.indexOf('커튼') > -1) ? `<div class="opt-area sub-btn-group"><label class="sub-chk-label"><input type="checkbox" name="CT_Inner_${item.WindowID}" value="Y" checked>속지</label><label class="sub-chk-label"><input type="checkbox" name="CT_Outer_${item.WindowID}" value="Y" checked>겉지</label></div>` : (parseInt(item.SplitCount)>1 ? `<div class="opt-area"><span class="blind-info">${item.SplitCount}창 연창</span></div>` : ``);
+                html += `<div class="item-card" onclick="this.querySelector('.main-chk').click()"><div class="card-top"><div><div class="card-type">${item.WinType}</div><div class="card-size">${item.Width} x ${item.Height}</div></div><input type="checkbox" name="window_ids" value="${item.WindowID}" class="main-chk" onclick="event.stopPropagation()"></div>${detail}</div>`;
+            });
+            html += `</div></div>`;
+        }
+        con.innerHTML = html;
+    });
+}
+
+function markItemChanged() { sessionStorage.setItem('item_changed', 'true'); }
+
+function submitBulk() {
+    if(document.querySelectorAll('.main-chk:checked').length > 0) {
+        markItemChanged();
+        var form = document.getElementById('bulkForm');
+        var checkedBoxes = document.querySelectorAll('.main-chk:checked');
+        var ids = Array.from(checkedBoxes).map(cb => cb.value).join(',');
+        
+        var hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'window_ids';
+        hiddenInput.value = ids;
+        form.appendChild(hiddenInput);
+        
+        form.action = '/api/apt/import-to-order';
+        form.submit();
+    }
+    else alert("항목을 선택해주세요.");
+}
+
+function checkSmsTrigger() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get("sms_trigger") === "Y") {
+        var amt = params.get("sms_amt") || "0";
+        var txt = `[창아름커튼블라인드]\n신한은행 110-261-107660\n최대성 / 금액 : ${amt}\n감사합니다.`;
+        var url = (navigator.userAgent.toLowerCase().indexOf("iphone") > -1) ? "sms:" + g_custPhone + "&body=" + encodeURIComponent(txt) : "sms:" + g_custPhone + "?body=" + encodeURIComponent(txt);
+        window.history.replaceState({}, document.title, window.location.pathname + "?id=" + g_orderId);
+        window.location.href = url;
+    }
+}
+
+function changeMainStatus(status) {
+    if (status === '방문상담' || status === '시공예정' || status === 'AS요청') {
+        var savedVal = "";
+        if (typeof g_savedSchedules !== 'undefined' && g_savedSchedules[status]) {
+            savedVal = g_savedSchedules[status];
+        }
+        openDateModal(status, savedVal); 
+        return; 
+    }
+
+    if (status === '작업완료') {
+        if (!confirm("현재 상태를 '작업완료'로 변경하시겠습니까?")) return;
+        var payStat = document.getElementById('srv-pay-stat') ? document.getElementById('srv-pay-stat').value : "";
+        var needSms = (payStat !== '입금완료' && confirm("아직 입금처리가 안 되었습니다.\n고객님께 금액 정보 문자를 보내시겠습니까?"));
+        processWorkComplete(status, needSms);
+        return;
+    } 
+    
+    fetch(`/api/status/update?id=${g_orderId}&type=main&val=${encodeURIComponent(status)}`)
+        .then(res => { if(res.ok) location.reload(); else alert("상태 변경 실패"); })
+        .catch(err => alert("통신 오류: " + err));
+}
+
+function processWorkComplete(status, sendSms) {
+    fetch(`/api/status/update?id=${g_orderId}&type=main&val=${encodeURIComponent(status)}`)
+        .then(() => {
+            if (sendSms) {
+                var balanceTxt = document.getElementById('dispFinal') ? document.getElementById('dispFinal').innerText : "0원";
+                var cleanPhone = g_custPhone.replace(/-/g, ""); 
+                var msg = `[창아름커튼블라인드]\n신한은행 110-261-107660\n최대성 / 잔금 : ${balanceTxt}\n감사합니다.`;
+
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(msg).catch(e => console.error(e));
+                }
+
+                var url = "";
+                if (navigator.userAgent.toLowerCase().indexOf("iphone") > -1) {
+                    url = "sms:" + cleanPhone + "&body=" + encodeURIComponent(msg);
+                } else {
+                    url = "sms:" + cleanPhone + "?body=" + encodeURIComponent(msg);
+                }
+                window.location.href = url;
+                setTimeout(function() { location.reload(); }, 1000);
+            } else {
+                location.reload();
+            }
+        })
+        .catch(err => {
+            alert("상태 변경 중 오류가 발생했습니다.");
+            console.error(err);
+        });
+}
+
+function togglePayment(nextVal) {
+    if (nextVal === '입금완료') {
+        openPayModal();
+    } else {
+        if (confirm("결제 상태를 '" + nextVal + "'로 변경하시겠습니까?")) {
+            fetch(`/api/status/update?id=${g_orderId}&type=pay&val=${encodeURIComponent(nextVal)}`)
+                .then(res => { if(res.ok) location.reload(); else alert("변경 실패"); })
+                .catch(e => alert("오류: " + e));
+        }
+    }
+}
+
+function openPayModal() {
+    var modal = document.getElementById('payModal'); 
+    if (!modal) { alert("오류: 모달 없음"); return; }
+    
+    // 결제수단 기본값
+    document.getElementById('payMethodInput').value = "계좌";
+    toggleBankInputs("계좌"); 
+    
+    // 메인화면의 VAT 체크 상태를 모달에도 동기화 (ID 수정: chk-vat -> payVatInput)
+    var mainVat = document.getElementById('chk-vat');
+    var modalVat = document.getElementById('payVatInput');
+    if (mainVat && modalVat) modalVat.checked = mainVat.checked;
+    
+    // 금액 계산 실행
+    calcModalPrice();
+    modal.style.display = 'flex';
+}
+
+function toggleBankInputs(val) {
+    var area = document.getElementById('bankInfoArea'), vatChk = document.getElementById('payVatInput');
+    if (val === '계좌') area.style.display = 'block'; else { area.style.display = 'none'; document.getElementById('payBank').value = ""; document.getElementById('payDepositor').value = ""; }
+    vatChk.checked = (val === '카드');
+    calcModalPrice();
+}
+
+async function submitPayStatus() {
+    const total = parseFloat(document.getElementById('raw-total-amt')?.value || 0);
+    const discount = parseFloat(document.getElementById('inp-discount')?.value.replace(/,/g,'') || 0);
+    const isVat = document.getElementById('payVatInput').checked;
+    let supply = total - discount;
+    let finalAmt = isVat ? Math.round(supply * 1.1) : supply;
+
+    try {
+        var formData = new FormData();
+        formData.append('id', g_orderId);
+        formData.append('vat', isVat);
+        formData.append('final_amount', finalAmt); 
+        await fetch("/api/order/save-info", { method: "POST", body: formData });
+
+        var params = new URLSearchParams({
+            id: g_orderId, type: 'pay', val: '입금완료',
+            method: document.getElementById('payMethodInput').value,
+            bank: document.getElementById('payBank').value,
+            depositor: document.getElementById('payDepositor').value
+        });
+
+        let res = await fetch("/api/status/update?" + params.toString());
+        if(res.ok) { alert("입금 처리 및 최종 금액 저장이 완료되었습니다."); location.reload(); }
+    } catch(e) { alert("오류 발생: " + e); }
+}
+
+/* ==========================================================================
+   [6] 캘린더 및 공휴일
+   ========================================================================== */
+function fetchSchedules() {
+    var extKey = document.getElementById('extAccessKey')?.value || "";
+    var url = '/api/schedule' + (extKey ? `?access_key=${extKey}` : '');
+
+    fetch(url)
+        .then(res => {
+            if (!res.ok) throw new Error("권한 없음 또는 서버 오류");
+            return res.json();
+        })
+        .then(data => {
+            g_scheduleData = {};
+            if(data && data.length > 0) {
+                data.forEach(evt => {
+                    var dKey = evt.start; 
+                    if(!g_scheduleData[dKey]) g_scheduleData[dKey] = [];
+                    g_scheduleData[dKey].push(evt);
+                });
+            }
+            if(typeof g_fpInstance !== 'undefined' && g_fpInstance) g_fpInstance.redraw();
+            var picker = document.getElementById('dateInput');
+            if(picker && picker.value && typeof renderDailyTimeline === 'function') {
+                renderDailyTimeline(picker.value);
+            }
+        })
+        .catch(err => { console.log("일정 로드 건너뜀:", err); });
+}
+
+function openDateModal(type, currentVal) {
+    var modal = document.getElementById('dateModal');
+    if(!modal) return;
+    document.getElementById('targetStatus').value = type;
+    document.getElementById('modalTitle').innerText = type + " 일정 수정";
+    
+    var defDate = new Date().toISOString().split('T')[0];
+    var defTime = "10:00";
+
+    if(currentVal && currentVal.length > 10) {
+        var parts = currentVal.split(' ');
+        if(parts.length >= 2) {
+            defDate = parts[0]; 
+            defTime = parts[1]; 
+            if(defTime.length > 5) defTime = defTime.substring(0, 5);
+        }
+    }
+    document.getElementById('dateInput').value = defDate;
+    document.getElementById('timeInput').value = defTime;
+    modal.style.display = 'flex';
+    renderDailyTimeline(defDate);
+}
+
+function renderDailyTimeline(dateStr) {
+    var con = document.getElementById('dailySchedulePreview');
+    con.innerHTML = '<div style="text-align:center; padding:50px; color:#666;"><i class="fas fa-spinner fa-spin"></i> 일정 조회 중...</div>';
+    var nextDate = new Date(dateStr);
+    nextDate.setDate(nextDate.getDate() + 1);
+    var nextDateStr = nextDate.toISOString().split('T')[0];
+
+    fetch(`/api/schedule?start=${dateStr}&end=${nextDateStr}`)
+        .then(res => res.json())
+        .then(data => {
+            var events = data.filter(e => e.start.startsWith(dateStr));
+            if (events.length === 0) {
+                con.innerHTML = `<div style="text-align:center; padding-top:60px; color:#aaa;">
+                    <i class="far fa-calendar-check" style="font-size:24px; margin-bottom:10px;"></i><br>
+                    <span style="font-weight:bold; color:#333;">${dateStr}</span><br>일정이 없습니다.
+                </div>`;
+                return;
+            }
+            events.sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
+
+            var html = '';
+            events.forEach(function(evt) {
+                var borderClass = "border-req"; 
+                var badgeClass = "bg-req";
+                if (evt.className.includes('inst')) { borderClass = "border-inst"; badgeClass = "bg-inst"; }
+                else if (evt.className.includes('visit')) { borderClass = "border-visit"; badgeClass = "bg-visit"; }
+                else if (evt.className.includes('as')) { borderClass = "border-as"; badgeClass = "bg-as"; }
+                var priceHtml = evt.price ? `<div style="font-weight:bold; color:#d63384; font-size:0.9rem;">${evt.price}</div>` : '';
+                var itemsHtml = evt.items ? `<div style="font-size:12px; color:#888; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${evt.items}</div>` : '';
+
+                html += `
+                <div class="preview-item ${borderClass}">
+                    <div style="flex:1; overflow:hidden;">
+                        <div style="display:flex; align-items:center; margin-bottom:4px;">
+                            <span class="p-badge ${badgeClass}">${evt.status || '일정'}</span>
+                            <span style="font-size:12px; color:#555; font-weight:bold;">${evt.time || '-'}</span>
+                        </div>
+                        <div style="font-weight:bold; color:#333; font-size:0.95rem;">${evt.title}</div>
+                        ${itemsHtml}
+                    </div>
+                    <div style="text-align:right; min-width:60px;">
+                        ${priceHtml}
+                    </div>
+                </div>`;
+            });
+            con.innerHTML = html;
+        })
+        .catch(err => {
+            con.innerHTML = '<div style="text-align:center; padding:20px; color:red;">일정 로드 실패</div>';
+            console.error(err);
+        });
+}
+
+function submitDateStatus() {
+    var dateVal = document.getElementById('dateInput').value;
+    var timeVal = document.getElementById('timeInput').value;
+    var target = document.getElementById('targetStatus').value;
+    if(!dateVal || !timeVal) { alert("날짜와 시간을 모두 확인해주세요."); return; }
+
+    fetch('/api/order/update-date', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            order_id: parseInt(g_orderId),
+            target: target,
+            date_str: dateVal + " " + timeVal
+        })
+    }).then(r => r.json()).then(res => { alert("일정이 저장되었습니다."); location.reload(); });
+}
+
+function closeDateModal() { document.getElementById('dateModal').style.display = 'none'; }
+function closeInfoModal() { document.getElementById('infoModal').style.display = 'none'; }
+function openInfoModal() { document.getElementById('infoModal').style.display = 'flex'; }
+
+function initFontControl() {
+    var root = document.documentElement;
+    var currentSize = (window.innerWidth <= 768) ? 16 : 14;
+    var updateSize = (val) => {
+        currentSize = (val === 0) ? ((window.innerWidth <= 768) ? 16 : 14) : Math.min(35, Math.max(12, currentSize + val));
+        root.style.setProperty('--base-font', currentSize + "px");
+    };
+    updateSize(0);
+    document.getElementById('btn-zoom-in')?.addEventListener('click', () => updateSize(1));
+    document.getElementById('btn-zoom-out')?.addEventListener('click', () => updateSize(-1));
+    document.getElementById('btn-zoom-reset')?.addEventListener('click', () => updateSize(0));
+}
+
+function handleEditClick(btn) {
+    var d = btn.dataset;
+    editItem(d.id, d.loc, d.cat, d.prod, d.opt, d.w, d.h, d.qty, d.price, d.memo, d.sup, d.group, d.sub, d.bsize, d.bcount, d.bqty);
+}
+
+document.addEventListener('click', function(e) {
+    var container = document.querySelector('.no-print > div[style*="relative"]'); 
+    if (container && !container.contains(e.target)) {
+        document.getElementById('dropManagerList').style.display = 'none';
+    }
+});
+
+async function saveManagers() {
+    var checked = document.querySelectorAll('.chk-manager:checked');
+    var ids = Array.from(checked).map(cb => parseInt(cb.value));
+    var names = Array.from(checked).map(cb => cb.getAttribute('data-name'));
+
+    try {
+        const res = await fetch("/api/order/update-manager", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ order_id: g_orderId, manager_ids: ids })
+        });
+        const data = await res.json();
+        
+        if(data.status === 'ok') {
+            document.getElementById('dispManagerName').innerText = names.length > 0 ? names.join(", ") : "담당자 지정";
+            document.getElementById('dropManagerList').style.display = 'none';
+            alert("담당자가 설정되었습니다.");
+        } else { alert(data.msg); }
+    } catch(e) { alert("오류 발생"); }
+}
+
+var rawId = document.getElementById('srv-order-id').value;
+g_orderId = rawId ? parseInt(rawId) : null;
+var g_custName = document.getElementById('srv-cust-name').value;
+var g_custPhone = document.getElementById('srv-cust-phone').value;
+
+var g_constDate = document.getElementById('srv-const-date').value;
+var g_existVisit = { 
+    date: document.getElementById('srv-visit-date').value, 
+    time: document.getElementById('srv-visit-time').value 
+};
+var g_existConst = { 
+    date: document.getElementById('srv-const-full').value, 
+    time: document.getElementById('srv-const-time').value 
+};
+
+var g_savedSchedules = {};
+try { g_savedSchedules = JSON.parse(document.getElementById('srv-saved-schedules').textContent); } catch(e) {}
+
+var g_groupData = {};
+try {
+    var txtGroup = document.getElementById('srv-group-data').textContent;
+    if(txtGroup && txtGroup.trim().length > 0) g_groupData = JSON.parse(txtGroup);
+} catch(e) {}
+
+// 2. 작업기록 필터링 함수 (원본 로직 완벽 반영)
+function filterHistory(type, btn) {
+    // (1) 탭 버튼 스타일 업데이트
+    document.querySelectorAll('.h-tab').forEach(function(tab) {
+        tab.classList.remove('active');
+        // 강제로 스타일 초기화 (CSS 클래스가 안 먹힐 경우 대비)
+        tab.style.borderBottom = "none";
+        tab.style.color = "#888";
+        tab.style.fontWeight = "normal";
+    });
+
+    if (btn) {
+        btn.classList.add('active');
+        btn.style.borderBottom = "3px solid #333";
+        btn.style.color = "#333";
+        btn.style.fontWeight = "bold";
+    }
+
+    // (2) 리스트 항목 필터링
+    var rows = document.querySelectorAll('.history-row');
+    rows.forEach(function(row) {
+        var rowType = row.getAttribute('data-type');
+        var isVisible = false;
+
+        if (type === '상태') {
+            // '상태' 탭에서 보여줄 모든 시스템 로그 타입
+            const statusTypes = ['상태변경', '결제', '정보수정', '일정변경', '현장체크', '서명완료'];
+            isVisible = statusTypes.includes(rowType);
+        } else {
+            // '메모' 탭에서 보여줄 항목 (전화, 문자 포함)
+            const memoTypes = ['메모', '전화', '문자'];
+            isVisible = memoTypes.includes(rowType);
+        }
+
+        // flex 레이아웃 유지하며 보임/숨김 처리
+        row.style.display = isVisible ? 'flex' : 'none';
+    });
+}
+
+// 1. 현장 정보 저장 함수
+async function saveSiteInfo(isSilent) {
+    if(!g_orderId) return;
+
+    var selectedItems = [];
+    document.querySelectorAll('.check-btn.active').forEach(function(btn) {
+        selectedItems.push(btn.getAttribute('data-val'));
+    });
+    var sVal = selectedItems.join(',');
+    var checklist = document.getElementById('inpChecklist').value;
+    
+    var formData = new FormData();
+    formData.append('order_id', g_orderId);
+    formData.append('surface', sVal);
+    formData.append('checklist', checklist);
+    
+    var extKey = document.getElementById('extAccessKey')?.value;
+    if(extKey) formData.append('access_key', extKey);
+    
+    try {
+        await fetch('/api/order/update-site-info', { method:'POST', body:formData });
+        if (isSilent) {
+            var ind = document.getElementById('saveIndicator');
+            if(ind) { ind.style.display = 'block'; setTimeout(function() { ind.style.display = 'none'; }, 1500); }
+        } else {
+            alert("저장되었습니다.");
+            location.reload();
+        }
+    } catch(e) { if(!isSilent) alert("저장 실패"); }
+}
+
+// 2. 레일 자동 계산 함수
+function autoCalcRails() {
+    var rows = document.querySelectorAll('.excel-table tbody tr');
+    var railCounts = {}; 
+    var hasCurtain = false;
+
+    rows.forEach(function(row) {
+        var cat = row.getAttribute('data-cat');
+        var widthVal = parseFloat(row.getAttribute('data-width')) || 0;
+        
+        if (cat === '커튼' && widthVal > 0) {
+            hasCurtain = true;
+            var ja = Math.ceil(widthVal / 30);
+            if (ja < 6) ja = 6; 
+            if (!railCounts[ja]) railCounts[ja] = 0;
+            railCounts[ja]++;
+        }
+    });
+
+    var inp = document.getElementById('inpChecklist');
+    if (!inp) return;
+
+    var newRailStr = "";
+    if (hasCurtain) {
+        var parts = [];
+        Object.keys(railCounts).sort(function(a,b){return a-b}).forEach(function(ja) {
+            parts.push(ja + "자(" + railCounts[ja] + ")");
+        });
+        newRailStr = "레일: " + parts.join(", ");
+    }
+
+    var currentText = inp.value;
+    var updatedText = currentText;
+
+    if (currentText.indexOf("레일:") > -1) {
+        updatedText = currentText.replace(/레일:.*?(?=\/|$|\n)/, newRailStr);
+    } else {
+        if (newRailStr !== "") updatedText = (currentText.trim() === "") ? newRailStr : newRailStr + " / " + currentText;
+    }
+    
+    if (newRailStr === "레일: ") updatedText = updatedText.replace("레일: ", "").replace(" / ", "").trim();
+
+    if (currentText !== updatedText) {
+        inp.value = updatedText;
+        saveSiteInfo(true); 
+    }
+}
+
+/* ==========================================================================
+   [3] 서명 캔버스
+   ========================================================================== */
+var canvas = document.getElementById("sig-canvas");
+var ctx = canvas ? canvas.getContext("2d") : null;
+var isDrawing = false;
+var debugEl = document.getElementById("debug-console"); 
+
+function log(msg) {
+    console.log(msg);
+    if(debugEl) debugEl.innerHTML = msg;
+}
+
+function openSignModal() {
+    var modal = document.getElementById('signModal');
+    if(modal) {
+        modal.style.display = 'flex';
+        log("모달 열림. 0.2초 후 캔버스 초기화...");
+        setTimeout(initCanvas, 200);
+    }
+}
+
+function closeSignModal() { document.getElementById('signModal').style.display = 'none'; }
+
+function clearCanvas() { 
+    if(ctx && canvas) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        log("캔버스 지움");
+    }
+}
+
+function initCanvas() {
+    var modalContent = document.querySelector('#signModal .modal-content');
+    canvas = document.getElementById("sig-canvas"); 
+    debugEl = document.getElementById("debug-console"); 
+
+    if (!canvas) { alert("치명적 오류: 캔버스 태그를 찾을 수 없습니다."); return; }
+
+    canvas.width = modalContent ? (modalContent.clientWidth - 40) : 300;
+    canvas.height = 250; 
+    canvas.style.border = "2px solid red"; 
+    canvas.style.background = "#fff";     
+
+    ctx = canvas.getContext("2d");
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#000";
+    ctx.lineCap = "round";
+    log(`초기화 완료. 크기: ${canvas.width} x ${canvas.height}`);
+    addEvents();
+}
+
+function addEvents() {
+    if (!canvas) return;
+
+    canvas.onmousedown = function(e) {
+        isDrawing = true; ctx.beginPath(); var pos = getPos(e); ctx.moveTo(pos.x, pos.y); log(`[Mouse Down] X:${pos.x}, Y:${pos.y}`);
+    };
+    canvas.onmousemove = function(e) {
+        if (!isDrawing) return; var pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); log(`[Mouse Move] X:${pos.x}, Y:${pos.y}`);
+    };
+    window.addEventListener("mouseup", function() { if(isDrawing) log("[Mouse Up] 그리기 끝"); isDrawing = false; });
+
+    canvas.addEventListener("touchstart", function(e) {
+        isDrawing = true; ctx.beginPath(); var pos = getPos(e); ctx.moveTo(pos.x, pos.y); log(`[Touch Start] X:${pos.x}, Y:${pos.y}`); e.preventDefault(); 
+    }, { passive: false });
+    canvas.addEventListener("touchmove", function(e) {
+        if (!isDrawing) return; var pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); log(`[Touch Move] X:${pos.x}, Y:${pos.y}`); e.preventDefault();
+    }, { passive: false });
+    canvas.addEventListener("touchend", function() { log("[Touch End] 그리기 끝"); isDrawing = false; });
+}
+
+function getPos(e) {
+    var rect = canvas.getBoundingClientRect();
+    var clientX = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
+    var clientY = (e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
+    var x = Math.floor(clientX - rect.left);
+    var y = Math.floor(clientY - rect.top);
+    return { x: x, y: y };
+}
+
+async function submitSignature() {
+    if (!canvas) return;
+    var dataUrl = canvas.toDataURL("image/png");
+    var oid = g_orderId || document.getElementById('srv-order-id').value;
+    log("저장 시도중...");
+
+    try {
+        let res = await fetch('/api/order/save-signature', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ order_id: parseInt(oid), image_data: dataUrl })
+        });
+        let data = await res.json();
+        if (data.status === "ok") { alert("저장 성공!"); location.reload(); } 
+        else { alert("실패: " + data.msg); }
+    } catch(e) { alert("통신 에러: " + e); }
+}
+
+// 3. 사진 목록 로드
+async function loadPhotos() {
+    if(!g_orderId) return;
+    try {
+        var res = await fetch('/api/photo/list/' + g_orderId);
+        var photos = await res.json();
+        
+        var areaSite = document.getElementById('previewSite');       
+        var areaComp = document.getElementById('previewCompletion'); 
+        
+        if(areaSite) areaSite.innerHTML = "";
+        if(areaComp) areaComp.innerHTML = "";
+
+        photos.forEach(p => {
+            var div = document.createElement('div');
+            div.style.position = "relative"; div.style.display = "inline-block"; div.style.marginRight = "8px";
+            
+            var img = document.createElement('img');
+            img.src = p.FilePath; img.className = "photo-thumb";
+            img.style.width = "70px"; img.style.height = "70px"; img.style.objectFit = "cover";
+            img.style.borderRadius = "6px"; img.style.border = "1px solid #ddd"; img.style.cursor = "pointer";
+            img.onclick = function() { window.open(p.FilePath, '_blank'); };
+            
+            var btnDel = document.createElement('div');
+            btnDel.innerHTML = "&times;";
+            btnDel.style.cssText = "position:absolute; top:-6px; right:-6px; width:20px; height:20px; background:#ff4d4f; color:white; border-radius:50%; text-align:center; line-height:18px; cursor:pointer; font-weight:bold; font-size:14px; border:2px solid #fff; box-shadow:0 2px 4px rgba(0,0,0,0.2);";
+            btnDel.onclick = function(e) { e.stopPropagation(); deletePhoto(p.PhotoID); };
+
+            div.appendChild(img); div.appendChild(btnDel);
+
+            if (p.FileType === 'site') { if(areaSite) areaSite.appendChild(div); } 
+            else { if(areaComp) areaComp.appendChild(div); }
+        });
+        
+        if (photos.length === 0) {
+             if(areaSite) areaSite.innerHTML = "<span style='color:#ccc; font-size:0.8rem; padding:5px;'>사진 없음</span>";
+             if(areaComp) areaComp.innerHTML = "<span style='color:#ccc; font-size:0.8rem; padding:5px;'>사진 없음</span>";
+        }
+    } catch(e) { console.error("사진 로드 실패:", e); }
+}
+
+async function uploadPhotos(input, type) {
+    if(!input.files || input.files.length === 0) return;
+    if(!g_orderId) { alert("주문 번호를 찾을 수 없습니다."); return; }
+
+    var formData = new FormData();
+    formData.append('order_id', g_orderId);
+    formData.append('photo_type', type);
+
+    var extKey = document.getElementById('extAccessKey');
+    if(extKey) formData.append("access_key", extKey.value);
+
+    for(var i=0; i<input.files.length; i++) formData.append('files', input.files[i]);
+    
+    var label = input.parentElement;
+    var orgText = label.innerHTML;
+    label.innerHTML = "<i class='fas fa-spinner fa-spin'></i> 업로드..";
+    
+    try {
+        var res = await fetch('/api/photo/upload', { method:'POST', body:formData });
+        var data = await res.json();
+        if(data.status === 'ok') loadPhotos();
+        else alert("오류: " + data.msg);
+    } catch(e) { alert("서버 통신 오류"); }
+    
+    label.innerHTML = orgText;
+    input.value = ""; 
+}
+
+async function deletePhoto(id) {
+    if(!confirm("삭제하시겠습니까?")) return;
+    var formData = new FormData();
+    formData.append('photo_id', id);
+    try {
+        var res = await fetch('/api/photo/delete', { method:'POST', body:formData });
+        var data = await res.json();
+        if(data.status === 'ok') loadPhotos(); else alert("삭제 실패");
+    } catch(e) { alert("오류 발생"); }
+}
+
+function openFullCalendarPicker() {
+    if (typeof openCommonCalendar === 'function') {
+        openCommonCalendar(function(info) {
+            document.getElementById('dateInput').value = info.dateStr;
+            if (typeof renderDailyTimeline === 'function') {
+                renderDailyTimeline(info.dateStr);
+            }
+            closeCommonCalendar();
+        });
+        return;
+    }
+
+    var calendarEl = document.getElementById('modalCalendar');
+    if (!calendarEl) {
+        var container = document.querySelector('#dateModal .modal-content');
+        if (!container) return; 
+
+        calendarEl = document.createElement('div');
+        calendarEl.id = 'modalCalendar';
+        calendarEl.style.marginTop = '10px';
+        calendarEl.style.marginBottom = '15px';
+        
+        var preview = document.getElementById('dailySchedulePreview');
+        if (preview) container.insertBefore(calendarEl, preview); 
+        else container.appendChild(calendarEl);
+    }
+
+    if (typeof calendarModalObj !== 'undefined' && calendarModalObj) {
+        calendarModalObj.render();
+        return;
+    }
+
+    if (typeof FullCalendar === 'undefined') {
+        alert('캘린더 라이브러리가 로드되지 않았습니다.');
+        return;
+    }
+
+    window.calendarModalObj = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'ko',
+        height: 350,
+        headerToolbar: { left: 'prev,next', center: 'title', right: 'today' },
+        selectable: true,
+        dateClick: function(info) {
+            document.getElementById('dateInput').value = info.dateStr;
+            if (typeof renderDailyTimeline === 'function') renderDailyTimeline(info.dateStr);
+            document.querySelectorAll('.fc-daygrid-day').forEach(el => el.style.backgroundColor = '');
+            info.dayEl.style.backgroundColor = '#e7f5ff';
+        },
+        events: '/api/schedule' 
+    });
+
+    window.calendarModalObj.render();
+}
+
+function copyToClipboard(text) {
+    if (!text) return;
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text)
+            .then(() => showToast(text, true))
+            .catch(() => fallbackCopyText(text));
+    } else {
+        fallbackCopyText(text);
+    }
+}
+
+function fallbackCopyText(text) {
+    var textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed"; textArea.style.left = "-9999px"; textArea.style.top = "0";
+    textArea.setAttribute("readonly", "");
+    document.body.appendChild(textArea);
+    
+    if (navigator.userAgent.match(/ipad|iphone/i)) {
+        var range = document.createRange();
+        range.selectNodeContents(textArea);
+        var selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        textArea.setSelectionRange(0, 999999);
+    } else { textArea.select(); }
+
+    try {
+        var successful = document.execCommand('copy');
+        if (successful) showToast(text, true);
+        else prompt("이 브라우저는 자동 복사를 지원하지 않습니다. 아래 텍스트를 복사하세요:", text);
+    } catch (err) { prompt("복사하기(Ctrl+C)", text); }
+    document.body.removeChild(textArea);
+}
+
+function executeCopy(text) { copyToClipboard(text); }
+
+function clickCategory(val) {
+    document.getElementById('catSelect').value = val;
+    changeCategory(val);
+}
+
+function renderBlindListSizes() {
+    var rows = document.querySelectorAll('tr[data-cat="블라인드"]');
+    rows.forEach(function(row) {
+        var cell = row.querySelector('.txt-size');
+        if(!cell) return; 
+        if(cell.querySelector('div.blind-multi-line')) return;
+        var rawText = cell.innerText.trim();
+        if(!rawText) return;
+
+        if(rawText.indexOf(',') > -1) {
+            var parts = rawText.split(',').map(function(s) { return s.trim(); });
+            var joinedText = parts.join('<br>');
+            var setInfo = "";
+            var finalHtml = `
+                <div class="blind-multi-line" style="display:block; width:100%; text-align:inherit; line-height:1.6;">
+                    ${joinedText}
+                    ${setInfo}
+                </div>`;
+            cell.innerHTML = finalHtml;
+        }
+    });
+}
+
+function updateBlindAggregates() {
+    var count = parseInt(document.getElementById('blindSplit').value) || 1;
+    var sizeParts = [];
+    var qtyParts = [];
+    
+    for(var i=1; i<=count; i++) {
+        var w = document.getElementById('RawW_' + i).value;
+        var h = document.getElementById('RawH_' + i).value;
+        var handle = document.getElementById('Handle_' + i).value;
+        var cord = document.getElementById('CordLen_' + i).value; 
+        var qty = document.getElementById('Qty_' + i).value;
+        
+        if(w && w.trim() !== "") {
+            var hVal = h ? h : "0";
+            var sizeStr = `${w}x${hVal}(${handle})`;
+            if(cord && cord.trim() !== "") sizeStr += ` 줄${cord.trim()}`;
+            sizeParts.push(sizeStr);
+            var qVal = qty ? parseFloat(qty) : 0;
+            qtyParts.push(qVal);
+        }
+    }
+    
+    var inputSize = document.getElementById('TotalBlindSize');
+    var inputQty = document.getElementById('TotalBlindQty');
+    
+    if(inputSize) inputSize.value = sizeParts.join(", ");
+    if(inputQty) inputQty.value = qtyParts.join(", ");
+}
+
+/* [view.js] goBackToDashboard 함수 (최적화 수정본) */
+function goBackToDashboard() {
+    // 1. 현재 화면 데이터 스냅샷 (명찰) 만들기
+    const snapshot = window.DASHBOARD_SNAPSHOT;
+    if (!snapshot) { 
+        location.href = '/dashboard'; 
+        return; 
+    }
+
+    // 2. 최신 상태값 업데이트
+    const mainStatusEl = document.querySelector('.btn-status-main.active span');
+    snapshot["js-target-status"] = mainStatusEl ? mainStatusEl.innerText.trim() : snapshot["js-target-status"];
+
+    const subBadges = Array.from(document.querySelectorAll('.badge-btn.active')).map(btn => {
+        let text = btn.innerText.trim();
+        // 텍스트 표준화
+        if (text.includes("주문")) text = "주문";
+        else if (text.includes("수령")) text = "수령";
+        else if (text.includes("입금") || text.includes("확인")) text = "입금";
+        else if (text.includes("대기")) text = "대기";
+        else if (text.includes("보류")) text = "보류";
+        const color = window.getComputedStyle(btn).backgroundColor;
+        return { text: text, color: color };
+    });
+    snapshot["js-target-sub-badges"] = subBadges;
+
+    const historyMemos = Array.from(document.querySelectorAll('.history-row[data-type="메모"] .memo-text'))
+                              .slice(0, 10).map(el => el.innerText.trim());
+
+    const selectedSurfaces = Array.from(document.querySelectorAll('.check-btn.active'))
+                                  .map(btn => btn.getAttribute('data-val'));
+    const checklistMemo = document.getElementById('inpChecklist')?.value || "";
+    const siteText = (selectedSurfaces.length > 0 ? `[${selectedSurfaces.join(',')}] ` : "") + checklistMemo;
+
+    // 3. 브라우저 주머니(SessionStorage)에 저장
+    const payload = {
+        id: snapshot.id,
+        "js-target-status": snapshot["js-target-status"],
+        "js-target-sub-badges": subBadges,
+        "js-target-date": snapshot["js-target-date"],
+        "js-target-time": snapshot["js-target-time"],
+        "js-target-name": document.getElementById('customer-name')?.value || snapshot["js-target-name"],
+        "js-target-address": document.getElementById('customer-addr')?.value || document.getElementById('customer-phone')?.value || snapshot["js-target-address"],
+        "js-target-price": document.getElementById('live-price')?.innerText.trim() || snapshot["js-target-price"],
+        "js-target-manager": document.getElementById('dispManagerName')?.innerText.trim() || snapshot["js-target-manager"],
+        "js-target-site-text": siteText.trim(),
+        "js-target-memo-text": document.getElementById('live-memo')?.value || snapshot["js-target-memo-text"],
+        "js-target-hist-list": historyMemos 
+    };
+
+    sessionStorage.setItem('dashboard_update_payload', JSON.stringify(payload));
+    
+    // ★ [핵심] 뒤로가기(history.back) 금지 -> 대시보드로 '직행' 명령
+    location.href = '/dashboard'; 
+}
+
+/* ==========================================================================
+   [view.js] 무중단(No-Reload) 실시간 처리 시스템
+   ========================================================================== */
+function smartFloat(val, precision) {
+    if (val === undefined || val === null || val === "") return "";
+    let n = parseFloat(String(val).replace(/,/g, ""));
+    if (isNaN(n)) return val;
+    return parseFloat(n.toFixed(precision)).toString();
+}
+
+async function sendBackgroundRequest(url, formData) {
+    try {
+        const response = await fetch(url, { method: 'POST', body: formData });
+        if (!response.ok) throw new Error("fail");
+        return true;
+    } catch (e) {
+        console.error("통신 에러:", e);
+        alert("저장에 실패했습니다. 네트워크를 확인해주세요.");
+        return false;
+    }
+}
+
+function updateStatusLive(element, type, value, orderId) {
+    if (type === 'main') {
+        if (['방문상담', '시공예정', 'AS요청'].includes(value)) {
+            changeMainStatus(value);
+            return;
+        }
+        document.querySelectorAll('.btn-status-main').forEach(btn => btn.classList.remove('active'));
+        element.classList.add('active');
+    } else {
+        element.classList.toggle('active');
+    }
+
+    fetch(`/api/status/update?id=${orderId}&type=${type}&val=${encodeURIComponent(value)}`)
+        .catch(() => alert("상태 저장 실패"));
+}
+
+function saveInfoLive(orderId) {
+    const nameEl = document.getElementById('customer-name');
+    const phoneEl = document.getElementById('customer-phone');
+    const addrEl = document.getElementById('customer-addr');
+    const memoEl = document.getElementById('live-memo'); 
+
+    if (nameEl) { document.querySelectorAll('.cust-name, .m-name').forEach(el => el.innerText = nameEl.value); }
+    if (phoneEl) { document.querySelectorAll('.info-phone').forEach(el => el.innerHTML = `<i class="fas fa-mobile-alt"></i> ${phoneEl.value}`); }
+    if (addrEl) { document.querySelectorAll('.info-addr').forEach(el => el.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${addrEl.value}`); }
+
+    const formData = new FormData();
+    formData.append('id', orderId);
+    formData.append('order_id', orderId);
+    
+    if(memoEl !== null) formData.append('memo', memoEl.value);
+    if(nameEl && nameEl.value) formData.append('customer_name', nameEl.value);
+    if(phoneEl && phoneEl.value) formData.append('phone', phoneEl.value);
+    if(addrEl && addrEl.value) formData.append('address', addrEl.value);
+
+    const extKey = document.getElementById('extAccessKey')?.value;
+    if(extKey) formData.append('access_key', extKey);
+
+    sendBackgroundRequest('/api/order/update-info', formData);
+    sendBackgroundRequest('/api/order/save-info', formData);
+    showToast("저장되었습니다.");
+}
+
+function updatePaymentLive(orderId) {
+    const clean = (val) => parseFloat(String(val).replace(/,/g, '')) || 0;
+
+    const totalInput = document.getElementById('raw-total-amt');
+    const discountInput = document.getElementById('inp-discount');
+    const depositInput = document.getElementById('inp-deposit');
+    const vatCheck = document.getElementById('chk-vat');
+
+    if (!totalInput) return;
+
+    // 값 가져오기
+    const total = clean(totalInput.value); 
+    const discount = clean(discountInput?.value);
+    const deposit = clean(depositInput?.value);
+    const vatYn = vatCheck?.checked;
+
+    // 계산
+    let supply = total - discount; 
+    let vat = vatYn ? Math.round(supply * 0.1) : 0;
+    
+    let finalAmt = supply + vat;    // 총액 (DB 저장용)
+    let balance = finalAmt - deposit; // 잔액 (화면 표시용)
+
+    // 포맷팅
+    const fmtTotal = finalAmt.toLocaleString();
+    const fmtBalance = balance.toLocaleString();
+
+    // (1) 상단 헤더 -> 총액
+    if(document.getElementById('live-price')) document.getElementById('live-price').innerText = fmtTotal;
+    if(document.getElementById('mobileDispFinal')) document.getElementById('mobileDispFinal').innerText = fmtTotal + "원";
+    
+    // (2) 결제 카드 -> 잔액
+    if(document.getElementById('dispFinal')) document.getElementById('dispFinal').innerText = fmtBalance + "원";
+    
+    // (3) VAT 표시
+    if(document.getElementById('dispVat')) document.getElementById('dispVat').innerText = vatYn ? vat.toLocaleString() + "원" : "별도";
+
+    // 서버 저장 (DB에는 항상 '총 견적 금액'을 저장해야 나중에 선금/잔금 계산이 꼬이지 않습니다)
+    const formData = new FormData();
+    formData.append('id', orderId);
+    formData.append('discount', discount);
+    formData.append('deposit', deposit);
+    formData.append('vat', vatYn ? 'true' : 'false');
+    formData.append('final_amount', finalAmt); 
+
+    sendBackgroundRequest('/api/order/save-info', formData);
+}
+
+function addHistoryLive(orderId) {
+    const input = document.getElementById('new-history-input');
+    const content = input.value.trim();
+    if (!content) return;
+
+    const list = document.querySelector('.history-list'); //
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${(now.getMonth()+1)}-${now.getDate()} ${now.getHours()}:${now.getMinutes()}`;
+    
+    const html = `
+        <div class="memo-item history-row" data-type="메모">
+            <div class="memo-top">
+                <div class="memo-meta">
+                    <span class="badge-type type-memo">메모</span>
+                    <span class="author-name">방금</span>
+                    <span class="reg-date">${dateStr}</span>
+                </div>
+            </div>
+            <div class="memo-text">${content}</div>
+        </div>`;
+    
+    if(list) {
+        if(list.innerText.includes("기록이 없습니다")) list.innerHTML = "";
+        list.insertAdjacentHTML('afterbegin', html);
+    }
+    input.value = "";
+
+    const formData = new FormData();
+    formData.append('order_id', orderId);
+    formData.append('log_type', '메모');
+    formData.append('contents', content);
+    
+    sendBackgroundRequest('/api/history/add', formData);
+}
+
+function savePaymentLive() {
+    const oid = document.getElementById('srv-order-id')?.value;
+    if(oid) {
+        updatePaymentLive(parseInt(oid));
+        alert("결제 정보가 안전하게 저장되었습니다. 💾");
+    }
+}
+
+async function deleteHistoryLive(historyId, btn) {
+    if (!confirm('삭제하시겠습니까?')) return;
+    const formData = new FormData();
+    formData.append('history_id', historyId);
+    formData.append('order_id', g_orderId); 
+    const key = document.getElementById('extAccessKey')?.value;
+    if (key) formData.append('access_key', key);
+
+    try {
+        const response = await fetch('/api/history/delete', { method: 'POST', body: formData });
+        if (response.ok) {
+            const row = btn.closest('.history-row');
+            if (row) {
+                row.style.opacity = '0';
+                row.style.transition = '0.3s';
+                setTimeout(() => row.remove(), 300);
+            }
+            showToast("기록이 삭제되었습니다.");
+        } else { alert("삭제에 실패했습니다. 다시 시도해 주세요."); }
+    } catch (e) { console.error("삭제 중 네트워크 오류:", e); alert("네트워크 연결을 확인해 주세요."); }
+}
+
+/* [추가] 높이 270 이상 시 긴사다리 자동 체크 및 저장 */
+function checkLadderSafety(h) {
+    var val = parseFloat(h);
+    if (val >= 270) {
+        // 1. '긴사다리' 텍스트가 포함된 체크 버튼 찾기
+        var btns = document.querySelectorAll('.check-btn');
+        var targetBtn = null;
+        
+        btns.forEach(function(b) {
+            var text = b.innerText || "";
+            var dataVal = b.getAttribute('data-val') || "";
+            // 버튼 텍스트나 데이터 값에 '긴사다리'가 있는지 확인
+            if (text.indexOf('긴사다리') > -1 || dataVal.indexOf('긴사다리') > -1) {
+                targetBtn = b;
+            }
+        });
+
+        // 2. 버튼이 존재하고, 아직 체크되지 않았다면 -> 체크 후 저장
+        if (targetBtn && !targetBtn.classList.contains('active')) {
+            targetBtn.classList.add('active');
+            
+            // 현장체크 정보 즉시 저장 (silent 모드)
+            if (typeof saveSiteInfo === 'function') {
+                saveSiteInfo(true); 
+            }
+            
+            // (선택사항) 사용자에게 알림 토스트
+            if (typeof showToast === 'function') {
+                showToast("⚠️ 높이 270cm 이상: [긴사다리] 항목이 자동 체크되었습니다.");
+            }
+        }
+    }
+}

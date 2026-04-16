@@ -1,0 +1,77 @@
+<div id="manualModal" class="modal">
+    <div class="modal-content manual-con" style="text-align:left; max-width: 550px;">
+        <span class="modal-close" onclick="closeManualModal()">&times;</span>
+        <h3 id="manualTitle" style="margin-top:0; margin-bottom:15px; text-align:center;">품목 등록</h3>
+        <form action="/api/item/save" method="post" id="manualForm">
+            <input type="hidden" name="OrderID" value="{{ order.OrderID }}">
+            <input type="hidden" name="ItemID" id="hidItemID">
+            <input type="hidden" name="GroupID" id="hidGroupID">
+
+            <div class="control-box mb-3">
+                <div class="d-flex gap-2 mb-2 align-items-center">
+                    <div style="flex:1;">
+                        <select name="Location" id="selLocation" class="form-select" onchange="toggleLocation(this.value)">
+                            <option value="">위치선택</option>
+                            <option value="direct" style="font-weight:bold; color:#0d6efd;">👉 직접입력</option>
+                            <option value="거실">거실</option><option value="안방">안방</option>
+                            <option value="작은방">작은방</option><option value="입구방">입구방</option>
+                            <option value="중간방">중간방</option><option value="주방">주방</option>
+                            <option value="알파룸">알파룸</option><option value="드레스룸">드레스룸</option>
+                            <option value="팬트리">팬트리</option><option value="다용도실">다용도실</option>
+                            <option disabled>──────────</option>
+                            <option value="발코니_거실">발코니_거실</option><option value="발코니_안방">발코니_안방</option>
+                        </select>
+                        <div id="divDirectLoc" style="display:none; gap:5px; width:100%;">
+                            <input type="text" name="inpLocation" id="inpLocation" class="form-control" placeholder="위치 입력" style="flex:1;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="resetLocation()">목록</button>
+                        </div>
+                    </div>
+                    <select name="Category" id="catSelect" class="form-select" style="width:110px;" onchange="changeCategory(this.value)">
+                        <option value="커튼">커튼</option><option value="블라인드">블라인드</option><option value="기타">기타</option>
+                    </select>
+                </div>
+
+                <div id="curtainTypeDiv" class="btn-group w-100 mb-2" role="group">
+                    <input type="radio" class="btn-check" name="CurtainType" id="typeMix" value="mix" checked onclick="renderRows()">
+                    <label class="btn btn-outline-secondary" for="typeMix">속지+겉지</label>
+                    <input type="radio" class="btn-check" name="CurtainType" id="typeOuter" value="outer" onclick="renderRows()">
+                    <label class="btn btn-outline-secondary" for="typeOuter">겉지(형상)</label>
+                    <input type="radio" class="btn-check" name="CurtainType" id="typeInner" value="inner" onclick="renderRows()">
+                    <label class="btn btn-outline-secondary" for="typeInner">속지</label>
+                </div>
+
+                <div id="blindTypeDiv" style="display:none; width:100%;">
+                    <div style="margin-bottom:5px;">
+                        <input type="hidden" id="blindSubKind" name="SubCategory" value="콤비" data-min="2.0">
+                        <div class="blind-kind-group d-flex flex-wrap gap-1 mb-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary btn-kind active" onclick="setBlindKind(this, '콤비', 2.0)">콤비</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary btn-kind" onclick="setBlindKind(this, '롤', 2.0)">롤</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary btn-kind" onclick="setBlindKind(this, '우드', 1.5)">우드</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary btn-kind" onclick="setBlindKind(this, 'A/L', 1.5)">A/L</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary btn-kind" onclick="setBlindKind(this, '허니콤', 1.5)">허니콤</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary btn-kind" onclick="setBlindKind(this, '버티칼', 3.5)">버티칼</button>
+                        </div>
+                    </div>
+                    <div class="blind-btn-group" id="blindBtnGroup"></div>
+                    <input type="hidden" id="blindSplit" value="1">
+                </div>
+
+                <div id="etcTypeDiv" style="display:none; width:100%; margin-bottom:10px; background:#f8f9fa; padding:10px; border-radius:6px;">
+                    <label style="font-size:12px; font-weight:bold; color:#666;">기타 품목 상세:</label>
+                    <input type="text" id="inpEtcKind" class="form-control" style="font-weight:bold;" placeholder="예: 설치비, 수선, 레일 등" oninput="syncEtcData()">
+                </div>
+            </div>
+
+            <div id="dynamicArea" style="max-height:400px; overflow-y:auto; margin-bottom:10px; padding-right:2px;"></div>
+
+            <div style="margin-bottom:10px;">
+                <input type="text" name="Supplier" id="inpSupplier" class="form-control" placeholder="발주처 (공통)">
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-success w-100 py-2">저장</button>
+                <button type="button" class="btn btn-secondary" onclick="closeManualModal()">취소</button>
+            </div>
+        </form>
+    </div>
+</div>

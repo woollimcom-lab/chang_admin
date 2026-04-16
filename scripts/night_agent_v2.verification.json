@@ -1,0 +1,17 @@
+﻿{
+    "outputPath":  "scripts\\night_agent_v2.ps1",
+    "forbidDialogs":  false,
+    "useAuth":  true,
+    "steps":  [
+                  {
+                      "selector":  "body",
+                      "timeout":  15000,
+                      "action":  "waitFor"
+                  },
+                  {
+                      "action":  "screenshot"
+                  }
+              ],
+    "forbidPageErrors":  true,
+    "url":  "scripts\\validate_task_queue.js"
+}

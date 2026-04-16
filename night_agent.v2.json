@@ -1,0 +1,1471 @@
+{
+  "defaults": {
+    "sshTarget": "ubuntu@43.202.209.122",
+    "sshKeyPath": "d:\\dev\\changarum.pem",
+    "serviceName": "mysite",
+    "remotePath": "/home/ubuntu/mysite",
+    "model": "gpt-5.4",
+    "modelReasoningEffort": "high",
+    "codexTimeoutSeconds": 1200,
+    "maxAttempts": 3,
+    "maxChangedFiles": 2,
+    "allowNewFiles": false,
+    "requirePlanJson": true
+  },
+  "tasks": [
+    {
+      "task_id": "view-photo-rotation-shared-normalize-001",
+      "priority": "critical",
+      "goal": "Harden /view photo uploads by forcing both general and item photo uploads through one shared orientation-safe normalization helper.",
+      "name": "view photo rotation shared normalize",
+      "instruction": "Update only services/photo_service.py. Reuse the existing ImageOps.exif_transpose flow, but extract a single shared helper that both upload_photo_action and upload_item_photo_action must use before save. Keep DB schema, upload paths, and response shape unchanged. Normalize non-RGB still images safely before save so iPhone HEIC-derived uploads and gallery exports do not keep orientation surprises. Do not add client-side rotation hacks.",
+      "target_files": [
+        "services\\photo_service.py"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "ImageOps.exif_transpose",
+        "upload_photo_action",
+        "upload_item_photo_action"
+      ],
+      "do_not_touch": [
+        "DB schema",
+        "photo upload endpoint paths",
+        "existing upload response keys",
+        "client-side photo display code"
+      ],
+      "acceptance": [
+        "a single shared normalization helper is reused by both photo upload actions",
+        "ImageOps.exif_transpose remains part of the save pipeline",
+        "non-RGB still images are normalized safely before save without changing upload path semantics"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": true,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => document.body && document.body.innerText.length > 0)()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if either upload endpoint regresses or stored photo paths change unexpectedly",
+      "promotion_rule": "promote after both upload actions still share the same helper on a later photo task"
+    },
+    {
+      "task_id": "view-photo-rotation-audit-logging-002",
+      "priority": "high",
+      "goal": "Add narrow server-side audit logging for photo orientation and normalization so manual device matrix testing can identify failing cases later.",
+      "name": "view photo rotation audit logging",
+      "instruction": "Update only services/photo_service.py. Add minimal structured logging around the shared photo normalization path so order photo uploads and item photo uploads log endpoint kind, original extension or mode if available, whether EXIF transpose ran, and whether format or mode normalization happened. Keep private file paths and customer data out of logs. Do not change success JSON contracts.",
+      "target_files": [
+        "services\\photo_service.py"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "logger",
+        "upload_photo_action",
+        "upload_item_photo_action"
+      ],
+      "do_not_touch": [
+        "upload response schema",
+        "DB schema",
+        "frontend photo UI"
+      ],
+      "acceptance": [
+        "both upload flows emit the same orientation-normalization audit markers",
+        "logs do not include private absolute file paths or customer PII",
+        "existing upload success payloads remain unchanged"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": true,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => document.body && document.body.innerText.length > 0)()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if logs become noisy or upload responses change",
+      "promotion_rule": "promote after manual device upload checks can distinguish order and item photo normalization cases"
+    },
+    {
+      "task_id": "view-item-as-popup-shell-001",
+      "priority": "critical",
+      "goal": "Move AS detail inputs into a dedicated item-status popup that opens from the item AS transition instead of hiding them only inside the customer-info modal.",
+      "name": "view item as popup shell",
+      "instruction": "Update only templates/view.html. Add a dedicated AS popup or modal near the item-status flow and reuse the existing AS field meanings already used in the customer-info modal: AS reason, responsibility, charge type, cost, and note. Keep the current customer-info modal intact for now. Add stable hooks such as data-item-as-popup, data-item-as-reason, data-item-as-responsibility, data-item-as-charge, data-item-as-cost, and data-item-as-note.",
+      "target_files": [
+        "templates\\view.html"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "as-reason",
+        "as-responsibility",
+        "as-charge",
+        "as-cost",
+        "as-note"
+      ],
+      "do_not_touch": [
+        "existing customer-info modal save flow",
+        "item table structure outside the AS popup trigger",
+        "DB schema"
+      ],
+      "acceptance": [
+        "a dedicated AS popup shell exists in /view",
+        "the popup exposes all existing AS detail fields with stable data hooks",
+        "the current customer-info modal remains available"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": true,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => !!document.querySelector('[data-item-as-popup]') && !!document.querySelector('[data-item-as-reason]') && !!document.querySelector('[data-item-as-cost]'))()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if /view layout or existing customer-info modal markup regresses",
+      "promotion_rule": "promote after later AS tasks reuse the same popup shell without duplicating fields"
+    },
+    {
+      "task_id": "view-item-as-popup-toggle-guard-002",
+      "priority": "critical",
+      "goal": "Intercept item status changes so the transition into AS opens the dedicated popup instead of immediately committing the step change.",
+      "name": "view item as popup toggle guard",
+      "instruction": "Update only static/js/view_api.js. Reuse toggleStatusAjax and the existing item step button flow. When the next step would become AS, open the dedicated AS popup instead of directly calling /api/item/update-step. Non-AS transitions must continue to behave exactly as before. Add a small reusable guard hook like window.openItemAsPopupForStep or window.beginItemAsStepChange.",
+      "target_files": [
+        "static\\js\\view_api.js"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "toggleStatusAjax",
+        "item-stat-btn",
+        "/api/item/update-step"
+      ],
+      "do_not_touch": [
+        "non-AS item step transitions",
+        "existing status button classes",
+        "DB schema"
+      ],
+      "acceptance": [
+        "AS step transitions open the dedicated popup before step commit",
+        "non-AS step transitions still call the existing update-step flow",
+        "a reusable popup-open guard hook exists"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": false,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => typeof window.toggleStatusAjax === 'function' && (typeof window.openItemAsPopupForStep === 'function' || typeof window.beginItemAsStepChange === 'function'))()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if item status buttons stop working for non-AS steps",
+      "promotion_rule": "promote after the AS save task reuses the same guard without duplicating step logic"
+    },
+    {
+      "task_id": "view-item-as-popup-save-rollback-003",
+      "priority": "critical",
+      "goal": "Save AS detail fields from the dedicated popup and only then commit the item AS step, with cancel rolling back the pending change.",
+      "name": "view item as popup save rollback",
+      "instruction": "Update only templates/view.html and static/js/view_api.js. Reuse the existing /api/order/save-info payload semantics for AS detail fields and the existing /api/item/update-step endpoint for the final step change. On popup save, persist the AS fields first and then commit the item step to AS. On cancel or close, roll the button state back and do not change the item step. Add stable hooks like data-item-as-save and data-item-as-cancel.",
+      "target_files": [
+        "templates\\view.html",
+        "static\\js\\view_api.js"
+      ],
+      "maxChangedFiles": 2,
+      "reuse_symbols": [
+        "saveInfoLive",
+        "toggleStatusAjax",
+        "/api/order/save-info",
+        "/api/item/update-step"
+      ],
+      "do_not_touch": [
+        "services/view_service.py AS field storage semantics",
+        "customer-info modal save buttons",
+        "DB schema"
+      ],
+      "acceptance": [
+        "saving from the AS popup persists AS detail fields and then commits the item step to AS",
+        "canceling the popup does not commit the item AS step",
+        "existing AS detail backend fields are reused instead of inventing a new schema"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": false,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => !!document.querySelector('[data-item-as-save]') && !!document.querySelector('[data-item-as-cancel]'))()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if AS save breaks existing item step changes or popup cancel leaves stale UI state",
+      "promotion_rule": "promote after later AS reporting tasks reuse the same popup save or rollback path"
+    },
+    {
+      "task_id": "view-smart-search-query-normalization-001",
+      "priority": "high",
+      "goal": "Make smart product search more resilient to spacing, punctuation, mixed casing, and shorthand before ranking results.",
+      "name": "view smart search query normalization",
+      "instruction": "Update only templates/includes/item_master.html. Reuse the existing handleSmartProductSearch flow and normalization helpers already in the file. Add a stricter query-normalization layer for product and supplier searches that collapses repeated spaces, strips noisy punctuation, normalizes mixed casing, and keeps Korean shorthand handling safe for blind and curtain terms. Do not change the smart-db endpoint contract yet.",
+      "target_files": [
+        "templates\\includes\\item_master.html"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "handleSmartProductSearch",
+        "normalizeCategoryForMaster",
+        "normalizeSubCategoryForMaster",
+        "resolveSmartSupplierInput"
+      ],
+      "do_not_touch": [
+        "/api/supplier/smart-db response schema",
+        "manual form save payload",
+        "Korean UI labels"
+      ],
+      "acceptance": [
+        "smart product search normalizes noisy query input before ranking",
+        "supplier search normalization stays compatible with existing supplier resolution",
+        "the smart-db payload contract remains unchanged"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": true,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => typeof window.handleSmartProductSearch === 'function')()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if smart product search starts dropping obvious exact matches",
+      "promotion_rule": "promote after alias and ranking tasks reuse the same normalized query tokens"
+    },
+    {
+      "task_id": "view-smart-search-alias-ranking-002",
+      "priority": "high",
+      "goal": "Add explicit ranking rules and alias handling so smart product search prefers exact name, supplier combo, and common field aliases before loose matches.",
+      "name": "view smart search alias ranking",
+      "instruction": "Update only templates/includes/item_master.html. Keep the smart-db preload approach, but add a small in-file alias dictionary and weighted ranking that prefers product-name exact or prefix matches, then product plus supplier matches, then color or option or memo token matches. Avoid introducing new backend endpoints. Keep the current picker interaction and selectProduct behavior unchanged.",
+      "target_files": [
+        "templates\\includes\\item_master.html"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "handleSmartProductSearch",
+        "selectProduct",
+        "openSmartProductPicker",
+        "normalizeSmartProductRecord"
+      ],
+      "do_not_touch": [
+        "smart-db endpoint path",
+        "supplier save logic",
+        "manual form submit logic"
+      ],
+      "acceptance": [
+        "exact and prefix product-name matches rank above loose token matches",
+        "supplier-informed matches can outrank generic color-only matches",
+        "the existing product picker still selects products through selectProduct"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": true,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => typeof window.handleSmartProductSearch === 'function' && typeof window.selectProduct === 'function')()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if ranking becomes less intuitive than the current picker",
+      "promotion_rule": "promote after match-reason UI reuses the same weighted ranking output"
+    },
+    {
+      "task_id": "view-smart-search-match-reason-003",
+      "priority": "medium",
+      "goal": "Show why a smart product result matched so field workers can trust and compare autocomplete results faster.",
+      "name": "view smart search match reason",
+      "instruction": "Update only templates/includes/item_master.html. Reuse the existing smart dropdown rendering and add compact match-reason metadata such as 제품명 일치, 발주처 일치, 색상 일치, or 옵션 일치 to each result card. Keep the dropdown compact and do not redesign the picker. Add a stable hook like data-match-reason on the result rows.",
+      "target_files": [
+        "templates\\includes\\item_master.html"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "smart-dropdown-item",
+        "handleSmartProductSearch",
+        "selectProduct"
+      ],
+      "do_not_touch": [
+        "picker open or close behavior",
+        "manual form layout outside dropdown cards"
+      ],
+      "acceptance": [
+        "smart search results display a compact reason for the match",
+        "result selection behavior remains unchanged",
+        "dropdown rendering stays compact enough for field use"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": true,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => document.querySelectorAll('[data-match-reason]').length > 0)()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if dropdown cards become too noisy or selection gets harder",
+      "promotion_rule": "promote after later search tasks reuse the same match-reason markers"
+    },
+    {
+      "task_id": "view-blog-button-order-context-001",
+      "priority": "critical",
+      "goal": "Wire the /view AI blog button to always open the blog modal with the current order id instead of relying on weak global fallbacks.",
+      "name": "view blog button order context",
+      "instruction": "Update only templates/view.html and templates/includes/marketing_modal.html. Reuse openBlogModal and g_orderId. Make the visible AI 시공후기 button and any fallback call path pass the current order id explicitly. Stop relying on window.currentOrder or window.__ORDER_CONTEXT as the primary source. Add a stable trigger hook like data-blog-ai-trigger on the button.",
+      "target_files": [
+        "templates\\view.html",
+        "templates\\includes\\marketing_modal.html"
+      ],
+      "maxChangedFiles": 2,
+      "reuse_symbols": [
+        "openBlogModal",
+        "g_orderId",
+        "window.__MK_CTX"
+      ],
+      "do_not_touch": [
+        "existing blog modal route names",
+        "unrelated /view button groups",
+        "Korean UI label text unless a hook is added around it"
+      ],
+      "acceptance": [
+        "the /view AI blog button passes the current order id explicitly",
+        "openBlogModal no longer depends on weak global order fallbacks as its primary path",
+        "the button exposes a stable verification hook"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": false,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => { const btn = document.querySelector('[data-blog-ai-trigger]'); return !!btn && typeof window.openBlogModal === 'function'; })()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if the AI blog button stops opening the modal from /view",
+      "promotion_rule": "promote after later blog modal tasks reuse the same trigger hook"
+    },
+    {
+      "task_id": "marketing-order-context-secure-summary-002",
+      "priority": "critical",
+      "goal": "Turn the raw order-info marketing endpoint into an authenticated, company-safe, privacy-safe summary feed that can power blog generation from /view data.",
+      "name": "marketing order context secure summary",
+      "instruction": "Update only routers/marketing.py. Reuse the existing /api/marketing/order-info-raw/{order_id} route path, but add get_current_user protection and company verification, then replace raw customer_name and full address exposure with privacy-safe blog context fields. Use current order, order items, order photos, checklist memo, admin memo, and worklog summaries to return region tokens, safe site name if possible, item summary, dominant categories, room summary, install surface, tool info, photo count, and selected memo snippets. Keep the route path unchanged.",
+      "target_files": [
+        "routers\\marketing.py"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "get_order_info_raw",
+        "get_order_memos",
+        "get_current_user",
+        "models.Order",
+        "models.OrderItem"
+      ],
+      "do_not_touch": [
+        "marketing tracking routes",
+        "DB schema",
+        "raw customer name exposure",
+        "raw full address exposure"
+      ],
+      "acceptance": [
+        "order-info-raw requires authenticated company-safe access",
+        "the response no longer exposes raw customer_name or full address",
+        "the response includes privacy-safe blog context fields built from /view data"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": true,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(async () => { const r = await fetch('/api/marketing/order-info-raw/6075', { credentials: 'include' }); if (!r.ok) return false; const j = await r.json(); return !('customer_name' in j) && !('address' in j) && !!(j.item_summary || j.room_summary) && !!(j.region || j.region_tokens || j.safe_region); })()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if marketing routes lose company scoping or the context feed breaks /view consumers",
+      "promotion_rule": "promote after later blog-generation tasks reuse the same secure order context helper"
+    },
+    {
+      "task_id": "marketing-keyword-title-planner-003",
+      "priority": "critical",
+      "goal": "Build a category-aware keyword and title planner so blog generation uses one strong main keyword and avoids forcing 커튼 on blind-only jobs.",
+      "name": "marketing keyword title planner",
+      "instruction": "Update only routers/marketing.py. Reuse the secure order context helper and add a planner that derives a single main keyword, supporting secondary keywords, title candidates, hashtag candidates, and split suggestions from region tokens plus dominant product categories. Prefer category-aware logic so 커튼-only, 블라인드-only, and mixed jobs diverge correctly, and expose stable keys such as keyword_plan, title_candidates, hashtag_candidates, and split_suggestion.",
+      "target_files": [
+        "routers\\marketing.py"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "prepare_marketing_context",
+        "get_order_info_raw",
+        "AdvancedGenerateReq"
+      ],
+      "do_not_touch": [
+        "tracking routes",
+        "raw prompt copy UI",
+        "DB schema"
+      ],
+      "acceptance": [
+        "keyword planning chooses one strong main keyword instead of forcing curtain defaults",
+        "title and hashtag candidates are generated from region plus dominant categories",
+        "mixed curtain or blind jobs expose a split suggestion"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": true,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(async () => { const r = await fetch('/api/marketing/order-info-raw/6075', { credentials: 'include' }); if (!r.ok) return false; const j = await r.json(); return !!j.keyword_plan && Array.isArray(j.title_candidates || []) && Array.isArray(j.hashtag_candidates || []); })()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if keyword planning becomes unstable or order context payloads regress",
+      "promotion_rule": "promote after generation and modal tasks reuse the same keyword plan keys"
+    },
+    {
+      "task_id": "marketing-photo-plan-caption-hints-004",
+      "priority": "high",
+      "goal": "Derive a lightweight photo usage plan and caption hints from existing /view data so blog generation can return a publish-ready package instead of plain text only.",
+      "name": "marketing photo plan caption hints",
+      "instruction": "Update only routers/marketing.py. Reuse the secure order context helper and add deterministic photo_plan and caption_hints fields based on photo count, item or room summary, and before or during or after conventions already implied by the order data. Do not inspect image pixels and do not expose raw private file paths. Keep this heuristic and publish-package focused.",
+      "target_files": [
+        "routers\\marketing.py"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "get_order_info_raw",
+        "models.OrderPhoto",
+        "models.OrderItem"
+      ],
+      "do_not_touch": [
+        "photo upload routes",
+        "image pixel analysis",
+        "private raw file path exposure"
+      ],
+      "acceptance": [
+        "order context exposes a lightweight photo_plan",
+        "caption_hints are derived without reading image pixels",
+        "no raw private photo path is exposed in the context feed"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": true,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(async () => { const r = await fetch('/api/marketing/order-info-raw/6075', { credentials: 'include' }); if (!r.ok) return false; const j = await r.json(); return !!j.photo_plan && !!j.caption_hints; })()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if order context gets bloated or starts exposing unsafe photo metadata",
+      "promotion_rule": "promote after result-package UI reuses photo_plan and caption_hints without additional backend changes"
+    },
+    {
+      "task_id": "marketing-generate-blog-auto-order-driven-005",
+      "priority": "critical",
+      "goal": "Make generate-blog-auto work from order_id plus a tiny set of optional overrides so /view can create real blog drafts from existing field data instead of only copying prompts.",
+      "name": "marketing generate blog auto order driven",
+      "instruction": "Update only routers/marketing.py. Reuse prepare_marketing_context or extract a shared helper so /api/marketing/generate-blog-auto can build generation context from order_id and the secure order context feed, plus only a minimal override set such as one_line_point, force_main_keyword, and split_mode. Keep the current response envelope compatible where possible, but do not require the modal to send large manual fields like full items_content or episode bundles. Avoid invoking the external OpenAI API during verification-only smoke checks.",
+      "target_files": [
+        "routers\\marketing.py"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "generate_blog_auto",
+        "prepare_marketing_context",
+        "AdvancedGenerateReq"
+      ],
+      "do_not_touch": [
+        "tracking endpoints",
+        "DB schema",
+        "verification-time forced live OpenAI smoke calls"
+      ],
+      "acceptance": [
+        "generate-blog-auto can work from order-driven context with only a minimal override payload",
+        "the endpoint response remains compatible enough for the current modal to consume",
+        "manual prompt assembly is no longer required for the primary generation path"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": true,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(async () => { const r = await fetch('/api/marketing/generate-blog-auto', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: 6075, verification_only: true }) }); return r.status !== 404 && r.status !== 405; })()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if generate-blog-auto stops supporting the existing modal or starts requiring more manual fields",
+      "promotion_rule": "promote after the modal simple-mode task uses the order-driven generation path by default"
+    },
+    {
+      "task_id": "view-blog-modal-simple-mode-006",
+      "priority": "critical",
+      "goal": "Reframe the /view AI blog modal for field workers around a simple auto mode that uses existing order data and one optional one-line point input.",
+      "name": "view blog modal simple mode",
+      "instruction": "Update only templates/includes/marketing_modal.html. Reuse openBlogModal and the secure order context endpoint. On modal open, fetch order context by orderId, show a compact extracted summary card, provide one optional one-line point input, and expose a single primary generate button. Keep advanced controls behind a collapsible section and stop showing raw prompt copy UI by default. Add hooks like data-blog-simple-mode, data-blog-context-summary, data-blog-one-line, and data-blog-generate.",
+      "target_files": [
+        "templates\\includes\\marketing_modal.html"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "openBlogModal",
+        "window.__MK_CTX",
+        "mkPromptCard",
+        "mkHeadingsCard",
+        "mkTitlesCard"
+      ],
+      "do_not_touch": [
+        "existing modal id names",
+        "unrelated /view controls",
+        "Korean UI strings unless a simpler wrapper is added around them"
+      ],
+      "acceptance": [
+        "the blog modal opens in a simple auto mode by default",
+        "the modal shows extracted order context plus one optional one-line point input",
+        "raw prompt copy UI is no longer the primary first-step path"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": false,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => { if (typeof window.openBlogModal !== 'function') return false; window.openBlogModal(6075); return !!document.querySelector('[data-blog-simple-mode]') && !!document.querySelector('[data-blog-context-summary]') && !!document.querySelector('[data-blog-one-line]') && !!document.querySelector('[data-blog-generate]'); })()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if the blog modal stops opening or the simple mode breaks existing advanced controls",
+      "promotion_rule": "promote after the result-package task reuses the same simple-mode hooks"
+    },
+    {
+      "task_id": "view-blog-modal-result-package-007",
+      "priority": "critical",
+      "goal": "Render a publish-ready result package in the blog modal so field workers can copy the generated body, tags, CTA, and title candidates without handling raw prompts.",
+      "name": "view blog modal result package",
+      "instruction": "Update only templates/includes/marketing_modal.html. Reuse the generate-blog-auto response and render a result package area with title candidates, main body, hashtags, place or region helper text, CTA copy helper, and dedicated copy buttons. Keep prompt internals hidden by default. Add hooks like data-blog-result-package, data-blog-copy-body, data-blog-copy-tags, and data-blog-copy-cta.",
+      "target_files": [
+        "templates\\includes\\marketing_modal.html"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "generate-blog-auto",
+        "mkCopyPrompt",
+        "openBlogModal"
+      ],
+      "do_not_touch": [
+        "tracking route names",
+        "raw prompt textarea behavior for advanced fallback",
+        "unrelated modal tabs"
+      ],
+      "acceptance": [
+        "the blog modal renders a result package instead of only a raw prompt",
+        "copy buttons exist for body, tags, and CTA helpers",
+        "title candidates are visible without opening advanced prompt cards"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": false,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => { if (typeof window.openBlogModal !== 'function') return false; window.openBlogModal(6075); return !!document.querySelector('[data-blog-result-package]') && !!document.querySelector('[data-blog-copy-body]') && !!document.querySelector('[data-blog-copy-tags]') && !!document.querySelector('[data-blog-copy-cta]'); })()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if the blog modal loses its current advanced fallback or copy interactions regress",
+      "promotion_rule": "promote after feedback and tracking UI reuses the same result-package root"
+    },
+    {
+      "task_id": "marketing-learning-model-alignment-008",
+      "priority": "critical",
+      "goal": "Repair the marketing-learning router so it stops referencing nonexistent MarketingTrackedPost fields and can work with the actual schema without DB changes.",
+      "name": "marketing learning model alignment",
+      "instruction": "Update only routers/marketing_learning.py. Align the router with the actual models in models.py by using CompanyID, TrackID, BlogURL, MainKeyword, RegionKeyword, CreatedAt, MarketingLearningNote.JsonBlob, and existing feedback tables instead of nonexistent fields like company_id, id, title, blog_url, is_success, features_json, or success_marked_at. Keep route paths stable where possible, and if a previously assumed field cannot be supported without schema change, degrade gracefully with a clear response instead of crashing. Do not change DB schema in this task.",
+      "target_files": [
+        "routers\\marketing_learning.py"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "MarketingTrackedPost",
+        "MarketingLearningNote",
+        "AiGenerationFeedback"
+      ],
+      "do_not_touch": [
+        "DB schema",
+        "existing tracking route paths in routers/marketing.py",
+        "OpenAI generation logic"
+      ],
+      "acceptance": [
+        "marketing-learning routes no longer reference nonexistent ORM fields",
+        "learning note read or write paths use the actual MarketingLearningNote schema",
+        "unsupported old assumptions fail gracefully instead of raising attribute errors"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": true,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(async () => { const r = await fetch('/api/marketing/learning/note', { credentials: 'include' }); if (!r.ok) return false; const j = await r.json(); return !!j && (typeof j === 'object'); })()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if learning routes break working tracking routes or note storage",
+      "promotion_rule": "promote after feedback UI can call learning endpoints without schema errors"
+    },
+    {
+      "task_id": "view-blog-tracking-feedback-ui-009",
+      "priority": "high",
+      "goal": "Add a lightweight post-publish save and feedback area to the blog modal so generated posts can be tracked, ranked later, and fed back into learning.",
+      "name": "view blog tracking feedback ui",
+      "instruction": "Update only templates/includes/marketing_modal.html. Reuse the existing /api/marketing/tracking/add and related tracking endpoints, and only then wire learning feedback after model alignment. Add a compact post-publish area with blog URL input, main keyword prefill, save tracking action, and simple feedback buttons such as 잘 나옴, 광고 같음, 현장감 부족. Add hooks like data-blog-track-url, data-blog-track-save, and data-blog-feedback.",
+      "target_files": [
+        "templates\\includes\\marketing_modal.html"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "/api/marketing/tracking/add",
+        "openBlogModal"
+      ],
+      "do_not_touch": [
+        "tracking backend schema",
+        "raw prompt generator fallback",
+        "unrelated /view buttons"
+      ],
+      "acceptance": [
+        "the blog modal includes a compact post-publish tracking area",
+        "tracking save UI can prefill the main keyword from generated results",
+        "simple feedback controls exist for later learning use"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": false,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => { if (typeof window.openBlogModal !== 'function') return false; window.openBlogModal(6075); return !!document.querySelector('[data-blog-track-url]') && !!document.querySelector('[data-blog-track-save]') && !!document.querySelector('[data-blog-feedback]'); })()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if the blog modal becomes cluttered or tracking UI breaks the generation flow",
+      "promotion_rule": "promote after later learning tasks reuse the same feedback hooks"
+    },
+    {
+      "task_id": "view-signature-reset-backend-001",
+      "priority": "critical",
+      "goal": "Add a safe signature reset path in /view so customer signatures can be cleared and collected again without changing DB schema.",
+      "name": "view signature reset backend",
+      "instruction": "Update only static/js/view_api.js, routers/view_router.py, and services/view_service.py. Reuse the existing ClientSignature storage and existing signature-save flow. Add a safe reset or delete path so the current customer signature can be cleared and then re-saved. Keep payment calculation logic untouched. Expose a small reusable frontend hook such as window.requestSignatureReset or window.resetClientSignature so later UI and verification can reuse it. Do not add DB schema changes.",
+      "target_files": [
+        "static\\js\\view_api.js",
+        "routers\\view_router.py",
+        "services\\view_service.py"
+      ],
+      "maxChangedFiles": 3,
+      "reuse_symbols": [
+        "ClientSignature",
+        "submitSignature",
+        "save_signature_action"
+      ],
+      "do_not_touch": [
+        "DB schema",
+        "existing payment calculation logic",
+        "existing save-signature endpoint path unless strictly necessary"
+      ],
+      "acceptance": [
+        "a safe signature reset request path exists",
+        "existing signature save still works",
+        "a reusable frontend reset hook exists for later UI wiring"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": false,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => typeof window.requestSignatureReset === 'function' || typeof window.resetClientSignature === 'function')()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if signature save or signature reset flow regresses",
+      "promotion_rule": "promote after another signature reset task reuses the same backend reset helper"
+    },
+    {
+      "task_id": "view-signature-reset-payment-ui-001",
+      "priority": "critical",
+      "goal": "Expose a visible signature reset action in /view and unlock payment fields after reset.",
+      "name": "view signature reset payment ui",
+      "instruction": "Update only templates/view.html and static/js/view_api.js. Reuse the existing payment card and signature flow. Add a visible reset control when a customer signature exists, and ensure the discount, deposit, and VAT inputs can become editable again after the signature is reset. Preserve the existing save buttons. Add a stable verification hook like data-signature-reset on the reset control and data-payment-unlock-target on the payment card or inputs.",
+      "target_files": [
+        "templates\\view.html",
+        "static\\js\\view_api.js"
+      ],
+      "maxChangedFiles": 2,
+      "reuse_symbols": [
+        "ClientSignature",
+        "togglePayment",
+        "submitSignature"
+      ],
+      "do_not_touch": [
+        "DB schema",
+        "existing payment calculation logic",
+        "unrelated item save logic"
+      ],
+      "acceptance": [
+        "a visible reset action appears when a customer signature exists",
+        "payment amount inputs unlock again after signature reset",
+        "customer signature can be captured again after reset"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": false,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => { const resetBtn = document.querySelector('[data-signature-reset]'); const unlockTargets = document.querySelectorAll('[data-payment-unlock-target]'); return !!resetBtn && unlockTargets.length > 0; })()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if payment card UI or signature controls regress",
+      "promotion_rule": "promote after another payment-unlock task reuses the same reset control pattern"
+    },
+    {
+      "task_id": "view-print-doc-mode-001",
+      "priority": "critical",
+      "goal": "Make /view print output choose between 견적서, 작업지시서, and 영수증 based on signature and completion state.",
+      "name": "view print doc mode",
+      "instruction": "Update only templates/view_print.html and, if strictly needed, templates/view.html or static/js/view_ui.js. Reuse the existing /view-print flow. When a customer signature exists before completion, print should present 작업지시서 instead of 견적서. When the order is 작업완료, print should present 영수증. Keep the print route unchanged. Add a small verification hook like data-print-doc-mode to the print template root so the active mode can be checked safely.",
+      "target_files": [
+        "templates\\view_print.html",
+        "templates\\view.html",
+        "static\\js\\view_ui.js"
+      ],
+      "maxChangedFiles": 3,
+      "reuse_symbols": [
+        "printEstimate",
+        "view-print",
+        "ClientSignature"
+      ],
+      "do_not_touch": [
+        "DB schema",
+        "existing print endpoint path",
+        "unrelated payment calculation logic"
+      ],
+      "acceptance": [
+        "print output can show 견적서 or 작업지시서 or 영수증 depending on state",
+        "existing print button still works",
+        "the print route remains unchanged"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": false,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(async () => { const html = await fetch('/view-print/6075', { credentials: 'include' }).then(r => r.text()); const hasPrint = typeof printEstimate === 'function' && !!document.querySelector('[onclick*=\"printEstimate\"]'); return hasPrint && html.includes('data-print-doc-mode'); })()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if print rendering or print-route compatibility regresses",
+      "promotion_rule": "promote after another print-mode task reuses the same document-mode hook"
+    },
+    {
+      "task_id": "view-print-note-signature-box-001",
+      "priority": "high",
+      "goal": "Add the requested note and customer signature area to the print layout.",
+      "name": "view print note and signature box",
+      "instruction": "Update only templates/view_print.html. Add the note text '시공은 주문 후 5~7일 소요됩니다.' above the memo or request section. Add a customer signature box near the final-decision area and render the customer signature image there when present. Keep the current print layout intact otherwise. Add a verification hook like data-customer-signature-box on the print layout.",
+      "target_files": [
+        "templates\\view_print.html"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "ClientSignature"
+      ],
+      "do_not_touch": [
+        "DB schema",
+        "existing print endpoint path"
+      ],
+      "acceptance": [
+        "the requested note appears above memo or request details",
+        "the print layout includes a customer signature box near the final-decision area",
+        "the existing print layout remains readable"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": false,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(async () => { const html = await fetch('/view-print/6075', { credentials: 'include' }).then(r => r.text()); return html.includes('시공은 주문 후 5~7일 소요됩니다.') && html.includes('data-customer-signature-box'); })()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if print note or signature box layout regresses",
+      "promotion_rule": "promote after another print-layout task reuses the same signature box pattern"
+    },
+    {
+      "task_id": "view-completion-signature-hook-001",
+      "priority": "critical",
+      "goal": "When the main status becomes 작업완료, prompt for a final customer signature using the existing signature flow.",
+      "name": "view completion signature hook",
+      "instruction": "Update only templates/view.html, static/js/view_ui.js, and static/js/view_api.js. Reuse the existing signature modal and current main-status flow. When the main status is changed to 작업완료, prompt for a final customer signature again instead of silently skipping it. Do not change DB schema and do not break the existing main status route. Add a stable verification hook like data-completion-signature-hook near the completion action or modal trigger.",
+      "target_files": [
+        "templates\\view.html",
+        "static\\js\\view_ui.js",
+        "static\\js\\view_api.js"
+      ],
+      "maxChangedFiles": 3,
+      "reuse_symbols": [
+        "submitSignature",
+        "changeMainStatus",
+        "updateStatusLive",
+        "openSignModal"
+      ],
+      "do_not_touch": [
+        "DB schema",
+        "existing main status routing",
+        "unrelated item save logic"
+      ],
+      "acceptance": [
+        "the completion flow exposes a clear final-signature hook",
+        "the existing signature modal is reused",
+        "the existing completion status route is preserved"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": false,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => !!document.querySelector('[data-completion-signature-hook]'))()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if completion flow or signature-modal reuse regresses",
+      "promotion_rule": "promote after another completion-signature task reuses the same hook"
+    },
+    {
+      "task_id": "view-photo-stage-summary-ui-001",
+      "priority": "high",
+      "goal": "Expose stage-based color and count hooks on item photo triggers in /view.",
+      "name": "view photo stage summary ui",
+      "instruction": "Update only templates/view.html. Keep the existing item photo trigger buttons, but make sure the photo trigger area supports stage-based color states and a small count under the icon. Add stable hooks using data-item-photo-trigger, data-photo-stage, data-photo-count, and an .item-photo-count element. Do not redesign the item rows.",
+      "target_files": [
+        "templates\\view.html"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "item-photo-trigger",
+        "data-item-photo-trigger",
+        "item-photo-count"
+      ],
+      "do_not_touch": [
+        "photo upload API endpoints",
+        "existing item row structure except photo indicator area"
+      ],
+      "acceptance": [
+        "item photo trigger supports stage-based color states",
+        "item photo trigger has a visible small count element",
+        "the existing photo trigger button remains clickable"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": true,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "[data-item-photo-trigger]",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => { const trigger = document.querySelector('[data-item-photo-trigger]'); if (!trigger) return false; return trigger.hasAttribute('data-photo-stage') && trigger.hasAttribute('data-photo-count') && !!trigger.querySelector('.item-photo-count'); })()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if item photo trigger markup regresses",
+      "promotion_rule": "promote after another photo-trigger UI task reuses the same data hook pattern"
+    },
+    {
+      "task_id": "view-photo-stage-summary-data-001",
+      "priority": "high",
+      "goal": "Drive stage-based color and count updates for item photo triggers from existing photo data.",
+      "name": "view photo stage summary data",
+      "instruction": "Update only static/js/view_api.js. Keep the existing item photo upload flow, but update the trigger refresh logic so it sets data-photo-stage values and data-photo-count values based on before, during, and after photos for each item. Reuse existing photo list data and do not add new upload endpoints. Expose a small helper like window.refreshItemPhotoTriggerSummary if needed for reuse.",
+      "target_files": [
+        "static\\js\\view_api.js"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "openItemPhotoChooser",
+        "loadPhotos",
+        "refreshItemPhotoTriggers"
+      ],
+      "do_not_touch": [
+        "DB schema",
+        "photo upload API endpoints",
+        "unrelated list buttons"
+      ],
+      "acceptance": [
+        "photo trigger refresh logic sets data-photo-stage based on before or during or after presence",
+        "photo trigger refresh logic sets data-photo-count",
+        "the existing photo chooser and upload flow still works"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": true,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => (typeof window.refreshItemPhotoTriggerSummary === 'function' || typeof refreshItemPhotoTriggers === 'function') && document.querySelectorAll('[data-item-photo-trigger][data-photo-stage][data-photo-count]').length > 0)()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if item photo refresh logic regresses",
+      "promotion_rule": "promote after another item-photo data task reuses the same trigger summary logic"
+    },
+    {
+      "task_id": "stats-expense-modal-entry-001",
+      "priority": "critical",
+      "goal": "Keep the existing monthly expense modal entry flow stable so total and category chart clicks open the shared detail modal.",
+      "name": "stats expense modal entry",
+      "instruction": "Update only templates/stats.html. Reuse the existing monthly expense donut charts and chartDetailModal flow. Ensure the total expense area, material expense chart, and operation expense chart all open the shared detail modal safely. Add a small verification hook like data-expense-modal-entry on the monthly expense card wrapper if needed.",
+      "target_files": [
+        "templates\\stats.html"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "chartDetailModal",
+        "openExpenseChartModal",
+        "expTotalChart",
+        "expMatChart",
+        "expOpChart"
+      ],
+      "do_not_touch": [
+        "stats data queries",
+        "member expense section",
+        "marketingChannelChart",
+        "existing trend chart datasets"
+      ],
+      "acceptance": [
+        "monthly expense total click opens the shared detail modal",
+        "material expense click opens the shared detail modal",
+        "operation expense click opens the shared detail modal"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/stats",
+        "useAuth": true,
+        "forbidDialogs": true,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "#expenseCard",
+            "timeout": 15000
+          },
+          {
+            "action": "click",
+            "selector": "#expenseCard",
+            "timeout": 15000
+          },
+          {
+            "action": "waitFor",
+            "selector": "#chartDetailModal.show, #chartDetailModal[style*='display: block']",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => !!document.querySelector('#expenseCard[data-expense-modal-entry]') || !!document.getElementById('chartDetailModal'))()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if monthly expense chart clicks stop opening the shared detail modal",
+      "promotion_rule": "promote after another expense-entry task reuses the same shared modal pattern"
+    },
+    {
+      "task_id": "stats-expense-total-summary-view-001",
+      "priority": "critical",
+      "goal": "Refine the total monthly expense modal so it shows only material and operating categories with a stacked 12-month vertical chart and no KPI cards.",
+      "name": "stats expense total summary view",
+      "instruction": "Update only templates/stats.html. Reuse the existing monthly expense detail modal. When the total expense donut is clicked, the modal should show only material expense and operating expense as the comparison categories, replace horizontal bars with a vertical stacked chart limited to up to 12 recent months, hide fixed amount labels on the axis, use tooltip cards on hover, remove the top KPI cards for 총액, 항목수, 최대항목, and shrink donut center text so the amount fits and is displayed up to the 만원 unit. Add a verification hook like data-expense-modal-mode='total' and an id such as expenseMonthlyTrendChart on the monthly chart canvas.",
+      "target_files": [
+        "templates\\stats.html"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "chartDetailModal",
+        "openExpenseChartModal",
+        "expTotalChart"
+      ],
+      "do_not_touch": [
+        "stats data queries",
+        "member expense section",
+        "marketingChannelChart",
+        "existing trend chart datasets"
+      ],
+      "acceptance": [
+        "total expense click opens the modal in total mode",
+        "the total mode shows only material and operating categories",
+        "the total mode uses a vertical monthly chart up to 12 months",
+        "the top KPI cards are removed in the modal"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/stats",
+        "useAuth": true,
+        "forbidDialogs": true,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "#expenseCard",
+            "timeout": 15000
+          },
+          {
+            "action": "click",
+            "selector": "#expenseCard",
+            "timeout": 15000
+          },
+          {
+            "action": "waitFor",
+            "selector": "#chartDetailModal.show, #chartDetailModal[style*='display: block']",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => { const modal = document.getElementById('chartDetailModal'); if (!modal) return false; const modeRoot = modal.querySelector('[data-expense-modal-mode=\"total\"]'); const monthlyChart = modal.querySelector('#expenseMonthlyTrendChart'); const text = modal.innerText || ''; return !!modeRoot && !!monthlyChart && !text.includes('총액') && !text.includes('항목수') && !text.includes('최대항목'); })()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if the total expense modal loses existing interaction or layout stability",
+      "promotion_rule": "promote after another total-expense modal task reuses the same stacked monthly chart pattern"
+    },
+    {
+      "task_id": "stats-expense-category-trend-view-001",
+      "priority": "critical",
+      "goal": "Refine the material and operating expense modal so supplier comparison remains and a 12-month vertical trend chart with 3, 6, and 12 month averages is added.",
+      "name": "stats expense category trend view",
+      "instruction": "Update only templates/stats.html. Reuse the existing chartDetailModal flow for material and operating expense clicks. Keep the supplier comparison section, add a vertical monthly chart for up to 12 months, show operating expense in blue and material expense in orange where both series apply, add thin moving average lines for 3, 6, and 12 months, remove always-visible amount labels from the chart axis, and rely on tooltip cards for values. Add stable hooks like data-expense-modal-mode='category', data-average-lines='3,6,12', and an id like expenseMonthlyTrendChart.",
+      "target_files": [
+        "templates\\stats.html"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "chartDetailModal",
+        "openExpenseChartModal",
+        "expMatChart",
+        "expOpChart"
+      ],
+      "do_not_touch": [
+        "stats data queries",
+        "member expense section",
+        "marketingChannelChart",
+        "existing trend chart datasets"
+      ],
+      "acceptance": [
+        "material and operating clicks still open the shared detail modal",
+        "supplier comparison remains available",
+        "a monthly vertical trend chart up to 12 months is shown",
+        "3, 6, and 12 month average lines are present"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/stats",
+        "useAuth": true,
+        "forbidDialogs": true,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "#expMatChart",
+            "timeout": 15000
+          },
+          {
+            "action": "click",
+            "selector": "#expenseCard .row .col-6:first-child",
+            "timeout": 15000
+          },
+          {
+            "action": "waitFor",
+            "selector": "#chartDetailModal.show, #chartDetailModal[style*='display: block']",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => { const modal = document.getElementById('chartDetailModal'); if (!modal) return false; const modeRoot = modal.querySelector('[data-expense-modal-mode=\"category\"]'); const monthlyChart = modal.querySelector('#expenseMonthlyTrendChart'); const supplierSection = modal.querySelector('[data-supplier-compare], #expenseDetailSupplierList, #expenseDetailBarChart'); const avgHook = modal.querySelector('[data-average-lines=\"3,6,12\"]'); return !!modeRoot && !!monthlyChart && !!supplierSection && !!avgHook; })()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if category expense detail loses supplier comparison or monthly trend readability",
+      "promotion_rule": "promote after another category-expense modal task reuses the same moving-average trend pattern"
+    },
+    {
+      "task_id": "stats-expense-detail-list-filter-001",
+      "priority": "high",
+      "goal": "Make the monthly expense detail list simpler and filterable with toggles instead of verbose labels.",
+      "name": "stats expense detail list filter",
+      "instruction": "Update only templates/stats.html. Inside the existing monthly expense detail modal, make the detail list toggle-based and filterable by item type, simplify the list text, and remove verbose wording like '(세부항목)' or similar redundant labels. Keep the list compact and readable on mobile. Add hooks like data-expense-detail-filter and data-expense-detail-list for verification.",
+      "target_files": [
+        "templates\\stats.html"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "chartDetailModal",
+        "openExpenseChartModal"
+      ],
+      "do_not_touch": [
+        "stats data queries",
+        "member expense section",
+        "marketingChannelChart"
+      ],
+      "acceptance": [
+        "the expense detail list inside the modal is filterable by toggles",
+        "redundant list wording like 세부항목 is removed",
+        "the list remains readable on mobile"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/stats",
+        "useAuth": true,
+        "forbidDialogs": true,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "#expenseCard",
+            "timeout": 15000
+          },
+          {
+            "action": "click",
+            "selector": "#expenseCard",
+            "timeout": 15000
+          },
+          {
+            "action": "waitFor",
+            "selector": "#chartDetailModal.show, #chartDetailModal[style*='display: block']",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => { const modal = document.getElementById('chartDetailModal'); if (!modal) return false; const filter = modal.querySelector('[data-expense-detail-filter]'); const list = modal.querySelector('[data-expense-detail-list]'); const text = modal.innerText || ''; return !!filter && !!list && !text.includes('(세부항목)'); })()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if the expense detail list becomes less readable or loses item access",
+      "promotion_rule": "promote after another expense-list task reuses the same modal filter pattern"
+    },
+    {
+      "task_id": "stats-member-expense-average-001",
+      "priority": "high",
+      "goal": "Refine the employee expense chart so left-side amount labels are removed and 3, 6, and 12 month moving average lines are shown.",
+      "name": "stats member expense average",
+      "instruction": "Update only templates/stats.html. In the employee expense chart section, remove left-side amount labels from the chart, keep the cards readable, and add thin moving average lines for 3, 6, and 12 months of the overall amount. Add a stable hook like data-member-average-lines='3,6,12' on the chart area and data-hide-left-axis='true' when the left amount labels are suppressed.",
+      "target_files": [
+        "templates\\stats.html"
+      ],
+      "maxChangedFiles": 1,
+      "reuse_symbols": [
+        "memberExpenseChart",
+        "memberExpenseCompareBoard",
+        "memberExpenseList"
+      ],
+      "do_not_touch": [
+        "stats data queries",
+        "expense detail modal",
+        "marketingChannelChart"
+      ],
+      "acceptance": [
+        "employee expense chart no longer shows left-side amount labels",
+        "3, 6, and 12 month moving average lines are present",
+        "the existing employee expense cards remain usable"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/stats",
+        "useAuth": true,
+        "forbidDialogs": true,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "#memberExpenseCompareBoard",
+            "timeout": 15000
+          },
+          {
+            "action": "evaluate",
+            "expression": "(() => { const board = document.getElementById('memberExpenseCompareBoard'); if (!board) return false; const avgHook = board.querySelector('[data-member-average-lines=\"3,6,12\"]') || board.closest('[data-member-average-lines=\"3,6,12\"]'); const hideAxisHook = board.querySelector('[data-hide-left-axis=\"true\"]') || board.closest('[data-hide-left-axis=\"true\"]'); return !!avgHook && !!hideAxisHook; })()",
+            "expect": true
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore snapshot if the employee expense chart loses readability or interaction",
+      "promotion_rule": "promote after another member-expense task reuses the same average-line pattern"
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "presets": {
+    "none": {
+      "steps": []
+    },
+    "basic_visible": {
+      "forbidDialogs": false,
+      "steps": [
+        {
+          "action": "waitFor",
+          "selector": "body",
+          "timeout": 15000
+        },
+        {
+          "action": "screenshot"
+        }
+      ]
+    },
+    "autocomplete_direct_input": {
+      "forbidDialogs": false,
+      "forbidPageErrors": false,
+      "steps": [
+        {
+          "action": "waitFor",
+          "selector": "body",
+          "timeout": 15000
+        },
+        {
+          "action": "evaluate",
+          "expression": "(() => { const edit = document.querySelector('.btn-edit'); if (edit) { edit.click(); return 'edit'; } if (typeof openManualModal === 'function') { openManualModal('new'); return 'manual'; } const launch = document.querySelector('.btn-add-item'); if (launch) { launch.click(); return 'launch'; } return 'none'; })()"
+        },
+        {
+          "action": "waitFor",
+          "selector": "#locPickerDisplay",
+          "timeout": 15000
+        },
+        {
+          "action": "expectVisible",
+          "selector": "#locPickerDisplay"
+        },
+        {
+          "action": "click",
+          "selector": "#locPickerDisplay"
+        },
+        {
+          "action": "screenshot"
+        }
+      ]
+    },
+    "manual_override_guard": {
+      "forbidDialogs": false,
+      "steps": [
+        {
+          "action": "waitFor",
+          "selector": "#inpChecklist",
+          "timeout": 15000
+        },
+        {
+          "action": "fill",
+          "selector": "#inpChecklist",
+          "value": "수동 입력"
+        },
+        {
+          "action": "evaluate",
+          "expression": "Boolean(document.querySelector('#inpChecklist') && document.querySelector('#inpChecklist').value.includes('수동 입력'))",
+          "expect": true
+        },
+        {
+          "action": "screenshot"
+        }
+      ]
+    },
+    "non_blocking_success": {
+      "forbidDialogs": true,
+      "steps": [
+        {
+          "action": "waitFor",
+          "selector": "body",
+          "timeout": 15000
+        },
+        {
+          "action": "screenshot"
+        }
+      ]
+    },
+    "log_assertion": {
+      "forbidDialogs": false,
+      "steps": []
+    },
+    "contract_only": {
+      "forbidDialogs": true,
+      "steps": []
+    }
+  }
+}

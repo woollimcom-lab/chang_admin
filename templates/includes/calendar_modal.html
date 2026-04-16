@@ -1,0 +1,419 @@
+<div id="commonCalendarModal" class="modal" style="display:none; z-index:2000; align-items:flex-start; padding-top:20px;">
+    <div class="modal-content common-calendar-modal">
+        <div class="common-calendar-modal__head">
+            <h3 class="common-calendar-modal__title">&#51204;&#52404; &#51068;&#51221;</h3>
+            <button type="button" class="common-calendar-modal__close" onclick="closeCommonCalendar()" aria-label="&#45803;&#44592;">&times;</button>
+        </div>
+
+        <div id="commonCalendarEl" class="common-calendar-modal__body"></div>
+
+        <div class="legend-box">
+            <div class="legend-item"><span class="legend-dot bg-req"></span><span>&#44204;&#51201;</span></div>
+            <div class="legend-item"><span class="legend-dot bg-visit"></span><span>&#48169;&#47928;</span></div>
+            <div class="legend-item"><span class="legend-dot bg-const"></span><span>&#49884;&#44277;</span></div>
+            <div class="legend-item"><span class="legend-dot bg-as"></span><span>AS</span></div>
+            <div class="legend-item"><span class="legend-dot bg-done"></span><span>&#50756;&#47308;</span></div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .common-calendar-modal {
+        width: 95%;
+        max-width: 1200px;
+        height: 90vh;
+        display: flex;
+        flex-direction: column;
+        padding: 12px 12px 10px;
+    }
+    .common-calendar-modal__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+    }
+    .common-calendar-modal__title {
+        margin: 0;
+        font-size: 0.96rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        color: #111827;
+    }
+    .common-calendar-modal__close {
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 12px;
+        background: #f1f5f9;
+        color: #475569;
+        font-size: 1.35rem;
+        line-height: 1;
+        cursor: pointer;
+    }
+    .common-calendar-modal__body {
+        flex: 1;
+        min-height: 0;
+        background: #fff;
+        overflow: hidden;
+    }
+    #commonCalendarModal.calendar-links-blocked .fc-event {
+        pointer-events: none !important;
+        cursor: default !important;
+    }
+    #commonCalendarModal .fc-daygrid-day {
+        cursor: pointer !important;
+    }
+    #commonCalendarModal .fc-daygrid-day:hover {
+        background-color: #f8fafc;
+    }
+    #commonCalendarModal .fc .fc-list-day-cushion,
+    #commonCalendarModal .fc .fc-list-event {
+        cursor: pointer;
+    }
+    #commonCalendarModal .fc .fc-toolbar.fc-header-toolbar {
+        margin-bottom: 10px;
+        gap: 8px;
+    }
+    #commonCalendarModal .fc .fc-toolbar-title {
+        font-size: 0.96rem;
+        font-weight: 700;
+        letter-spacing: -0.04em;
+        color: #111827;
+    }
+    #commonCalendarModal .fc .fc-button {
+        min-width: 44px;
+        height: 34px;
+        padding: 0 10px;
+        border: none;
+        border-radius: 12px;
+        background: #2554e8;
+        box-shadow: none;
+        font-size: 0.84rem;
+        font-weight: 800;
+    }
+    #commonCalendarModal .fc .fc-button-primary:not(:disabled).fc-button-active,
+    #commonCalendarModal .fc .fc-button-primary:not(:disabled):active {
+        background: #1f2937;
+    }
+    #commonCalendarModal .fc .fc-col-header-cell-cushion {
+        padding: 4px 0;
+        font-size: 0.82rem;
+        font-weight: 800;
+    }
+    #commonCalendarModal .fc .fc-daygrid-day-top {
+        justify-content: flex-end;
+    }
+    #commonCalendarModal .fc .fc-daygrid-day-number {
+        padding: 0 !important;
+    }
+    #commonCalendarModal .fc .fc-daygrid-day-frame {
+        min-height: 70px;
+    }
+    #commonCalendarModal .fc .fc-daygrid-event-harness {
+        margin-top: 1px;
+    }
+    #commonCalendarModal .fc .fc-event,
+    #commonCalendarModal .fc .fc-daygrid-event,
+    #commonCalendarModal .fc .fc-daygrid-block-event {
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
+    .common-calendar-day-wrap {
+        display: inline-flex;
+        align-items: baseline;
+        justify-content: flex-end;
+        gap: 3px;
+        max-width: 100%;
+    }
+    .common-calendar-day-number {
+        display: inline-block;
+        font-size: 0.8rem;
+        line-height: 1;
+        font-weight: 500;
+        letter-spacing: -0.03em;
+        color: #111827;
+    }
+    .common-calendar-day-number.is-sunday,
+    .common-calendar-day-number.is-holiday {
+        color: #dc2626;
+    }
+    .common-calendar-day-holiday {
+        display: inline-block;
+        min-width: 0;
+        max-width: calc(100% - 16px);
+        font-size: 6px;
+        line-height: 1;
+        font-weight: 400;
+        color: #dc2626;
+        white-space: nowrap;
+        overflow: hidden;
+    }
+    .common-calendar-event-pill {
+        display: block;
+        width: 100%;
+        padding: 1px 3px;
+        border-radius: 4px;
+        font-size: 8px;
+        line-height: 1.18;
+        font-weight: 500;
+        letter-spacing: -0.06em;
+        color: #fff;
+        white-space: nowrap;
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+    .common-calendar-event-pill--req { background: var(--c-req); }
+    .common-calendar-event-pill--visit { background: var(--c-visit); }
+    .common-calendar-event-pill--const { background: var(--c-const); }
+    .common-calendar-event-pill--as { background: var(--c-as); }
+    .common-calendar-event-pill--done { background: var(--c-done); }
+    @media (max-width: 768px) {
+        .common-calendar-modal {
+            width: 96%;
+            height: 88vh;
+            padding: 10px 8px 8px;
+        }
+        .common-calendar-modal__head {
+            margin-bottom: 6px;
+        }
+        .common-calendar-modal__title {
+            font-size: 0.92rem;
+        }
+        .common-calendar-modal__close {
+            width: 34px;
+            height: 34px;
+            font-size: 1.2rem;
+        }
+        #commonCalendarModal .fc .fc-toolbar-title {
+            font-size: 0.92rem;
+        }
+    }
+</style>
+
+<script>
+    var commonCalendar = null;
+    var commonCalendarDateClick = null;
+    var commonCalendarOptions = {};
+    window.__calendarHolidayMap = window.__calendarHolidayMap || null;
+    window.__calendarHolidayPromise = window.__calendarHolidayPromise || null;
+
+    function escapeCommonCalendarHtml(value) {
+        return String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function commonCalendarDateKey(date) {
+        var year = date.getFullYear();
+        var month = String(date.getMonth() + 1).padStart(2, '0');
+        var day = String(date.getDate()).padStart(2, '0');
+        return year + '-' + month + '-' + day;
+    }
+
+    function getCommonCalendarHolidayName(date) {
+        var holidayMap = window.__calendarHolidayMap || {};
+        return holidayMap[commonCalendarDateKey(date)] || '';
+    }
+
+    function getCommonCalendarCustomerName(event) {
+        return String(event.title || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+    }
+
+    function getCommonCalendarStatusKey(event) {
+        var classNames = event.classNames || event.className || [];
+        if (classNames.indexOf && classNames.indexOf('bg-visit') > -1) return 'visit';
+        if (classNames.indexOf && classNames.indexOf('bg-const') > -1) return 'const';
+        if (classNames.indexOf && classNames.indexOf('bg-as') > -1) return 'as';
+        if (classNames.indexOf && classNames.indexOf('bg-done') > -1) return 'done';
+        return 'req';
+    }
+
+    function getCommonCalendarStatusLabel(statusKey, longMode) {
+        var labels = longMode ? {
+            req: '\uACAC\uC801\uC0C1\uB2F4',
+            visit: '\uBC29\uBB38\uC0C1\uB2F4',
+            const: '\uC2DC\uACF5\uC608\uC815',
+            as: 'AS\uC694\uCCAD',
+            done: '\uC2DC\uACF5\uC644\uB8CC'
+        } : {
+            req: '\uACAC\uC801',
+            visit: '\uBC29\uBB38',
+            const: '\uC2DC\uACF5',
+            as: 'AS',
+            done: '\uC644\uB8CC'
+        };
+        return labels[statusKey] || '\uC77C\uC815';
+    }
+
+    function triggerCommonCalendarDateClick(dateStr) {
+        if (!commonCalendarDateClick || !dateStr) return;
+        commonCalendarDateClick({
+            dateStr: dateStr,
+            date: new Date(dateStr + 'T00:00:00'),
+            allDay: true,
+            view: commonCalendar ? commonCalendar.view : null
+        });
+    }
+
+    function bindCommonCalendarWeekClicks() {
+        if (!commonCalendar || commonCalendar.view.type !== 'listWeek') return;
+        var listNodes = document.querySelectorAll('#commonCalendarEl [data-date] .fc-list-day-cushion');
+        listNodes.forEach(function(node) {
+            if (node.dataset.boundCalendarClick === '1') return;
+            node.dataset.boundCalendarClick = '1';
+            node.addEventListener('click', function(event) {
+                event.preventDefault();
+                var holder = node.closest('[data-date]');
+                if (holder && holder.dataset.date) {
+                    triggerCommonCalendarDateClick(holder.dataset.date);
+                }
+            });
+        });
+    }
+
+    function ensureCommonCalendarHolidays() {
+        if (window.__calendarHolidayMap) {
+            return Promise.resolve(window.__calendarHolidayMap);
+        }
+        if (window.__calendarHolidayPromise) {
+            return window.__calendarHolidayPromise;
+        }
+        var currentYear = new Date().getFullYear();
+        window.__calendarHolidayPromise = fetch('/api/calendar/holidays?year=' + currentYear, { credentials: 'same-origin' })
+            .then(function(response) {
+                if (!response.ok) return {};
+                return response.json();
+            })
+            .catch(function() {
+                return {};
+            })
+            .then(function(data) {
+                window.__calendarHolidayMap = data || {};
+                return window.__calendarHolidayMap;
+            });
+        return window.__calendarHolidayPromise;
+    }
+
+    function buildCommonCalendarOptions() {
+        return {
+            initialView: 'dayGridMonth',
+            locale: 'ko',
+            height: '100%',
+            headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listWeek' },
+            buttonText: { today: '오늘', month: '월', week: '주' },
+            events: {
+                url: '/api/schedule',
+                extraParams: function() {
+                    var keyInput = document.getElementById('extAccessKey');
+                    var urlParams = new URLSearchParams(window.location.search);
+                    return {
+                        access_key: keyInput ? keyInput.value : '',
+                        mode: urlParams.get('mode')
+                    };
+                }
+            },
+            dayCellContent: function(info) {
+                var holidayName = getCommonCalendarHolidayName(info.date);
+                var numberClasses = ['common-calendar-day-number'];
+                if (info.date.getDay() === 0) numberClasses.push('is-sunday');
+                if (holidayName) numberClasses.push('is-holiday');
+                var holidayHtml = holidayName
+                    ? '<span class="common-calendar-day-holiday">' + escapeCommonCalendarHtml(holidayName) + '</span>'
+                    : '';
+                return {
+                    html: '<div class="common-calendar-day-wrap"><span class="' + numberClasses.join(' ') + '">' + info.date.getDate() + '</span>' + holidayHtml + '</div>'
+                };
+            },
+            eventContent: function(info) {
+                var statusKey = getCommonCalendarStatusKey(info.event);
+                var customerName = escapeCommonCalendarHtml(getCommonCalendarCustomerName(info.event));
+                if (info.view.type === 'listWeek') {
+                    return {
+                        html: '<span class="common-calendar-event-pill common-calendar-event-pill--' + statusKey + '">' + getCommonCalendarStatusLabel(statusKey, true) + ' ' + customerName + '</span>'
+                    };
+                }
+                return {
+                    html: '<span class="common-calendar-event-pill common-calendar-event-pill--' + statusKey + '">' + customerName + '</span>'
+                };
+            },
+            datesSet: function() {
+                setTimeout(bindCommonCalendarWeekClicks, 0);
+            },
+            dateClick: function(info) {
+                if (commonCalendarDateClick) commonCalendarDateClick(info);
+            },
+            eventClick: function(info) {
+                if (info.view.type === 'listWeek') {
+                    info.jsEvent.preventDefault();
+                    triggerCommonCalendarDateClick(commonCalendarDateKey(info.event.start));
+                    return;
+                }
+                if (commonCalendarOptions.disableEventNavigation) {
+                    info.jsEvent.preventDefault();
+                    return;
+                }
+                if (info.event.url) {
+                    info.jsEvent.preventDefault();
+                    location.href = info.event.url;
+                }
+            },
+            displayEventTime: false
+        };
+    }
+
+    function openCommonCalendar(dateClickCallback, options) {
+        var modal = document.getElementById('commonCalendarModal');
+        var calEl = document.getElementById('commonCalendarEl');
+        if (!modal || !calEl) return;
+
+        commonCalendarDateClick = dateClickCallback || null;
+        commonCalendarOptions = options || {};
+        modal.style.display = 'flex';
+        modal.classList.toggle('calendar-links-blocked', !!commonCalendarOptions.disableEventNavigation);
+
+        ensureCommonCalendarHolidays().then(function() {
+            if (commonCalendar) {
+                commonCalendar.setOption('dateClick', function(info) {
+                    if (commonCalendarDateClick) commonCalendarDateClick(info);
+                });
+                commonCalendar.setOption('eventClick', function(info) {
+                    if (info.view.type === 'listWeek') {
+                        info.jsEvent.preventDefault();
+                        triggerCommonCalendarDateClick(commonCalendarDateKey(info.event.start));
+                        return;
+                    }
+                    if (commonCalendarOptions.disableEventNavigation) {
+                        info.jsEvent.preventDefault();
+                        return;
+                    }
+                    if (info.event.url) {
+                        info.jsEvent.preventDefault();
+                        location.href = info.event.url;
+                    }
+                });
+                commonCalendar.refetchEvents();
+                commonCalendar.render();
+                setTimeout(function() { commonCalendar.updateSize(); }, 120);
+                setTimeout(bindCommonCalendarWeekClicks, 0);
+                return;
+            }
+
+            commonCalendar = new FullCalendar.Calendar(calEl, buildCommonCalendarOptions());
+            commonCalendar.render();
+        });
+    }
+
+    function closeCommonCalendar() {
+        document.getElementById('commonCalendarModal').style.display = 'none';
+    }
+
+    window.addEventListener('click', function(event) {
+        var modal = document.getElementById('commonCalendarModal');
+        if (event.target === modal) modal.style.display = 'none';
+    });
+</script>

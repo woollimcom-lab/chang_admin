@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>커튼블라인드 관리툴 로그인</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/common.css?v=1">
+    <style>
+        :root { --primary: #4361ee; --bg: #f0f2f5; --text: #333; }
+        body {
+            background-color: var(--bg); font-family: 'Noto Sans KR', sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; margin: 0;
+        }
+        .login-card {
+            background: white; width: 330px; max-width: 95%; padding: 25px;
+            border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            text-align: center; max-height: 90vh; overflow-y: auto;
+        }
+        .brand { font-size: 1.8rem; font-weight: 800; color: var(--primary); margin-bottom: 10px; display: block; text-decoration: none; }
+        .desc { color: #666; font-size: 0.95rem; margin-bottom: 20px; }
+        
+        /* 탭 버튼 */
+        .tabs { display: flex; border-bottom: 2px solid #eee; margin-bottom: 20px; }
+        .tab-btn {
+            flex: 1; padding: 12px; border: none; background: none; font-weight: bold; color: #aaa; cursor: pointer;
+            transition: 0.3s; border-bottom: 2px solid transparent; margin-bottom: -2px;
+        }
+        .tab-btn.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+        
+        /* 폼 스타일 */
+        .form-group { text-align: left; margin-bottom: 8px; }
+        .form-group label { display: block; font-size: 0.85rem; font-weight: bold; color: #555; margin-bottom: 5px; }
+        .inp { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem; box-sizing: border-box; }
+        .inp:focus { border-color: var(--primary); outline: none; }
+        
+        .btn-submit {
+            width: 100%; padding: 14px; border: none; border-radius: 8px;
+            background: var(--primary); color: white; font-size: 1.1rem; font-weight: bold;
+            cursor: pointer; transition: 0.2s;
+        }
+        .btn-submit:hover { background: #304ffe; }
+        
+        .hidden { display: none; }
+        .msg-check { font-size: 0.8rem; margin-top: 4px; display: block; }
+        .msg-ok { color: #28a745; font-weight: bold; }
+        .msg-err { color: #dc3545; font-weight: bold; }
+        
+        /* 주소 선택용 */
+        .addr-select { width: 49%; display: inline-block; }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <a href="#" class="brand"><i class="fas fa-layer-group"></i> 커튼블라인드 관리</a>
+    <div class="desc" id="pageDesc">커튼/블라인드 통합 업무 솔루션</div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('login')">로그인</button>
+        <button class="tab-btn" onclick="switchTab('register')">회원가입</button>
+    </div>
+
+    <form id="formLogin" onsubmit="handleLogin(event)">
+        <div class="form-group">
+            <label>아이디</label>
+            <input type="text" name="username" class="inp" placeholder="아이디 입력" required  style="ime-mode:disabled;" inputmode="email" autocomplete="username" autocapitalize="none">
+        </div>
+        <div class="form-group">
+            <label>비밀번호</label>
+            <input type="password" name="password" class="inp" placeholder="비밀번호" required
+                   onkeyup="if(window.event.keyCode==13){document.getElementById('btnLogin').click()}">
+        </div>
+        <button type="submit" id="btnLogin" class="btn-submit">로그인</button>
+    </form>
+
+    <form id="formRegister" class="hidden" onsubmit="handleRegister(event)">
+        <div style="display:flex; gap:10px; margin-bottom: 8px;">
+            <div class="form-group" style="flex:1;">
+                <label>1. 상호 (회사명)</label>
+                <input type="text" name="company_name" class="inp" placeholder="예: 창아름 커튼" required>
+            </div>
+            <div class="form-group" style="flex:1;">
+                <label>2. 대표자 성함</label>
+                <input type="text" name="owner_name" class="inp" placeholder="성함" required>
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 8px;">
+            <label>3. 휴대폰 번호 (인증 필수)</label>
+            <div style="display:flex; gap:5px;">
+                <input type="tel" name="mobile_no" id="reg_mobile" class="inp" placeholder="숫자만 입력" required 
+                       oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="flex:1;">
+                <button type="button" onclick="sendCode()" style="width:100px; font-weight:bold; background:#6c757d; color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.85rem;">인증번호 발송</button>
+            </div>
+        </div>
+
+        <div class="form-group hidden" id="area_verify" style="margin-bottom: 8px; background:#f8f9fa; padding:10px; border-radius:8px; border:1px solid #ddd;">
+            <label style="color:#4361ee;">📩 인증번호 입력</label>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="reg_code" class="inp" placeholder="인증번호 6자리" style="flex:1;">
+                <button type="button" onclick="checkCode()" style="width:80px; font-weight:bold; background:#4361ee; color:white; border:none; border-radius:6px; cursor:pointer;">확인</button>
+            </div>
+            <span class="msg-check" id="msg_verify"></span>
+            <input type="hidden" id="is_phone_verified" value="N">
+        </div>
+
+        <div class="form-group">
+            <label>4. 회사 소재지 (필수)</label>
+            <div style="display:flex; justify-content: space-between;">
+                <select id="sido" class="inp addr-select" onchange="updateSigungu()" required>
+                    <option value="">시/도 선택</option>
+                </select>
+                <select id="sigungu" class="inp addr-select" onchange="combineAddress()" required>
+                    <option value="">시/군/구 선택</option>
+                </select>
+            </div>
+            <input type="hidden" name="company_addr" id="real_company_addr">
+            
+            <div style="margin-top:10px;">
+                <input type="tel" name="company_phone" class="inp" placeholder="5. 회사 전화번호 (선택)">
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px;">
+            <div class="form-group" style="flex:1;">
+                <label>6. 아이디</label>
+                <input type="text" name="user_id" class="inp" placeholder="영문/숫자" required 
+                       onblur="checkDup('id', this)">
+                <span class="msg-check" id="msg_id"></span>
+            </div>
+            <div class="form-group" style="flex:1;">
+                <label>7. 비밀번호</label>
+                <input type="password" name="password" class="inp" placeholder="설정" required>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-submit" style="background:#28a745; margin-top:10px;">가입완료</button>
+    </form>
+    
+    <div class="footer" style="margin-top:30px; font-size:0.8rem; color:#aaa;">
+        © 2026 Chang-Areum Partners
+    </div>
+</div>
+
+<script>
+    // --- [주소 데이터] ---
+    const areaData = {
+        "서울특별시": ["강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구", "노원구", "도봉구", "동대문구", "동작구", "마포구", "서대문구", "서초구", "성동구", "성북구", "송파구", "양천구", "영등포구", "용산구", "은평구", "종로구", "중구", "중랑구"],
+        "경기도": ["가평군", "고양시", "과천시", "광명시", "광주시", "구리시", "군포시", "김포시", "남양주시", "동두천시", "부천시", "성남시", "수원시", "시흥시", "안산시", "안성시", "안양시", "양주시", "양평군", "여주시", "연천군", "오산시", "용인시", "의왕시", "의정부시", "이천시", "파주시", "평택시", "포천시", "하남시", "화성시"],
+        "인천광역시": ["강화군", "계양구", "미추홀구", "남동구", "동구", "부평구", "서구", "연수구", "옹진군", "중구"],
+        "부산광역시": ["강서구", "금정구", "기장군", "남구", "동구", "동래구", "부산진구", "북구", "사상구", "사하구", "서구", "수영구", "연제구", "영도구", "중구", "해운대구"],
+        "대구광역시": ["군위군", "남구", "달서구", "달성군", "동구", "북구", "서구", "수성구", "중구"],
+        "대전광역시": ["대덕구", "동구", "서구", "유성구", "중구"],
+        "광주광역시": ["광산구", "남구", "동구", "북구", "서구"],
+        "울산광역시": ["남구", "동구", "북구", "울주군", "중구"],
+        "세종특별자치시": ["세종시"],
+        "강원특별자치도": ["강릉시", "고성군", "동해시", "삼척시", "속초시", "양구군", "양양군", "영월군", "원주시", "인제군", "정선군", "철원군", "춘천시", "태백시", "평창군", "홍천군", "화천군", "횡성군"],
+        "충청북도": ["괴산군", "단양군", "보은군", "영동군", "옥천군", "음성군", "제천시", "증평군", "진천군", "청주시", "충주시"],
+        "충청남도": ["계룡시", "공주시", "금산군", "논산시", "당진시", "보령시", "부여군", "서산시", "서천군", "아산시", "예산군", "천안시", "청양군", "태안군", "홍성군"],
+        "전북특별자치도": ["고창군", "군산시", "김제시", "남원시", "무주군", "부안군", "순창군", "완주군", "익산시", "임실군", "장수군", "전주시", "정읍시", "진안군"],
+        "전라남도": ["강진군", "고흥군", "곡성군", "광양시", "구례군", "나주시", "담양군", "목포시", "무안군", "보성군", "순천시", "신안군", "여수시", "영광군", "영암군", "완도군", "장성군", "장흥군", "진도군", "함평군", "해남군", "화순군"],
+        "경상북도": ["경산시", "경주시", "고령군", "구미시", "김천시", "문경시", "봉화군", "상주시", "성주군", "안동시", "영덕군", "영양군", "영주시", "영천시", "예천군", "울릉군", "울진군", "의성군", "청도군", "청송군", "칠곡군", "포항시"],
+        "경상남도": ["거제시", "거창군", "고성군", "김해시", "남해군", "밀양시", "사천시", "산청군", "양산시", "의령군", "진주시", "창녕군", "창원시", "통영시", "하동군", "함안군", "함양군", "합천군"],
+        "제주특별자치도": ["서귀포시", "제주시"]
+    };
+
+    window.onload = function() {
+        const sidoSelect = document.getElementById("sido");
+        for (let sido in areaData) {
+            let option = document.createElement("option");
+            option.value = sido; option.text = sido;
+            sidoSelect.appendChild(option);
+        }
+    };
+
+    function updateSigungu() {
+        const sido = document.getElementById("sido").value;
+        const sigunguSelect = document.getElementById("sigungu");
+        sigunguSelect.innerHTML = '<option value="">시/군/구 선택</option>';
+        if (sido && areaData[sido]) {
+            areaData[sido].forEach(function(area) {
+                let option = document.createElement("option");
+                option.value = area; option.text = area;
+                sigunguSelect.appendChild(option);
+            });
+        }
+        combineAddress();
+    }
+
+    function combineAddress() {
+        const sido = document.getElementById("sido").value;
+        const sigungu = document.getElementById("sigungu").value;
+        if(sido && sigungu) document.getElementById("real_company_addr").value = sido + " " + sigungu;
+        else document.getElementById("real_company_addr").value = "";
+    }
+
+    // --- [탭 전환] ---
+    function switchTab(mode) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('formLogin').classList.add('hidden');
+        document.getElementById('formRegister').classList.add('hidden');
+
+        if(mode === 'login') {
+            document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            document.getElementById('formLogin').classList.remove('hidden');
+            document.getElementById('pageDesc').innerText = "커튼/블라인드 통합 업무 솔루션";
+        } else {
+            document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            document.getElementById('formRegister').classList.remove('hidden');
+            document.getElementById('pageDesc').innerText = "필수 정보를 입력해주세요.";
+        }
+    }
+
+    // --- [인증 및 가입] ---
+    async function sendCode() {
+        const phone = document.getElementById('reg_mobile').value;
+        if(phone.length < 10) { alert("휴대폰 번호를 입력해주세요."); return; }
+        try {
+            const res = await fetch("/api/auth/send-code", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phone: phone })
+            });
+            const data = await res.json();
+            if(data.status === "ok") {
+                document.getElementById('area_verify').classList.remove('hidden');
+                // [개발용] 자동 입력 & 클립보드 복사
+                document.getElementById('reg_code').value = data.debug_code;
+                try { await navigator.clipboard.writeText(data.debug_code); } catch(e){}
+                alert(`[개발모드] 인증번호: ${data.debug_code}\n(자동 입력됨)`);
+            } else { alert(data.msg); }
+        } catch(e) { alert("서버 오류"); }
+    }
+
+    async function checkCode() {
+        const phone = document.getElementById('reg_mobile').value;
+        const code = document.getElementById('reg_code').value;
+        const msgBox = document.getElementById('msg_verify');
+        try {
+            const res = await fetch("/api/auth/verify-code", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phone: phone, code: code })
+            });
+            const data = await res.json();
+            if(data.status === "ok") {
+                msgBox.innerText = "✔ 인증 완료"; msgBox.className = "msg-check msg-ok";
+                document.getElementById('is_phone_verified').value = "Y";
+                document.getElementById('reg_mobile').readOnly = true;
+                document.getElementById('reg_code').readOnly = true;
+            } else {
+                msgBox.innerText = "⛔ " + data.msg; msgBox.className = "msg-check msg-err";
+            }
+        } catch(e) { alert("오류 발생"); }
+    }
+
+    async function checkDup(type, input) {
+        const val = input.value;
+        const msgBox = document.getElementById('msg_' + type);
+        if(!val) { msgBox.innerText=""; return; }
+        try {
+            const res = await fetch("/api/auth/check-dup", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ type: type, value: val })
+            });
+            const data = await res.json();
+            if(data.status === "ok") {
+                msgBox.innerText = "✔ 사용 가능"; msgBox.className = "msg-check msg-ok";
+                input.style.borderColor = "#28a745";
+            } else {
+                msgBox.innerText = "⛔ " + data.msg; msgBox.className = "msg-check msg-err";
+                input.style.borderColor = "#dc3545";
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    async function handleRegister(e) {
+        e.preventDefault();
+        if(document.getElementById('is_phone_verified').value !== "Y") { alert("휴대폰 인증을 해주세요."); return; }
+        if(!document.getElementById('real_company_addr').value) { alert("회사 주소를 선택해주세요."); return; }
+
+        const formData = new FormData(e.target);
+        try {
+            const res = await fetch("/api/auth/register", { method: "POST", body: formData });
+            const result = await res.json();
+            if(res.ok) {
+                alert(result.msg);
+                location.reload();
+            } else { alert(result.msg); }
+        } catch(e) { alert("가입 요청 중 오류가 발생했습니다."); }
+    }
+
+    /* [login.html] 로그인 처리 함수 수정 */
+    async function handleLogin(e) {
+        e.preventDefault();
+        const loginForm = e.target;
+        const btn = loginForm.querySelector('button');
+        const orgText = btn.innerText;
+
+        const formData = new FormData(loginForm);
+
+        btn.disabled = true;
+        btn.innerText = '로그인 중...';
+
+        try {
+            const res = await fetch('/api/auth/token', {
+                method: 'POST',
+                body: formData
+            });
+
+            // ★ 핵심: 데이터를 여기서 딱 한 번만 읽어야 합니다!
+            const data = await res.json(); 
+
+            if (res.ok) {
+                // 로그인 성공 시 쿠키 저장 및 이동
+                document.cookie = `access_token=Bearer ${data.access_token}; path=/; max-age=${60 * 60 * 24}`;
+                location.href = '/dashboard';
+            } else {
+                // 서버에서 보낸 구체적인 에러 메시지 표시
+                alert(data.detail || '로그인 정보가 올바르지 않습니다.');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            // 네트워크 연결 자체가 끊겼을 때만 이 팝업이 뜹니다.
+            alert('서버 연결에 실패했습니다. 다시 시도해 주세요.'); 
+        } finally {
+            btn.disabled = false;
+            btn.innerText = orgText;
+        }
+    }
+</script>
+<script src="/static/js/mobile_select.js?v=1"></script>
+
+</body>
+</html>

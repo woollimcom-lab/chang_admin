@@ -1,0 +1,27 @@
+{
+  "request_id": "req-2026-03-20-001",
+  "goal": "view 화면의 성공 피드백과 체크리스트 보호 흐름을 안정화한다.",
+  "features": [
+    "checklist_manual_override",
+    "success_feedback_verification"
+  ],
+  "defaultUrl": "http://43.202.209.122/view/6075",
+  "useAuth": true,
+  "priority": "high",
+  "defaults": {
+    "sshTarget": "ubuntu@43.202.209.122",
+    "sshKeyPath": "d:\\dev\\changarum.pem",
+    "serviceName": "mysite",
+    "remotePath": "/home/ubuntu/mysite",
+    "model": "gpt-5.4-mini",
+    "modelReasoningEffort": "medium",
+    "codexTimeoutSeconds": 180,
+    "maxAttempts": 2,
+    "maxChangedFiles": 2,
+    "allowNewFiles": false,
+    "requirePlanJson": true
+  },
+  "verification": {
+    "forbidDialogs": true
+  }
+}

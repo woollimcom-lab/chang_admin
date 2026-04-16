@@ -1,0 +1,1832 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>상세보기</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales-all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/ko.js"></script> 
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
+    <!-- Swiper (Mobile Carousel) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/common.css?v=2">
+    <link rel="stylesheet" href="/static/css/view.css?v={{ range(1, 10000) | random }}">
+
+    {% if is_external %}
+    <style>
+        .header-nav, .btn-complete, .no-external { display: none !important; }
+        .external-header {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #333; color: white; padding: 10px 15px;
+            margin: -20px -20px 20px -20px;
+        }
+        .btn-back-list {
+            background: #fff; color: #333; text-decoration: none;
+            padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold;
+        }
+    </style>
+    {% endif %}
+
+    <style>
+        /* 추가적인 인라인 스타일 정리 */
+        .btn-cat-type.active { background: #0004e9 !important; color: #fff !important; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 5px; }
+        .check-btn {
+            background: #fff; border: 1px solid #ddd; border-radius: 4px; padding: 5px 2px;
+            text-align: center; cursor: pointer; transition: all 0.1s ease;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+        }
+        .check-btn:hover { background: #f8f9fa; border-color: #bbb; }
+        .check-btn.active { background: #e6fcf5; border-color: #20c997; color: #0ca678; font-weight:bold; box-shadow: 0 1px 3px rgba(32, 201, 151, 0.2); }
+        .check-title { font-size: 0.85rem; line-height: 1.1; }
+        .check-sub { font-size: 0.7rem; color: #888; margin-top: 2px; font-weight: normal; transform: scale(0.9); }
+        .check-btn.active .check-sub { color: #0ca678; }
+        .chk-box-row { display:flex; align-items:center; gap:8px; padding:6px; border-radius:4px; cursor:pointer; transition:0.2s; border-bottom:1px solid #f1f3f5; }
+        .chk-box-row:last-child { border-bottom:none; }
+        .chk-box-row:hover { background:#f1f3f5; }
+        .chk-box-row input { transform: scale(1.3); margin:0; cursor:pointer; }
+        .photo-thumb { width:70px; height:70px; object-fit:cover; border-radius:6px; border:1px solid #ddd; cursor:pointer; }
+        .item-photo-trigger {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            width: 22px;
+            height: 22px;
+            margin-left: 6px;
+            padding: 0;
+            border: none;
+            border-radius: 999px;
+            background: #edf2ff;
+            color: #4c6ef5;
+            cursor: pointer;
+            vertical-align: middle;
+            box-shadow: inset 0 0 0 1px rgba(76, 110, 245, 0.12);
+        }
+        .item-photo-trigger.has-photo {
+            background: #d3f9d8;
+            color: #2b8a3e;
+            box-shadow: inset 0 0 0 1px #8ce99a;
+        }
+        .item-photo-trigger .item-photo-count {
+            position: absolute;
+            right: -5px;
+            bottom: -4px;
+            min-width: 14px;
+            height: 14px;
+            padding: 0 3px;
+            border-radius: 999px;
+            background: #ffffff;
+            color: #495057;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 14px;
+            text-align: center;
+            box-shadow: 0 0 0 1px rgba(134, 142, 150, 0.3);
+        }
+        .item-photo-trigger .item-photo-count[hidden] {
+            display: none !important;
+        }
+        .item-photo-trigger[data-photo-stage="before"] {
+            background: #fff5f5;
+            color: #e03131;
+            box-shadow: inset 0 0 0 1px #ffc9c9;
+        }
+        .item-photo-trigger[data-photo-stage="during"] {
+            background: #e3fafc;
+            color: #0b7285;
+            box-shadow: inset 0 0 0 1px #99e9f2;
+        }
+        .item-photo-trigger[data-photo-stage="after"] {
+            background: #edf2ff;
+            color: #364fc7;
+            box-shadow: inset 0 0 0 1px #bac8ff;
+        }
+        .item-photo-trigger[data-photo-stage="before-during"] {
+            background: linear-gradient(135deg, #fff5f5 0%, #fff5f5 48%, #e3fafc 52%, #e3fafc 100%);
+            color: #c2255c;
+            box-shadow: inset 0 0 0 1px #fcc2d7;
+        }
+        .item-photo-trigger[data-photo-stage="before-after"] {
+            background: linear-gradient(135deg, #fff5f5 0%, #fff5f5 48%, #edf2ff 52%, #edf2ff 100%);
+            color: #6741d9;
+            box-shadow: inset 0 0 0 1px #d0bfff;
+        }
+        .item-photo-trigger[data-photo-stage="during-after"] {
+            background: linear-gradient(135deg, #e3fafc 0%, #e3fafc 48%, #edf2ff 52%, #edf2ff 100%);
+            color: #1864ab;
+            box-shadow: inset 0 0 0 1px #a5d8ff;
+        }
+        .item-photo-trigger[data-photo-stage="before-during-after"] {
+            background: linear-gradient(135deg, #fff5f5 0%, #fff5f5 33%, #e3fafc 33%, #e3fafc 66%, #edf2ff 66%, #edf2ff 100%);
+            color: #5f3dc4;
+            box-shadow: inset 0 0 0 1px #d0bfff;
+        }
+        .item-photo-trigger.mobile {
+            width: 28px;
+            height: 28px;
+            margin-left: 8px;
+        }
+        .item-photo-trigger.mobile .item-photo-count {
+            right: -6px;
+            bottom: -5px;
+        }
+        .item-price-unit-mobile {
+            font-size: 0.55rem;
+            color: #999;
+            margin-bottom: 1px;
+            white-space: nowrap;
+            letter-spacing: -0.6px;
+            line-height: 1.1;
+        }
+
+        /* ★ 상세 뷰 중간 탭 영역 가로 100% 꽉 채우기 */
+        .detail-tabs { 
+            display: flex; 
+            width: 100%; 
+            padding: 0; 
+            margin: 15px 0; 
+            border-bottom: 2px solid #e9ecef; 
+        }
+        .detail-tabs button {
+            flex: 1; /* 4등분 균등 배치의 핵심 */
+            text-align: center;
+            padding: 10px 0;
+            font-size: 14px;
+            font-weight: bold;
+            color: #6c757d;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+        }
+        .detail-tabs button.active {
+            color: #4361ee;
+            border-bottom: 3px solid #4361ee;
+        }
+
+        .mgr-select-shell {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .mgr-current-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        .mgr-select-shell .ts-wrapper {
+            width: 100%;
+        }
+        .mgr-select-shell .ts-control {
+            min-height: 40px;
+            border-radius: 10px;
+            border: 1px solid #ced4da;
+            padding: 4px 7px;
+            box-shadow: none;
+            gap: 4px;
+            flex-wrap: wrap;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .mgr-select-shell .ts-control::-webkit-scrollbar { display: none; }
+        .mgr-select-shell .ts-wrapper.multi .ts-control > div {
+            background: #eef2ff;
+            color: #364fc7;
+            border-radius: 999px;
+            font-weight: 800;
+            font-size: 13px;
+            line-height: 1.2;
+            padding: 3px 8px;
+            margin: 0;
+        }
+        .mgr-select-shell.is-compact-summary .ts-wrapper.multi .ts-control > div:not(:first-of-type) {
+            display: none;
+        }
+        .mgr-select-shell .ts-dropdown,
+        .touch-select-shell .ts-dropdown {
+            border-radius: 14px;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
+        }
+        .mgr-select-shell .ts-dropdown-content {
+            max-height: 220px;
+        }
+        .mgr-select-shell .ts-control > input {
+            min-width: 18px !important;
+            font-size: 16px;
+            margin: 0 !important;
+        }
+        .mgr-select-shell .ts-control > input::placeholder {
+            color: transparent;
+        }
+        .mgr-select-shell .mgr-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 8px 12px 6px;
+            font-size: 13px;
+            font-weight: 900;
+            background: #f8f9fa;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .mgr-select-shell .mgr-group-header.staff {
+            color: #364fc7;
+        }
+        .mgr-select-shell .mgr-group-header.partner {
+            color: #2b8a3e;
+        }
+        .mgr-select-shell .mgr-option-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+            font-size: 15px;
+            font-weight: 800;
+        }
+        .mgr-select-shell .mgr-option-check {
+            width: 18px;
+            text-align: right;
+            color: #4c6ef5;
+            font-size: 14px;
+            font-weight: 900;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+        .mgr-select-shell .mgr-option-kind {
+            flex-shrink: 0;
+            border-radius: 999px;
+            padding: 3px 8px;
+            font-size: 12px;
+            font-weight: 900;
+        }
+        .mgr-select-shell .mgr-option-kind.staff {
+            background: #edf2ff;
+            color: #364fc7;
+        }
+        .mgr-select-shell .mgr-option-kind.partner {
+            background: #ebfbee;
+            color: #2b8a3e;
+        }
+        .mgr-select-shell .option.active .mgr-option-row,
+        .mgr-select-shell .option.selected .mgr-option-row {
+            background: #f8fbff;
+        }
+        .mgr-select-shell .option.selected .mgr-option-check {
+            opacity: 1;
+        }
+        .touch-select-shell .ts-control {
+            min-height: 44px;
+            border-radius: 12px;
+            border: 1px solid #ced4da;
+            box-shadow: none;
+        }
+        .manager-summary-compact {
+            display: none;
+            margin-top: 4px;
+            padding-right: 2px;
+            font-size: 0.68rem;
+            color: #868e96;
+            font-weight: 600;
+            line-height: 1.2;
+            text-align: right;
+            white-space: nowrap;
+        }
+        .mgr-name-static.manager-summary-compact {
+            display: block;
+            font-size: 0.76rem;
+            color: #475569;
+        }
+        .action-btn-group .btn-action,
+        .m-row-buttons .btn-action {
+            white-space: nowrap;
+            min-height: 40px;
+            line-height: 1.1;
+            justify-content: center;
+        }
+        .action-btn-group .btn-action i,
+        .m-row-buttons .btn-action i {
+            flex-shrink: 0;
+        }
+        .payment-summary-trigger {
+            cursor: pointer;
+        }
+        .payment-summary-trigger:active {
+            transform: scale(0.99);
+        }
+        @keyframes inflow-guide-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 149, 0, 0.34); }
+            70% { box-shadow: 0 0 0 9px rgba(255, 149, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 149, 0, 0); }
+        }
+        @keyframes inflow-guide-glow {
+            0%, 100% { border-color: rgba(255, 149, 0, 0.38); box-shadow: 0 4px 14px rgba(255, 149, 0, 0.12); }
+            50% { border-color: rgba(255, 149, 0, 0.92); box-shadow: 0 10px 22px rgba(255, 149, 0, 0.26); }
+        }
+        .btn-inflow-guide {
+            background: #fff7ed;
+            color: #c2410c;
+            border: 1px solid rgba(255, 149, 0, 0.42);
+        }
+        .btn-inflow-guide.is-missing {
+            animation: inflow-guide-glow 1.8s ease-in-out infinite, inflow-guide-pulse 1.8s ease-in-out infinite;
+        }
+        .btn-inflow-guide i {
+            color: inherit;
+        }
+        .action-btn-group-five {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 8px;
+            align-items: stretch;
+        }
+        .action-btn-group-five > * {
+            min-width: 0;
+        }
+        .action-btn-group-five > div {
+            grid-column: 1 / -1;
+        }
+        .customer-info-select-shell {
+            margin-top: 8px;
+        }
+        .customer-info-select-shell .modal-input {
+            margin-top: 0 !important;
+        }
+        .customer-info-select-shell .ts-wrapper {
+            width: 100%;
+        }
+        .customer-info-select-shell .ts-control {
+            min-height: 44px;
+            border-radius: 12px;
+            border: 1px solid #ced4da;
+            padding: 8px 12px;
+            box-shadow: none;
+            font-size: 15px;
+        }
+        .customer-info-select-shell .ts-control.focus {
+            border-color: #4c6ef5;
+            box-shadow: 0 0 0 3px rgba(76, 110, 245, 0.14);
+        }
+        .customer-info-select-shell .ts-dropdown {
+            border-radius: 14px;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
+        }
+        .customer-info-select-shell .ts-dropdown-content {
+            max-height: 240px;
+        }
+        .customer-info-select-shell .ts-dropdown .option {
+            padding: 11px 12px;
+            font-size: 15px;
+            font-weight: 700;
+        }
+        @media (max-width: 768px) {
+            .m-row-buttons {
+                flex-wrap: nowrap !important;
+            }
+            .m-row-buttons .btn-action {
+                min-width: 0;
+                flex: 1 1 0;
+                font-size: 0.78rem;
+                padding-left: 8px;
+                padding-right: 8px;
+            }
+            .action-btn-group .btn-action {
+                font-size: 0.86rem;
+            }
+            .m-row-buttons-five {
+                display: grid !important;
+                grid-template-columns: repeat(5, minmax(0, 1fr));
+                gap: 8px !important;
+            }
+            .m-row-buttons-five .btn-action {
+                flex: initial;
+                padding-left: 6px;
+                padding-right: 6px;
+                font-size: 0.74rem;
+            }
+        }
+
+    </style>
+</head>
+
+<body>
+    {% if not is_external %}
+    {% include "includes/top_nav.html" %}
+    {% endif %}
+    <div id="hidden-data-layer" style="display:none;">
+        <input type="hidden" id="srv-site-surf" value="{{ order.InstallSurface or '' }}">
+        <input type="hidden" id="srv-checklist" value="{{ order.ChecklistMemo or '' }}">
+        <input type="hidden" id="srv-const-date" value="{{ const_date | default('') }}">
+        <input type="hidden" id="srv-visit-date" value="{{ visit_date | default('') }}">
+        <input type="hidden" id="srv-visit-time" value="{{ visit_time | default('') }}">
+        <input type="hidden" id="srv-const-full" value="{{ const_date.split(' ')[0] if const_date else '' }}">
+        <input type="hidden" id="srv-const-time" value="{{ const_time | default('') }}">
+        <input type="hidden" id="srv-pay-stat" value="{{ order.PaymentStatus or '' }}">
+        <input type="hidden" id="srv-order-id" value="{{ order.OrderID if order else '' }}">
+        <input type="hidden" id="srv-cust-name" value="{{ order.CustomerName or '' }}">
+        <input type="hidden" id="srv-cust-phone" value="{{ order.PhoneNumber or '' }}">
+        <input type="hidden" id="srv-addr" value="{{ order.Address or '' }}">
+        <input type="hidden" id="srv-item-summary" value="{% if items %}{% for i in items %}{{ i.Category1 or i.Category }} {{ i.Quantity|int }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}품목 없음{% endif %}">
+        
+        <script id="srv-saved-schedules" type="application/json">
+        {
+            "방문상담": "{{ order.VisitDate.strftime('%Y-%m-%d %H:%M') if order and order.VisitDate else '' }}",
+            "시공예정": "{{ order.ConstructionDate.strftime('%Y-%m-%d %H:%M') if order and order.ConstructionDate else '' }}",
+            "AS요청": "{{ order.ASDate.strftime('%Y-%m-%d %H:%M') if order and order.ASDate else '' }}"
+        }
+        </script>
+        <script id="srv-group-data" type="application/json">
+            {{ g_json_str | safe }}
+        </script>
+        
+        {% if is_external %}
+            <input type="hidden" id="extAccessKey" value="{{ access_key }}">
+        {% endif %}
+        
+        <input type="hidden" id="raw-visit-date" value="{{ visit_date }}">
+        <input type="hidden" id="raw-const-date" value="{{ const_date }}">
+    </div>
+
+    {% if is_external %}
+    <div class="external-header">
+        <div style="font-weight:bold;">📋 현장 상세 정보</div>
+        <a href="/w/{{ access_key }}" class="btn-back-list"><i class="fas fa-list"></i> 목록으로</a>
+    </div>
+    {% endif %}
+
+    <div class="wrapper">
+        <div class="print-only"></div>
+
+        <div class="container view-1200">
+
+            <!-- v5 layout: unified two columns (no inner scroll) -->
+
+            <div class="view-split">
+                <div class="view-main">
+                    <div class="info-card">
+                {% set days_map = {'Mon':'월', 'Tue':'화', 'Wed':'수', 'Thu':'목', 'Fri':'금', 'Sat':'토', 'Sun':'일'} %}
+
+                <div class="info-header-pc">
+                    <div class="header-left">
+                        <div class="cust-name-row">
+                            <span class="cust-name">{{ order.CustomerName }}</span>
+                        </div>
+                        <div class="cust-contact-row">
+                            <span class="info-addr"><i class="fas fa-map-marker-alt"></i> {{ order.Address or '주소 미입력' }}</span>
+                            <span class="pc-divider">|</span>
+                            <span class="info-phone"><i class="fas fa-mobile-alt"></i> {{ order.PhoneNumber }}</span>
+                        </div>
+                        <div class="action-btn-group action-btn-group-five">
+                            {% if not is_external %}
+                            <button onclick="openInfoModal()" class="btn-action btn-map"><i class="fas fa-user-pen"></i> 고객</button>
+                            <button id="btnInflowGuidePc" type="button" onclick="openInflowInfoModal()" class="btn-action btn-inflow-guide"><i class="fas fa-bullhorn"></i> 유입</button>
+                            {% endif %}
+                            <a href="tel:{{ order.PhoneNumber }}" class="btn-action btn-call"><i class="fas fa-phone-alt"></i> 전화</a>
+                            <button onclick="sendSmartSMS('{{ order.PhoneNumber }}', '{{ order.ProgressStatus }}')" class="btn-action btn-sms"><i class="fas fa-comment-dots"></i> 문자</button>
+                            <button onclick="window.open('https://map.naver.com/v5/search/{{ order.Address }}', '_blank')" class="btn-action btn-map"><i class="fas fa-map-marker-alt"></i> 지도</button>
+                            {% if order.Order_code %}
+                                <div style="display:flex; align-items:center; background:#f1f3f5; padding:5px 12px; border-radius:15px; font-size:0.85rem; color:#495057; font-weight:bold; border:1px solid #dee2e6; margin-top: 5px;">
+                                    <i class="fas fa-barcode" style="margin-right:5px; color:#adb5bd;"></i> {{ order.Order_code }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="header-right pc-payment-box payment-summary-trigger" id="pcPaymentSummaryTrigger" onclick="if(event.target.closest('button, a, input, select, label, .pay-info-pill')) return; triggerPaymentMarginSummary(this)">
+                        <div class="pay-label">최종금액</div>
+                        <div class="pay-amount-lg" id="pcDispFinal">
+                            <span id="live-price" class="text-primary fw-bold">
+                                {% if perms.total %}{{ (order.FinalAmount or 0) | format_comma }}{% else %}비공개{% endif %}
+                            </span>
+                        </div>
+                        <div class="pay-info-pill" onclick="togglePayment('{{ '미입금' if order.PaymentStatus == '입금완료' else '입금완료' }}')">
+                            {% if order.PaymentStatus == '입금완료' %}
+                                <span class="pill-method" style="width:auto; padding:0 5px;">
+                                    <i class="fas fa-check-circle" style="color:#fff;"></i>
+                                    {% set vat_txt = '(VAT)' if order.IsVatIncluded == 'Y' else '' %}
+                                    <span style="font-weight:bold; margin-left:3px;">
+                                        {% if order.PaymentMethod == '카드' %} 카드결제{{ vat_txt }}
+                                        {% elif order.PaymentMethod == '현금' %} 현금결제{{ vat_txt }}
+                                        {% else %} 계좌이체{{ vat_txt }}
+                                            {% if order.BankName or order.DepositorName %}
+                                                <span style="font-weight:normal; opacity:0.9; margin-left:5px; font-size:0.9em; border-left:1px solid rgba(255,255,255,0.4); padding-left:6px;">
+                                                    {{ order.BankName }} | {{ order.DepositorName }}
+                                                </span>
+                                            {% endif %}
+                                        {% endif %}
+                                    </span>
+                                </span>
+                            {% else %}
+                                <span class="pill-method"><i class="fas fa-check-circle"></i> 미결제</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-header-mobile" style="padding-bottom:10px;">
+    
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
+                        
+                        <div style="flex:1; padding-right:10px; min-width:0;">
+                            <div class="m-row-name" style="margin-bottom:6px;">
+                                <span class="m-name" style="font-size:1.6rem; line-height:1.2;">{{ order.CustomerName }}</span>
+                            </div>
+                            <div class="m-row-info" style="display:block; margin-bottom:0; line-height:1.5; color:#666; font-size:0.9rem;">
+                                {% if order.Address %}
+                                <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                    <i class="fas fa-map-marker-alt" style="color:#6f42c1; margin-right:4px;"></i> {{ order.Address or '주소없음' }}
+                                </div>
+                                {% endif %}
+                                {% if order.PhoneNumber %}
+                                <div>
+                                    <i class="fas fa-mobile-alt" style="color:#6f42c1; margin-right:4px;"></i> {{ order.PhoneNumber }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div style="display:flex; flex-direction:column; align-items:flex-end; flex-shrink:0; gap:6px;" class="payment-summary-trigger" id="mobilePaymentSummaryTrigger" onclick="if(event.target.closest('button, a, input, select, label, .pay-info-pill')) return; triggerPaymentMarginSummary(this)">
+                            <div class="pay-info-pill mobile-pill" onclick="togglePayment('{{ '미입금' if order.PaymentStatus == '입금완료' else '입금완료' }}')" style="margin:0; padding:4px 10px; font-size:0.8rem;">
+                                <i class="fas fa-check-circle" style="color:{{ '#0056b3' if order.PaymentStatus == '입금완료' else '#ccc' }}"></i>
+                                <span class="pill-text" style="font-weight:bold;">
+                                    {% if order.PaymentStatus == '입금완료' %}
+                                        결제완료
+                                    {% else %}
+                                        미결제
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="m-price" id="mobileDispFinal" style="font-size:1.3rem; font-weight:800; color:#e03131; letter-spacing:-0.5px; text-align:right;">
+                                {% if perms.total %}{{ (order.FinalAmount or 0) | format_comma }}{% else %}비공개{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="m-row-buttons m-row-buttons-five" style="display:flex; gap:8px;">
+                        {% if not is_external %}
+                        <button onclick="openInfoModal()" class="btn-action btn-map m-btn-full"><i class="fas fa-user-pen"></i> 고객</button>
+                        <button id="btnInflowGuideMobile" type="button" onclick="openInflowInfoModal()" class="btn-action btn-inflow-guide m-btn-full"><i class="fas fa-bullhorn"></i> 유입</button>
+                        {% endif %}
+                        <a href="tel:{{ order.PhoneNumber }}" class="btn-action btn-call m-btn-full"><i class="fas fa-phone-alt"></i> 전화</a>
+                        <button onclick="sendSmartSMS('{{ order.PhoneNumber }}', '{{ order.ProgressStatus }}')" class="btn-action btn-sms m-btn-full"><i class="fas fa-comment-dots"></i> 문자</button>
+                        <button onclick="window.open('https://map.naver.com/v5/search/{{ order.Address }}', '_blank')" class="btn-action btn-map m-btn-full"><i class="fas fa-map-marker-alt"></i> 지도</button>
+                    </div>
+                </div>
+
+                <div class="info-dashed-line"></div>
+
+                <div class="info-bottom-row">
+                    <div class="timeline-wrapper">
+                        {% set p_stat = order.ProgressStatus %}
+                        {% set current_stage = 1 %}
+                        {% if p_stat == '방문상담' %}{% set current_stage = 2 %}
+                        {% elif p_stat in ['시공예정', '시공', '작업완료', '주문', '수령', '작업대기', '작업보류', 'AS요청'] %}{% set current_stage = 3 %}{% endif %}
+
+                        {% macro render_highlight_time(dt_str) %}
+                            {% if dt_str and dt_str != '-' %}
+                                {% set parts = dt_str.split(' ') %}
+                                {{ parts[0] }}
+                                {% if parts[1] %}<span class="time-highlight">{{ parts[1] }}</span>{% endif %}
+                            {% else %}<span style="color:#ccc; font-size:0.9em;">-</span>{% endif %}
+                        {% endmacro %}
+
+                        <div class="time-step step-est visible {{ 'm-active' if p_stat == '견적상담' else '' }}">
+                            <div class="step-head"><i class="far fa-clipboard"></i> 견적상담</div>
+                            <div class="step-date">
+                                {% if order.RegDate %}
+                                    {% set reg_d = order.RegDate.strftime('%m/%d') %}
+                                    {% set reg_w = days_map[order.RegDate.strftime('%a')] %}
+                                    {% set reg_t = order.RegDate.strftime('%H:%M') %}
+                                    {{ reg_d }}({{ reg_w }}) <span class="time-highlight">{{ reg_t }}</span>
+                                {% else %} - {% endif %}
+                            </div>
+                        </div>
+
+                        {% set show_visit = (current_stage >= 2) or (visit_date and visit_date != '') %}
+                        <div class="time-step step-visit clickable {{ 'visible' if show_visit else '' }} {{ 'm-active' if p_stat == '방문상담' else '' }}" onclick="changeMainStatus('방문상담')">
+                            <div class="step-head"><i class="far fa-calendar-check"></i> 방문상담</div>
+                            <div class="step-date">{{ render_highlight_time(visit_date) }}</div>
+                        </div>
+
+                        {% set show_const = (current_stage >= 3) or (const_date and const_date != '') %}
+                        <div class="time-step step-const clickable {{ 'visible' if show_const else '' }} {{ 'm-active' if p_stat in ['시공예정','시공','작업완료'] else '' }}" onclick="changeMainStatus('시공예정')">
+                            <div class="step-head"><i class="fas fa-tools"></i> 시공예정</div>
+                            <div class="step-date">{{ render_highlight_time(const_date) }}</div>
+                        </div>
+
+                        {% set show_as = (p_stat == 'AS요청' or order.ASDate) %}
+                        {% if show_as %}
+                        <div class="time-step step-as as-box clickable visible {{ 'm-active' if p_stat == 'AS요청' else '' }}" onclick="changeMainStatus('AS요청')">
+                            <div class="step-head"><i class="fas fa-wrench"></i> AS 방문 일정</div>
+                            <div class="step-date">
+                                {% if order.ASDate %}
+                                    {% set as_d = order.ASDate.strftime('%m/%d') %}
+                                    {% set as_w = days_map[order.ASDate.strftime('%a')] %}
+                                    {% set as_t = order.ASDate.strftime('%H:%M') %}
+                                    {{ as_d }}({{ as_w }}) <span class="time-highlight">{{ as_t }}</span>
+                                {% else %} <span style="color:#d63384;">일정 미정</span> {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="manager-wrapper">
+                        <div class="manager-box">
+                            <div class="mgr-label">담당자 (견적/시공)</div>
+                            {% if current_member_type != 'external' %}
+                                <div class="mgr-select-shell">
+                                    <div id="dispManagerName" class="mgr-current-hidden">{{ display_manager_name or '미지정' }}</div>
+                                    <select id="managerSelect" multiple>
+                                        <optgroup label="정직원">
+                                            {% for m in members if m.Type != 'external' %}
+                                                {% set is_checked = (m.ID in selected_manager_ids) %}
+                                                <option value="{{ m.ID }}" {{ 'selected' if is_checked else '' }}>{{ m.Name }}</option>
+                                            {% endfor %}
+                                        </optgroup>
+                                        <optgroup label="외주팀">
+                                            {% for m in members if m.Type == 'external' %}
+                                                {% set is_checked = (m.ID in selected_manager_ids) %}
+                                                <option value="{{ m.ID }}" {{ 'selected' if is_checked else '' }}>{{ m.Name }}</option>
+                                            {% endfor %}
+                                        </optgroup>
+                                    </select>
+                                    <div id="managerSummaryCompact" class="manager-summary-compact">{{ display_manager_name or '미지정' }}</div>
+                                </div>
+                            {% else %}
+                                <div class="mgr-name-static manager-summary-compact">{{ display_manager_name or '미지정' }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="progress-container">
+                {% set main_steps = ["견적상담", "방문상담", "시공예정", "AS요청", "작업완료"] %}
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px; padding-bottom:3px;">
+                    {% for step in main_steps %}
+                        {% set i = loop.index0 %}
+                        <div class="step-item btn-status-main {{ 'active' if step == order.ProgressStatus else '' }}" onclick="updateStatusLive(this, 'main', '{{ step }}', {{ order.OrderID }})">
+                            <div class="step-circle">{{ i + 1 }}</div>
+                            <span style="font-size:0.65rem">{{ step }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                {% if not is_external %}
+                    {% set pay_next = "미입금" if order.PaymentStatus == "입금완료" else "입금완료" %}
+                    <div class="status-badges" style="display:flex; justify-content:space-around; flex-wrap:wrap; border-top:1px dashed #ddd; padding-top:10px;">
+                        <button type="button" id="btnSub_order" class="badge-btn btn-order {{ 'active' if order.IsOrdered=='Y' }}" onclick="updateStatusLive(this, 'sub', 'order', {{ order.OrderID }})">제품주문</button>
+                        <button type="button" id="btnSub_receive" class="badge-btn btn-recv {{ 'active' if order.IsReceived=='Y' }}" onclick="updateStatusLive(this, 'sub', 'receive', {{ order.OrderID }})">제품수령</button>
+                        <button type="button" class="badge-btn btn-pay {{ 'active' if order.PaymentStatus=='입금완료' }}" onclick="togglePayment('{{ '미결제' if order.PaymentStatus=='입금완료' else '입금완료' }}')">입금확인</button>
+                        <button type="button" class="badge-btn btn-gray {{ 'active' if order.IsWaiting=='Y' }}" onclick="updateStatusLive(this, 'sub', 'wait', {{ order.OrderID }})">작업대기</button>
+                        <button type="button" class="badge-btn btn-gray {{ 'active' if order.IsHold=='Y' }}" onclick="updateStatusLive(this, 'sub', 'hold', {{ order.OrderID }})">작업보류</button>
+                    </div>
+                {% endif %}
+            </div>
+
+            
+
+            <table class="excel-table">
+                <thead>
+                    <tr>
+                        <th class="no-print">상태</th>
+                        <th style="text-align:left;">위치/구분</th>
+                        <th style="text-align:left;">제품/칼라/옵션/비고</th>
+                        <th style="text-align:right;">사이즈</th>
+                        {% if perms.margin %}<th style="text-align:right;">금액</th>{% endif %}
+                        <th class="no-print" style="width:50px;">관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set ns = namespace(grand_total=0) %}
+                    {% for item in items %}
+                        {% set qty = item.Quantity or 0 %}
+                        {% set price = item.UnitPrice or 0 %}
+                        {% set item_total = qty * price %}
+                        {% set ns.grand_total = ns.grand_total + item_total %}
+                        {% set item_step = item.ItemStep if item.ItemStep is not none else 0 %}
+                        {% set btn_class = "stat-" ~ item_step %}
+                        {% set btn_text = ["대기", "주문", "수령", "AS"][item_step] %}
+                        {% set cat = (item.Category or "") | trim %}
+                        {% set unit_name = "폭" if cat == "커튼" else ("㎡" if cat == "블라인드" else "") %}
+                        
+                        {# Height Calc #}
+                        {% set calc_h = safe_num(item.Height) %}
+                        {% if cat == "커튼" %}
+                            {% if '속지' in (item.Category1 or '') or '속지' in (item.Location or '') %}
+                                {% set calc_h = safe_num(item.Height) - curtain_deduct_sokji  %}
+                            {% elif '겉지' in (item.Category1 or '') or '겉지' in (item.Location or '') %}
+                                {% set calc_h = safe_num(item.Height) - curtain_deduct_geotji  %}
+                            {% endif %}
+                        {% endif %}
+
+                        {# Javascript Data Preparation #}
+                        {% set js_loc = (item.Location or "") | replace("'", "\\'") | replace("\n", " ") | replace("\r", "") %}
+                        {% set js_prod = (item.cate1 or "") | replace("'", "\\'") | replace("\n", " ") | replace("\r", "") %}
+                        {% set js_color = (item.cate2 or "") | replace("'", "\\'") | replace("\n", " ") | replace("\r", "") %}
+                        {% set js_opt = (item.cate3 or "") | replace("'", "\\'") | replace("\n", " ") | replace("\r", "") %}
+                        {% set js_sub = (item.Category1 or "") | replace("'", "\\'") | replace("\n", " ") | replace("\r", "") %}
+                        {% set js_memo = (item.cate4 or "") | replace("'", "\\'") | replace("\n", " ") | replace("\r", "") %}
+                        {% set js_sup = (item.Supplier or "") | replace("'", "\\'") | replace("\n", " ") | replace("\r", "") %}
+                        {% set raw_attr = item.Attributes or {} %}
+                        {% set raw_cost = raw_attr.get('cost_price', '') if raw_attr else '' %}
+                        {% set raw_pid = raw_attr.get('product_id', '') if raw_attr else '' %}
+                        {% set js_cost = (raw_cost ~ "") | replace("'", "\\'") | replace("\n", " ") | replace("\r", "") %}
+                        {% set js_pid = (raw_pid ~ "") | replace("'", "\\'") | replace("\n", " ") | replace("\r", "") %}
+
+                        {% set copy_text = "" %}
+                        {% set val_copy_w = "" %}
+                        {% set val_copy_h = "" %}
+                        {% if cat == "블라인드" %}
+                            {% set copy_text = js_loc %}
+                            {% if js_sub %} {% set copy_text = copy_text ~ " | " ~ js_sub %} {% endif %}
+                            {% set copy_text = copy_text ~ " | " ~ js_prod %}
+                            {% if js_color %} {% set copy_text = copy_text ~ " | " ~ js_color %} {% endif %}
+                            {% if js_opt %} {% set copy_text = copy_text ~ " | " ~ js_opt %} {% endif %}
+                            {% set copy_text = copy_text ~ " | " ~ (item.BlindSize or "") %}
+                            {% if item.BlindCount and item.BlindCount > 1 %}{% set copy_text = copy_text ~ " (" ~ item.BlindCount ~ "창)" %}{% endif %}
+                            {% set val_copy_w = item.BlindSize or "" %}
+                        {% else %}
+                            {% set str_color_format = " | " ~ js_color if js_color else "" %}
+                            {% set str_opt_format = " | " ~ js_opt if js_opt else "" %}
+                            {% set copy_text = js_loc ~ " | " ~ js_prod ~ str_color_format ~ str_opt_format ~ " | " ~ qty ~ unit_name ~ " | " ~ (item.Width or "0") ~ " x " ~ calc_h %}
+                            {% set val_copy_w = item.Width or "" %}
+                            {% set val_copy_h = calc_h %}
+                        {% endif %}
+
+                        <tr data-id="{{ item.ItemID }}" data-sup="{{ (item.Supplier or '') | replace("'", "\\'") }}" 
+                            data-loc="{{ js_loc }}" data-prod="{{ js_prod }}" data-color="{{ js_color }}" data-info="{{ copy_text }}" data-cat="{{ cat }}" data-width="{{ item.Width }}">
+                            
+                            <td class="no-print pc-flex-td">
+                                <i class="fas fa-bars handle" style="cursor:grab; color:#ccc; padding:5px;"></i>
+                                <button type="button" class="btn-status-toggle item-stat-btn {{ btn_class }}" data-id="{{ item.ItemID }}" data-step="{{ item_step }}" onclick="toggleStatusAjax(this)">{{ btn_text }}</button>
+                            </td>
+                            <td class="td-loccat" style="text-align:left;">
+                                <div class="loc-line">{{ item.Location or '' }}</div>
+                                <div class="cat-line">
+                                    {% if item.Supplier %}{{ item.Supplier }} / {% endif %}
+                                    {% if cat == "커튼" %}
+                                        {{ item.Category1 or "커튼" }}
+                                    {% elif cat == "블라인드" %}
+                                        블라인드{% if item.Category1 %} / {{ item.Category1 }}{% endif %}
+                                    {% else %}
+                                        {{ cat }}{% if item.Category1 %} / {{ item.Category1 }}{% endif %}
+                                    {% endif %}
+                                </div>
+                            </td>
+                            
+                            <td class="txt-prod" style="text-align:left;">
+                                <div style="font-weight:bold; color:#333;cursor:pointer;" title="클릭 시 복사" onclick="copyItemInfo('{{ cat }}', '{{ js_sub }}', '{{ js_loc }}','{{ js_prod }}','{{ js_color }}','{{ js_opt }}','{{ qty }}{{ unit_name }}','{{ val_copy_w }}','{{ val_copy_h }}'); event.stopPropagation();">
+                                    {{ item.cate1 or '' }}
+                                    {% if cat == "블라인드" and item.BlindCount and item.BlindCount > 1 %}
+                                        <span style="font-size:0.85em; color:#888; font-weight:normal; margin-left:5px;">({{ item.BlindCount }}창 세트)</span>
+                                    {% endif %}
+                                    <i class="far fa-copy" style="font-size:0.8em; color:#bbb;"></i>
+                                    <button type="button" class="item-photo-trigger" data-item-photo-trigger data-item-id="{{ item.ItemID }}" data-photo-stage="none" data-photo-count="0" title="품목 사진 업로드" onclick="openItemPhotoChooser({{ item.ItemID }}); event.stopPropagation();">
+                                        <i class="fas fa-camera" style="font-size:0.85em;"></i>
+                                        <span class="item-photo-count" hidden>0</span>
+                                    </button>
+                                </div>
+                                {% if item.cate2 %}
+                                    <div style="color:#666; font-size:0.85em; margin-top:3px;">└ 칼라: {{ item.cate2 }}</div>
+                                {% endif %}
+                                {% if item.cate3 %}
+                                    <div style="color:#666; font-size:0.85em; margin-top:3px;">└ 옵션: {{ item.cate3 }}</div>
+                                {% endif %}
+                            
+                                {% if item.cate4 %}<div class="memo-line">※ {{ item.cate4 }}</div>{% endif %}
+                            </td>
+                            <td class="txt-size" style="text-align:right;">
+                                {% if cat == "블라인드" and item.BlindSize %}
+                                    {{ item.BlindSize | replace(',', '<br>') | safe }}
+                               {% else %}
+                                    {% if safe_num(item.Width) > 0 or safe_num(item.Height) > 0 %}
+                                        {{ item.Width | format_smart }} x {{ item.Height | format_smart }}
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                            
+                            {% if perms.margin %}
+                            <td style="text-align:right; vertical-align: middle;">
+                                <div style="font-size:0.85em; color:#777; margin-bottom:2px;">
+                                    {% if cat == "커튼" %}{{ qty | int }}{{ unit_name }} x {{ price | format_comma }}
+                                    {% else %}{{ qty }}{{ unit_name }} x {{ price | format_comma }}{% endif %}
+                                </div>
+                                <div style="font-weight:bold; color:#333; font-size:1.05em;">{{ item_total | format_comma }}원</div>
+                            </td>
+                            {% endif %}
+
+                            <td class="no-print td-manage">
+                                <div class="manage-stack">
+                                    <button type="button" class="btn btn-edit" 
+                                    data-id="{{ item.ItemID }}" data-loc="{{ js_loc }}" data-cat="{{ cat }}" data-prod="{{ js_prod }}" data-color="{{ js_color }}" 
+                                    data-opt="{{ js_opt }}" data-w="{{ item.Width | format_smart }}" data-h="{{ item.Height | format_smart }}" data-copy-h="{{ val_copy_h | format_smart }}"
+                                    data-qty="{{ qty }}" data-price="{{ price }}" data-cost="{{ js_cost }}" data-memo="{{ js_memo }}" data-sup="{{ js_sup }}"
+                                    data-pid="{{ js_pid }}"
+                                    data-group="{{ item.GroupID or '' }}" data-sub="{{ js_sub }}"
+                                    data-bsize="{{ (item.BlindSize or '') | replace('\r\n', ',') | replace('\n', ',') | replace('\r', ',') }}"
+                                    data-bcount="{{ item.BlindCount }}" data-bqty="{{ item.BlindQty or '' }}"
+                                    onclick="handleEditClick(this)">수정</button>
+                                
+                                    <form action="/api/item/delete" method="POST" style="display:block;">
+                                        <input type="hidden" name="item_id" value="{{ item.ItemID }}">
+                                        <button type="button" class="btn btn-del" onclick="if(confirmGroupDelete(this.getAttribute('data-group'))) { markItemChanged(); this.form.submit(); }" data-group="{{ item.GroupID or '' }}">삭제</button>
+                                    </form>
+                                </div>
+                            </td>
+
+                            <td class="mobile-view no-print" style="padding: 0;">
+                                {% set display_qty = (qty | int) if cat == "커튼" else qty %}
+                                {% set mobile_price_qty = (qty | int) if cat == "Ŀư" else (qty | round(1, 'ceil')) %}
+                                <div style="display:flex; align-items:stretch; min-height:80px;">
+                                    <div style="flex:1; padding:8px 2px 8px 10px; display:flex; flex-direction:column; justify-content:space-between;">
+                                        <div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px; margin-bottom:3px;">
+                                            <button type="button" class="btn-status-toggle item-stat-btn {{ btn_class }}" data-id="{{ item.ItemID }}" data-step="{{ item_step }}" onclick="toggleStatusAjax(this)" style="font-size:11px; padding:2px 6px; height:20px; line-height:1; min-width:30px; box-shadow:none;">{{ btn_text }}</button>
+                                            <span class="m-loc" style="font-weight:bold; color:#007bff; font-size:0.95rem;">{{ item.Location }}</span>
+                                            {% if item.Category1 %}
+                                                <span style="background:#f1f3f5; color:#555; padding:1px 4px; border-radius:3px; font-size:0.75rem; font-weight:bold;">{{ item.Category1 }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <div style="font-size:0.9rem; color:#333; line-height:1.2; margin-bottom:3px; word-break:keep-all;">
+                                            <span style="font-weight:bold;">{{ item.cate1 or "" }}</span>
+                                            {% if item.cate2 %}<span style="color:#777; font-size:0.8rem;"> | {{ item.cate2 }}</span>{% endif %}
+                                            {% if item.cate3 %}<span style="color:#777; font-size:0.8rem;"> | {{ item.cate3 }}</span>{% endif %}
+                                            <i class="far fa-copy" style="font-size:0.8rem; color:#bbb; cursor:pointer; margin-left:2px;" onclick="copyItemInfo('{{ cat }}', '{{ js_sub }}', '{{ js_loc }}','{{ js_prod }}','{{ js_color }}','{{ js_opt }}','{{ display_qty }}{{ unit_name }}','{{ val_copy_w }}','{{ val_copy_h }}'); event.stopPropagation();"></i>
+                                            <button type="button" class="item-photo-trigger mobile" data-item-photo-trigger data-item-id="{{ item.ItemID }}" data-photo-stage="none" data-photo-count="0" onclick="openItemPhotoChooser({{ item.ItemID }}); event.stopPropagation();"><i class="fas fa-camera" style="font-size:0.95rem;"></i><span class="item-photo-count" hidden>0</span></button>
+                                            {% if cat == "블라인드" and item.BlindCount and item.BlindCount > 1 %}<span style="font-size:0.8rem; color:#888;">({{ item.BlindCount }}창)</span>{% endif %}
+                                        </div>
+                                        {% if item.cate4 %}<div style="font-size:0.75rem; color:#888; margin-bottom:2px;">※ {{ item.cate4 }}</div>{% endif %}
+                                        <div style="font-family:'Consolas', monospace; font-size:0.85rem; color:#333; line-height:1.3;">
+                                            {% if cat == "블라인드" and item.BlindSize %}
+                                                {{ item.BlindSize | replace(',', '<br>') | safe }}
+                                            {% else %}
+                                                {% if safe_num(item.Width) > 0 or safe_num(item.Height) > 0 %}
+                                                    {{ item.Width }} x {{ item.Height }}
+                                                {% endif %}
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% if perms.margin %}
+                                    <div style="width:70px; padding:8px 4px; display:flex; flex-direction:column; justify-content:flex-end; text-align:right;">
+                                         <div class="item-price-unit-mobile">{{ mobile_price_qty }}{{ unit_name }}x{{ price | format_comma }}</div>
+                                         <div style="font-weight:bold; color:#333; font-size:0.95rem; line-height:1;">{{ item_total | format_comma }}<span style="font-size:0.75rem; font-weight:normal; color:#888;"></span></div>
+                                    </div>
+                                    {% endif %}
+                                    <div style="width:35px;display:flex; flex-direction:column; justify-content:center; align-items:center; gap:2px; padding:0 3px;">
+                                         <button type="button" class="btn" style="background:#bebebe; color:#fff; font-size:0.75rem; padding:0; width:35px; height:23px; border-radius:3px; font-weight:bold;">
+                                            <i class="fas fa-bars handle" style="color:#ddd; font-size:0.85rem; cursor:grab;"></i></button>
+                                         <button type="button" class="btn" style="background:#17a2b8; color:#fff; font-size:0.75rem; padding:0; width:35px; height:23px; border-radius:3px; font-weight:bold;"
+                                            data-id="{{ item.ItemID }}" data-loc="{{ js_loc }}" data-cat="{{ cat }}" data-prod="{{ js_prod }}" data-color="{{ js_color }}" data-opt="{{ js_opt }}"
+                                            data-w="{{ item.Width }}" data-h="{{ item.Height }}" data-copy-h="{{ val_copy_h | format_smart }}" data-qty="{{ qty }}" data-price="{{ price }}" data-cost="{{ js_cost }}" data-memo="{{ js_memo }}"
+                                            data-sup="{{ js_sup }}" data-group="{{ item.GroupID or '' }}" data-sub="{{ js_sub }}"
+                                            data-pid="{{ js_pid }}"
+                                            data-bsize="{{ (item.BlindSize or '') | replace('\r\n', ',') | replace('\n', ',') | replace('\r', ',') }}"
+                                            data-bcount="{{ item.BlindCount }}" data-bqty="{{ item.BlindQty or '' }}"
+                                            onclick="handleEditClick(this)">수정</button>
+                                        <form action="/api/item/delete" method="POST" style="display:inline;">
+                                            <input type="hidden" name="item_id" value="{{ item.ItemID }}">
+                                            <button type="button" class="btn" style="background:#dc3545; color:#fff; font-size:0.75rem; padding:0; width:35px; height:23px; border-radius:3px; font-weight:bold;"
+                                                data-group="{{ item.GroupID or '' }}" onclick="if(confirmGroupDelete(this.getAttribute('data-group'))) { this.form.submit(); }">삭제</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <!--발주하는 버튼-->
+            <div id="supplierBtnContainer" class="no-print" style="display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end; margin: 10px 0 20px 0;"></div>
+
+            <div id="itemAddButtonBar" style="display:flex; gap:10px; margin:10px 0 20px 0;">
+                <button type="button" class="btn-add-item no-print" onclick="openManualModal()" style="margin-bottom:0;">+ 품목 직접 추가</button>
+                <button type="button" class="btn-add-item no-print" onclick="openDbModal()" style="background:#eef2ff; border-color:#6366f1; color:#6366f1; margin-bottom:0;">🏠 아파트DB</button>
+            </div>
+
+
+            <!-- Mobile Swiper (품목 아래에서: 결제 기본, 좌우 스와이프/프리뷰/루프) -->
+            <div id="mobileSwiperRoot" class="mobile-swiper-root no-print" aria-label="모바일 입력 캐러셀">
+                <div class="mobile-swiper-tabs" role="tablist" aria-label="입력 섹션">
+                    <button type="button" class="m-tab" data-index="0" role="tab" aria-selected="false">현장</button>
+                    <button type="button" class="m-tab active" data-index="1" role="tab" aria-selected="true">결제</button>
+                    <button type="button" class="m-tab" data-index="2" role="tab" aria-selected="false">사진</button>
+                    <button type="button" class="m-tab" data-index="3" role="tab" aria-selected="false">기록 <span class="m-badge" id="mBadgeLog" aria-label="새 기록" style="display:none;">0</span></button>
+                </div>
+                <div class="swiper mobileSwiper">
+                    <div class="swiper-wrapper">
+                        <div class="swiper-slide"><div class="mobile-slide-inner" data-section="site"></div></div>
+                        <div class="swiper-slide"><div class="mobile-slide-inner" data-section="payment"></div></div>
+                        <div class="swiper-slide"><div class="mobile-slide-inner" data-section="photos"></div></div>
+                        <div class="swiper-slide"><div class="mobile-slide-inner" data-section="log"></div></div>
+                    </div>
+                    <div class="swiper-pagination"></div>
+                </div>
+
+                <!-- 저장/등록 피드백 토스트 (모바일) -->
+                <div id="mobileToast" class="mobile-toast" role="status" aria-live="polite" style="display:none;"></div>
+
+                <!-- 하단 고정 패널: 작업기록 + 퀵버튼을 하나로 붙여서(어둡게) 구분감 강화 -->
+                <div class="mobile-bottom-panel" role="region" aria-label="하단 입력 패널">
+                    <!-- 어디서든 빠르게 작업기록 입력 (모든 탭에서 사용) -->
+                    <div class="mobile-worklog-bar" role="group" aria-label="작업기록 빠른 입력">
+                        <input type="text" id="quick-worklog-input" placeholder="작업기록 입력…" autocomplete="off" />
+                        <button type="button" id="quick-worklog-mic" aria-label="음성 입력" title="음성 입력"><i class="fas fa-microphone"></i></button>
+                        <button type="button" id="quick-worklog-submit">등록</button>
+                    </div>
+
+                    <!-- Mobile Quickbar (고정 하단) : 저장/다음 제거, 대시보드/사진추가/결제/맨위로 -->
+                    <div class="bottom-panel" style="display: flex; width: 100%; justify-content: space-between; align-items: center; background: #fff; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); padding: 8px 5px; position: fixed; bottom: 0; left: 0; z-index: 9000;">
+                        <button type="button" onclick="goBackToDashboard()" style="flex: 1; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: #495057;">
+                            <i class="fas fa-home" style="font-size: 18px;"></i> 대시보드
+                        </button>
+                        <button type="button" onclick="switchTab('site')" style="flex: 1; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: #495057;">
+                            <i class="fas fa-hard-hat" style="font-size: 18px;"></i> 현장
+                        </button>
+                        <button type="button" onclick="switchTab('payment')" style="flex: 1; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: #495057;">
+                            <i class="fas fa-credit-card" style="font-size: 18px;"></i> 결제
+                        </button>
+                        <button type="button" onclick="switchTab('photos')" style="flex: 1; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: #495057;">
+                            <i class="fas fa-camera" style="font-size: 18px;"></i> 사진
+                        </button>
+                        <button type="button" onclick="switchTab('log')" style="flex: 1; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: #495057;">
+                            <i class="fas fa-pen-to-square" style="font-size: 18px;"></i> 로그
+                        </button>
+                        <button type="button" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" style="flex: 1; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: #495057;">
+                            <i class="fas fa-arrow-up" style="font-size: 18px;"></i> 맨위로
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!--현장체크 / 참고사항-->
+            <div class="view-check-wrap" id="section-site">
+                <div class="card-box" style="border:2px solid #20c997; display:flex; flex-direction:column;">
+                    <div style="padding:10px 15px; background:#e6fcf5; border-bottom:1px solid #c3fae8; display:flex; align-items:center; justify-content:space-between;">
+                        <h3 style="margin:0; font-size:1rem; color:#0ca678; font-weight:bold;">
+                            <i class="fas fa-clipboard-list"></i> 현장 체크 & 참고사항
+                        </h3>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            {% if not is_external and perms.site %}
+                            <button type="button" onclick="openSiteCheckManageModal()" style="border:none; background:#12b886; color:#fff; border-radius:999px; font-size:0.78rem; font-weight:800; padding:7px 12px; cursor:pointer; white-space:nowrap;">
+                                <i class="fas fa-sliders-h"></i> 항목설정
+                            </button>
+                            {% endif %}
+                            <span id="saveIndicator" style="font-size:0.75rem; color:#20c997; display:none; font-weight:bold;">
+                                <i class="fas fa-check"></i> 저장됨
+                            </span>
+                        </div>
+                    </div>
+
+                    <div style="padding:15px; flex:1;">
+                        <div style="margin-bottom:20px;">
+                            <label style="font-size:12px; font-weight:bold; color:#555; margin-bottom:5px; display:block;">
+                                <i class="fas fa-exclamation-circle" style="color:#f08c00;"></i> 필수 전달/주의 사항
+                            </label>
+                            <div style="display: flex; gap: 5px; align-items: stretch;">
+                                <textarea id="live-memo" style="flex: 1; height: 50px; resize: vertical; border: 1px solid #ced4da; border-radius: 4px; padding: 5px; font-size: 0.85rem; outline: none; background:#fffbf8;" placeholder="시공팀에게 전달할 내용을 입력하세요" onblur="saveInfoLive({{ order.OrderID }})">{{ order.Memo or '' }}</textarea>
+                                <button onclick="saveInfoLive({{ order.OrderID }})" class="btn" style="width: 50px; margin: 0; border-radius: 4px; font-weight: bold; background: #f08c00; color: white; border: none; font-size:0.85rem; cursor: pointer;">저장</button>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom:20px;">
+                            <label style="font-size:12px; font-weight:bold; color:#0ca678; margin-bottom:5px; display:block;">
+                                <i class="fas fa-ruler-combined"></i> 부자재 / 레일 확인
+                            </label>
+                            <div style="display:flex; gap:4px;">
+                                <input type="text" id="inpChecklist" class="f-input" style="flex:1; background:#fff; border:1px solid #20c997; color:#333; font-weight:bold; height:38px; font-size:0.95rem;" value="{{ order.ChecklistMemo or '' }}" placeholder="자동 계산된 레일 정보 또는 직접 입력">
+                                <button type="button" onclick="saveSiteInfo(false)" class="btn" style="background:#20c997; color:#fff; border:none; border-radius:4px; font-weight:bold; width:50px; font-size:0.85rem; cursor:pointer;">저장</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style="font-size:12px; font-weight:bold; color:#555; margin-bottom:8px; display:block;">
+                                설치면 재질 & 필요 공구 (클릭 선택)
+                            </label>
+                            <input type="hidden" id="realSurfInput" value="{{ order.InstallSurface or '' }}">
+                            <div class="check-grid">
+                                {% for item in check_items %}
+                                    {% set full_val = item.ItemName + " (" + item.SubText + ")" if item.SubText else item.ItemName %}
+                                    {% set is_checked = full_val in (order.InstallSurface or '') %}
+                                    <div class="check-btn {{ 'active' if is_checked else '' }}" data-val="{{ full_val }}" onclick="toggleCheckItem(this)">
+                                        <span class="check-title">{{ item.ItemName }}</span>
+                                        {% if item.SubText %}<span class="check-sub">{{ item.SubText }}</span>{% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+            <div class="view-side">
+                <!--결제정보-->
+                {% set base_total = safe_num(order.TotalAmount) %}
+                {% set discount = safe_num(order.DiscountAmount) %}
+                {% set deposit_amt = safe_num(order.DepositAmount) %}
+                <div class="pay-top-wrap" id="section-payment">
+                    {% if perms.total %}
+                        <div class="card-box payment-summary-trigger" id="paymentSummaryCard" onclick="if(event.target.closest('button, a, input, select, label')) return; triggerPaymentMarginSummary(this)" style="background: #fff; border: 2px solid #fd7e14; border-radius: 6px; box-shadow: 0 4px 10px rgba(253,126,20,0.1); overflow: hidden; position: relative;">
+                            
+                            <div style="padding: 12px 15px; border-bottom: 1px solid #ffe8cc; display: flex; align-items: center; gap: 8px; background: #fffbf8;">
+                                <i class="fas fa-coins" style="color: #fd7e14; font-size: 1.1rem;"></i>
+                                <h3 style="margin: 0; font-size: 1rem; font-weight: bold; color: #fd7e14;">결제 잔액 (남은 금액)</h3>
+                                <span id="dispFinal" style="font-weight:bold; color:#fd7e14; font-size:1.4rem; margin-left: auto">
+                                    {{ (order.BalanceAmt or 0) | format_comma }}원
+                                </span>
+                            </div>
+
+                            <div class="calc-card-body" style="padding: 15px 20px;">
+                                <input type="hidden" id="raw-total-amt" value="{{ order.TotalAmount or 0 }}">
+                                
+                                {% if order.ClientSignature %}
+                                    <div style="position: absolute; right: 20px; top: 60px; opacity: 0.9; transform: rotate(-5deg); pointer-events: none;">
+                                        <img src="{{ order.ClientSignature }}" style="height: 60px; border: 2px solid #28a745; border-radius: 8px; padding: 2px; background: rgba(255,255,255,0.8);">
+                                    </div>
+                                {% endif %}
+
+                                {% if perms.margin %}
+                                    <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-size: 0.95rem;">
+                                        <span style="color:#555;">합계 총액</span>
+                                        <span id="dispSubTotal" style="font-weight:bold; color: #333;">{{ (order.TotalAmount or 0) | format_comma }}원</span>
+                                    </div>
+
+                                    <div style="display:flex; justify-content:space-between; margin-bottom:12px; align-items:center; font-size: 0.95rem;">
+                                        <span style="color:#dc3545; font-weight:bold;">할인금액</span>
+                                        <div style="display:flex; align-items:center;">
+                                            <input type="text" id="inp-discount" class="f-input" value="{{ discount | format_comma }}" 
+                                                onchange="updatePaymentLive({{ order.OrderID }})" oninput="this.value=formatComma(this.value); calcFinalPrice(); calcModalPrice();" 
+                                                style="width:100px; text-align:right; border:1px solid #dc3545; color:#dc3545; font-weight:bold; height: 30px; margin-right:5px;"
+                                                {{ 'disabled' if order.ClientSignature else '' }}> 원
+                                        </div>
+                                    </div>
+
+                                    <div style="display:flex; justify-content:space-between; margin-bottom:12px; align-items:center; font-size: 0.95rem;">
+                                        <span style="color:#28a745; font-weight:bold;">선금</span>
+                                        <div style="display:flex; align-items:center;">
+                                            <input type="text" id="inp-deposit" class="f-input" value="{{ deposit_amt | format_comma }}" 
+                                                onchange="updatePaymentLive({{ order.OrderID }})" oninput="this.value=formatComma(this.value); calcFinalPrice(); calcModalPrice();" 
+                                                style="width:100px; text-align:right; border:1px solid #28a745; color:#28a745; font-weight:bold; height: 30px; margin-right:5px;"
+                                                {{ 'disabled' if order.ClientSignature else '' }}> 원
+                                        </div>
+                                    </div>
+
+                                    <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">
+                                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size: 0.9rem; color: #555;">
+                                            <input type="checkbox" id="chk-vat" {{ 'checked' if order.IsVatIncluded != 'N' else '' }} 
+                                                onchange="updatePaymentLive({{ order.OrderID }})" style="transform:scale(1.2);"
+                                                {{ 'disabled' if order.ClientSignature else '' }}> VAT 포함
+                                        </label>
+                                        <span id="dispVat" style="color:#777; font-size: 0.9rem;">{{ '포함' if order.IsVatIncluded == 'Y' else '별도' }}</span>
+                                    </div>
+
+                                    <div style="border-top: 2px dashed #eee; margin: 10px 0;"></div>
+
+                                    {% else %}
+                                    <input type="hidden" id="discountInput" value="{{ discount | format_comma }}">
+                                    <input type="hidden" id="depositInput" value="{{ deposit_amt | format_comma }}">
+                                {% endif %}
+
+                                <div style="display:flex; gap:5px;">
+                                    {% if perms.margin %}
+                                        <button onclick="printEstimate()" class="btn" style="flex:1; background:#17a2b8; color:#fff; padding:10px; border-radius:4px; font-weight:bold; font-size:0.9rem;">
+                                            <i class="fas fa-print"></i> 인쇄
+                                        </button>
+                                        
+                                        {% if not order.ClientSignature %}
+                                            <button onclick="openSignModal()" class="btn" style="flex:1; background:#6f42c1; color:#fff; padding:10px; border-radius:4px; font-weight:bold; font-size:0.9rem;">
+                                                <i class="fas fa-signature"></i> 고객서명
+                                            </button>
+                                        {% else %}
+                                            <button type="button" class="btn" style="flex:1; background:#e9ecef; color:#adb5bd; padding:10px; border-radius:4px; font-weight:bold; font-size:0.9rem; cursor:default;">
+                                                <i class="fas fa-check"></i> 서명됨
+                                            </button>
+                                        {% endif %}
+
+                                        <button onclick="savePaymentLive()" class="btn" style="flex:1; background:#0f7490; color:#fff; padding:10px; border-radius:4px; font-weight:bold; font-size:0.9rem;">
+                                            <i class="fas fa-save"></i> 저장
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="card-box" style="background:#f8f9fa; border:1px solid #eee; padding:30px; text-align:center; color:#adb5bd;">
+                            <i class="fas fa-lock" style="font-size:2rem; margin-bottom:10px;"></i>
+                            <p style="margin:0; font-weight:bold;">총금액 권한이 없습니다.</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+<div class="bottom-layout-container no-print" style="margin-top:0px; align-items: stretch;">
+                <!--작업기록-->
+                <div class="col-task-log" id="section-log" style="min-width: 320px; flex:1;">
+                    <div class="card-box" style="background: #fff; border: 2px solid #6c757d; border-radius: 6px; box-shadow: 0 4px 10px rgba(108,117,125,0.1); overflow: hidden; height: 100%; display: flex; flex-direction: column;">
+                        <div style="padding: 8px 15px; border-bottom: 1px solid #e9ecef; display: flex; align-items: center; justify-content: space-between; background: #f8f9fa;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <i class="fas fa-history" style="color: #6c757d; font-size: 1.1rem;"></i>
+                                <h3 style="margin: 0; font-size: 1rem; font-weight: bold; color: #6c757d;">작업 기록</h3>
+                            </div>
+                            <div class="history-tabs">
+                                <button type="button" class="h-tab active" id="btnTabMemo" onclick="filterHistory('메모', this)">메모</button>
+                                <button type="button" class="h-tab" onclick="filterHistory('상태', this)">상태</button>
+                            </div>
+                        </div>
+                        <div style="padding: 15px; flex: 1; display: flex; flex-direction: column;">
+                            <div class="history-input-row" style="display:flex; gap:5px; margin-bottom:15px;">
+                                <input type="text" id="new-history-input" placeholder="내용..." style="flex:1; padding:10px; border:1px solid #ced4da; border-radius:4px; outline:none;" onkeypress="if(event.keyCode==13){ addHistoryLive({{ order.OrderID }}); }">
+                                <button type="button" class="btn btn-primary" onclick="addHistoryLive({{ order.OrderID }})" style="background:#6c757d; border-color:#6c757d; border-radius:4px; padding: 0 15px; font-weight:bold;">등록</button>
+                            </div>
+                            <div class="memo-list history-list">
+                                {% if histories %}
+                                    {% for h in histories %}
+                                    {% set badge_cls = 'type-memo' %}
+                                    {% if h.LogType == '상태변경' %}{% set badge_cls = 'type-status' %}
+                                    {% elif h.LogType in ['전화', '문자'] %}{% set badge_cls = 'type-other' %}{% endif %}
+                                    <div class="memo-item history-row" data-type="{{ h.LogType }}">
+                                        <div class="memo-top">
+                                            <div class="memo-meta">
+                                                <span class="badge-type {{ badge_cls }}">{{ h.LogType }}</span>
+                                                {% if h.MemberName %}<span class="author-name">{{ h.MemberName }}</span>{% endif %}
+                                                <span class="reg-date">{{ h.RegDate.strftime('%m/%d %H:%M') if h.RegDate else '' }}</span>
+                                            </div>
+                                            {% if h.MemberName == current_user_name or current_user_role == '대표' %}
+                                                {% if h.LogType in ['메모'] %}
+                                                <button type="button" class="btn-del-mini" onclick="deleteHistoryLive('{{ h.HistoryID }}', this)">삭제</button>
+                                                {% endif %}
+                                            {% endif %}
+                                        </div>
+                                        <div class="memo-text">{{ h.Contents }}</div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div style="padding:40px; text-align:center; color:#adb5bd; font-size:0.9rem;">
+                                        <i class="far fa-comments" style="font-size:24px; margin-bottom:5px;"></i><br>기록이 없습니다.
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!--현장 및 완료사진-->
+                <div class="col-photos" id="section-photos" style="flex:1; min-width:320px;">
+                    <div class="card-box" style="border:2px solid #4c6ef5; height:100%; display:flex; flex-direction:column;">
+                        <div style="padding:10px 15px; background:#edf2ff; border-bottom:1px solid #bac8ff; display:flex; align-items:center; justify-content:space-between;">
+                            <h3 style="margin:0; font-size:1rem; color:#4c6ef5; font-weight:bold;">
+                                <i class="fas fa-camera"></i> 현장 및 완료 사진
+                            </h3>
+                        </div>
+
+                        <div style="padding:15px; flex:1;">
+                            <!-- 마케팅 버튼 유지 -->
+                            <div>
+                                <button onclick="openBlogModal()" class="btn"
+                                        style="width:100%; background:#4c6ef5; color:white; font-weight:bold;
+                                            padding:10px; border:none; border-radius:6px; font-size:0.95rem;">
+                                    <i class="fas fa-robot"></i> AI 시공후기 생성
+                                </button>
+                            </div>
+                            <div id="photoGallery" style="min-height: 200px; padding-bottom: 30px;"></div>
+
+                            
+
+                        </div>
+
+                        
+                    </div>
+                </div>
+            </div>
+                </div>
+            </div>
+
+
+            <!--블로그생성 AI-->
+            {% include "includes/marketing_modal.html" %}
+            {% include "includes/calendar_modal.html" %}
+            
+            
+            
+            <div id="toast-container"></div>
+        </div>
+    </div>
+    
+    <div id="dateModal" class="modal" style="display:none; z-index:1000;">
+        <div class="modal-content" style="width: 450px; max-width:95%;">
+            <h3 id="modalTitle" style="border-bottom:2px solid #333; padding-bottom:10px; margin-top:0;">일정 설정</h3>
+            <input type="hidden" id="targetStatus">
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <div style="flex:1;">
+                    <label style="font-size:12px; color:#888; font-weight:bold;">날짜 (터치하여 선택)</label>
+                    <input type="text" id="dateInput" class="modal-input" style="cursor:pointer; background:#fff; background-size:16px; font-weight:bold; color:#007bff;" readonly placeholder="날짜를 선택하세요" onclick="openFullCalendarPicker()">
+                </div>
+                <div style="width:120px;">
+                    <label style="font-size:12px; color:#888; font-weight:bold;">시간</label>
+                    <input type="time" id="timeInput" class="modal-input" style="font-weight:bold;">
+                </div>
+            </div>
+            <div style="margin-bottom:5px; font-size:13px; font-weight:bold; color:#555;">📅 해당 일자 스케줄</div>
+            <div id="dailySchedulePreview" style="background:#f8f9fa; border:1px solid #ddd; border-radius:6px; height:250px; overflow-y:auto; padding:10px; margin-bottom:15px;">
+                <div style="text-align:center; color:#999; padding-top:80px;">날짜를 선택하면<br>일정이 표시됩니다.</div>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-save" onclick="submitDateStatus()" style="flex:1; padding:12px;">확인 및 저장</button>
+                <button class="btn btn-back" onclick="closeDateModal()" style="flex:1; padding:12px;">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✅ 품목 사진 업로드: 전/중/후 선택 모달 -->
+    <div id="itemPhotoStepModal" class="modal" style="display:none; z-index:9999;">
+        <div class="modal-content" style="max-width:360px;">
+            <h3 style="margin-top:0; text-align:center;">📷 품목 사진 업로드</h3>
+
+            <input type="hidden" id="itemPhotoTargetItemId" value="">
+
+            <div style="display:flex; gap:8px; margin:12px 0;">
+            <button type="button" class="btn photo-step-btn" data-step="before"
+                    style="flex:1; background:#6c757d;">전</button>
+            <button type="button" class="btn photo-step-btn" data-step="during"
+                    style="flex:1; background:#0dcaf0;">중</button>
+            <button type="button" class="btn photo-step-btn" data-step="after"
+                    style="flex:1; background:#4c6ef5;">후</button>
+            </div>
+
+            <!-- 실제 파일 선택용(숨김) -->
+            <input type="file" id="itemPhotoHiddenFile" accept="image/*" multiple style="display:none;" />
+
+            <div style="display:flex; gap:10px; margin-top:10px;">
+            <button type="button" class="btn" style="flex:1; background:#adb5bd;"
+                    onclick="closeItemPhotoStepModal()">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="infoModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeInfoModal()">&times;</span>
+            <h3>고객 정보 수정</h3>
+            <div style="padding:10px;"> 
+                <input type="text" id="customer-name" class="modal-input" value="{{ order.CustomerName or '' }}" placeholder="고객명">
+                <input type="tel" id="customer-phone" class="modal-input" value="{{ order.PhoneNumber or '' }}" placeholder="연락처" oninput="formatPhoneDot(this)" maxlength="13">
+                <input type="text" id="customer-addr" class="modal-input" value="{{ order.Address or '' }}" placeholder="주소">
+                <div class="customer-info-select-shell">
+                <select id="inflow-route" class="modal-input js-info-select">
+                    <option value="">유입채널 선택</option>
+                    {% set inflow_route_value = order_extra.InflowRoute if order_extra else '' %}
+                    {% set inflow_channels = ['로드손님', '워크인', '지인소개', '블로그', '카페', '당근', '숨고', '카카오', '유튜브', '네이버', '인스타', '기타'] %}
+                    {% if inflow_route_value and inflow_route_value not in inflow_channels %}
+                    {% set inflow_channels = inflow_channels + [inflow_route_value] %}
+                    {% endif %}
+                    {% for channel in inflow_channels %}
+                    <option value="{{ channel }}" {{ 'selected' if inflow_route_value == channel else '' }}>{{ channel }}</option>
+                    {% endfor %}
+                </select>
+                </div>
+                <input type="text" id="inflow-detail" class="modal-input" value="{{ order_extra.InflowDetail if order_extra else '' }}" placeholder="유입 세부메모 (예: 운정맘카페, 당근 동패동, 블로그 검색)">
+                <div style="height:1px; background:#e9ecef; margin:10px 0;"></div>
+                <div class="customer-info-select-shell">
+                <select id="as-reason" class="modal-input js-info-select">
+                    <option value="">A/S 원인 선택</option>
+                    {% set as_reason_value = order_extra.ASReason if order_extra else '' %}
+                    {% for reason in ['실측오차', '재단오차', '시공불량', '부품불량', '고객요청', '기타'] %}
+                    <option value="{{ reason }}" {{ 'selected' if as_reason_value == reason else '' }}>{{ reason }}</option>
+                    {% endfor %}
+                </select>
+                </div>
+                <div class="customer-info-select-shell">
+                <select id="as-responsibility" class="modal-input js-info-select">
+                    <option value="">책임구분 선택</option>
+                    {% set as_resp_value = order_extra.ASResponsibility if order_extra else '' %}
+                    {% for resp in ['당사책임', '협력업체책임', '고객책임', '불명'] %}
+                    <option value="{{ resp }}" {{ 'selected' if as_resp_value == resp else '' }}>{{ resp }}</option>
+                    {% endfor %}
+                </select>
+                </div>
+                <div class="customer-info-select-shell">
+                <select id="as-charge-type" class="modal-input js-info-select">
+                    <option value="">유/무상 선택</option>
+                    {% set as_charge_value = order_extra.ASChargeType if order_extra else '' %}
+                    {% for charge in ['비용없음', '당사부담', '고객청구'] %}
+                    <option value="{{ charge }}" {{ 'selected' if as_charge_value == charge else '' }}>{{ charge }}</option>
+                    {% endfor %}
+                </select>
+                </div>
+                <input type="text" id="as-cost" class="modal-input" value="{{ order_extra.ASCost | format_comma if order_extra and order_extra.ASCost else '' }}" placeholder="A/S 비용" oninput="this.value=formatComma(this.value);">
+                <input type="text" id="as-note" class="modal-input" value="{{ order_extra.ASNote if order_extra else '' }}" placeholder="A/S 비고">
+                <button type="button" class="modal-btn" onclick="saveInfoLive({{ order.OrderID }})" style="width:100%; padding:10px; background:#007bff; color:white; border:none; border-radius:5px; cursor:pointer;">수정 완료</button>
+            </div>
+        </div>
+    </div>
+
+    {% set _item_categories_json = item_categories_json or '["커튼","블라인드","기타"]' %}
+    {% set _item_category_modes_json = item_category_modes_json or '{"커튼":"curtain","블라인드":"blind","기타":"generic"}' %}
+    <script>
+        window.ITEM_CATEGORIES = {{ _item_categories_json | safe }};
+        window.ITEM_CATEGORY_MODES = {{ _item_category_modes_json | safe }};
+    </script>
+
+    {% include 'includes/item_master.html' %}
+
+    <div id="dbModal" class="db-modal">
+        <div class="db-modal-con">
+            <div class="db-header">
+                <h3 style="margin:0; font-size:1.1rem;"><i class="fas fa-building"></i> 아파트DB 불러오기</h3>
+                <span onclick="closeDbModal()" style="font-size:24px; cursor:pointer;">&times;</span>
+            </div>
+            <div class="db-body" style="background:#f8f9fa; padding:10px;">
+                <div style="display:flex; gap:8px; margin-bottom:10px;">
+                    <select id="mdlComplex" class="modern-select" style="flex:1;" onchange="mdlLoadPlans(this.value)"><option value="">1. 단지 선택</option></select>
+                    <select id="mdlPlan" class="modern-select" style="flex:1;" disabled onchange="mdlLoadWindows(this.value)"><option value="">2. 평형 선택</option></select>
+                </div>
+                <form id="bulkForm" action="/api/apt/import-to-order" method="post">
+                    <input type="hidden" name="order_id" value="{{ order.OrderID }}">
+                    <div id="mdlListContainer" class="db-list-container">
+                        <div style="padding:40px; text-align:center; color:#999;">단지와 평형을 선택해주세요.</div>
+                    </div>
+                </form>
+            </div>
+            <div class="db-footer">
+                <button type="button" class="btn btn-save" onclick="submitBulk()">선택 항목 저장</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="payModal" class="modal">
+        <div class="modal-content" style="max-width:350px;">
+            <h3 style="margin-top:0; text-align:center;">💰 결제 정보 입력</h3>
+            <div style="background:#f1f3f5; padding:15px; border-radius:8px; text-align:center; margin-bottom:15px; border:1px solid #ddd;">
+                <div style="font-size:0.9rem; color:#666; margin-bottom:5px;">최종 결제 할 금액</div>
+                <div id="modalFinalPrice" style="font-size:1.8rem; font-weight:800; color:#d63384;">0원</div>
+            </div>
+            <div style="margin-bottom:10px;">
+                <label style="font-size:12px; font-weight:bold; color:#666;">결제 수단</label>
+                <select id="payMethodInput" class="modern-select" onchange="toggleBankInputs(this.value)">
+                    <option value="계좌">계좌이체</option>
+                    <option value="카드">카드</option>
+                    <option value="현금">현금</option>
+                </select>
+            </div>
+            <div id="bankInfoArea" style="display:block; background:#f8f9fa; padding:10px; border-radius:6px; margin-bottom:10px;">
+                <input type="text" id="payBank" class="modal-input" placeholder="은행명 (예: 신한)" style="margin-bottom:5px;">
+                <input type="text" id="payDepositor" class="modal-input" placeholder="입금자명" style="margin-bottom:0;">
+            </div>
+            <div style="margin-bottom:15px;">
+                <label style="cursor:pointer; display:flex; align-items:center; gap:5px;">
+                    <input type="checkbox" id="payVatInput" style="transform:scale(1.3);" onchange="calcModalPrice()">
+                    <span style="font-weight:bold;">VAT(부가세) 포함 여부</span>
+                </label>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button type="button" class="btn btn-save" onclick="submitPayStatus()">확인 (입금완료)</button>
+                <button type="button" class="btn btn-back" onclick="closePayModal()">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="signModal" class="modal" style="display:none; z-index:9999;">
+        <div class="modal-content" style="width:95%; max-width:400px; padding:0;">
+            <div style="padding:15px; background:#f8f9fa; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
+                <h3 style="margin:0;">서명 해주세요</h3>
+                <button onclick="closeSignModal()" style="border:none; background:none; font-size:1.2rem;">&times;</button>
+            </div>
+            <div style="padding:10px; background:#fff;">
+                <canvas id="sig-canvas" style="touch-action: none;"></canvas>
+            </div>
+            <div style="padding:15px; display:flex; gap:10px;">
+                <button onclick="clearCanvas()" class="btn" style="flex:1; background:#f1f3f5; color:#333;">지우기</button>
+                <button onclick="submitSignature()" class="btn" style="flex:2; background:#4c6ef5; color:white;">서명 완료</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/view_calc.js?v={{ range(1, 10000) | random }}"></script>
+    <script src="/static/js/view_api.js?v={{ range(1, 10000) | random }}"></script>
+    <!-- Swiper (Mobile Carousel) -->
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script src="/static/js/voice_core.js?v={{ range(1, 10000) | random }}"></script>
+    <script src="/static/js/view_ui.js?v={{ range(1, 10000) | random }}"></script>
+    <script src="/static/js/calc_logic.js?v={{ range(1, 10000) | random }}"></script>
+    
+    <script>
+        // 1. Initialize Order ID Global Variable
+        var g_orderId = "{{ order.OrderID }}";
+        window.__companySmsInfo = {
+            name: {{ (company_name or '') | tojson }},
+            bankInfo: {{ (company_bank_info or '') | tojson }}
+        };
+
+        // 2. Data Initialization for Dashboard Snapshot
+        (function() {
+            {% set d_date = order.RequestDate %}
+            {% if order.ProgressStatus == 'AS요청' %}
+                {% set d_date = order.ASDate or order.ConstructionDate or order.RequestDate %}
+            {% elif order.ProgressStatus == '방문상담' %}
+                {% set d_date = order.VisitDate or order.RequestDate %}
+            {% elif order.ProgressStatus in ['시공예정', '작업완료'] %}
+                {% set d_date = order.ConstructionDate or order.RequestDate %}
+            {% endif %}
+
+            {% if d_date %}
+            const dateStr = "{{ d_date.strftime('%m/%d') }}({{ '월화수목금토일'[d_date.weekday()] }})";
+            const timeStr = "{{ d_date.strftime('%H:%M') }}";
+            {% else %}
+            const dateStr = "";
+            const timeStr = "";
+            {% endif %}
+
+            const subBadges = [];
+            {% if order.IsOrdered == 'Y' %} subBadges.push({text:'주문', color:'#3cce10'}); {% endif %}
+            {% if order.IsReceived == 'Y' %} subBadges.push({text:'수령', color:'#4e98fa'}); {% endif %}
+            {% if order.PaymentStatus == '입금완료' %} subBadges.push({text:'입금', color:'#eb4646'}); {% endif %}
+            {% if order.IsWaiting == 'Y' %} subBadges.push({text:'대기', color:'#9775fa'}); {% endif %}
+            {% if order.IsHold == 'Y' %} subBadges.push({text:'보류', color:'#868e96'}); {% endif %}
+
+            const historyList = [];
+            {% if history_list %}
+                {% for h in history_list[:10] %}
+                    historyList.push("{{ h | replace('"', '\\"') | replace('\n', ' ') }}");
+                {% endfor %}
+            {% endif %}
+
+            window.DASHBOARD_SNAPSHOT = {
+                id: g_orderId,
+                "js-target-status": "{{ order.ProgressStatus }}",
+                "js-target-sub-badges": subBadges,
+                "js-target-date": dateStr,
+                "js-target-time": timeStr,
+                "js-target-name": "{{ order.CustomerName }}",
+                "js-target-address": "{{ order.Address or order.PhoneNumber }}",
+                "js-target-price": "{{ (order.TotalAmount or 0) | format_comma }}", 
+                "js-target-manager": "{{ display_manager_name or '' }}",
+                "js-target-site-text": "{% if order.InstallSurface %}[{{ order.InstallSurface }}] {% endif %}{{ order.ChecklistMemo or '' }}".trim(),
+                "js-target-memo-text": `{{ (order.Memo or '') | replace('`', '\\`') }}`,
+                "js-target-hist-list": historyList
+            };
+        })();
+
+        // 3. Document Ready Handlers
+        document.addEventListener("DOMContentLoaded", function() {
+            var key = document.getElementById('extAccessKey')?.value;
+            if(key) {
+                var memoForm = document.getElementById('memoForm');
+                if(memoForm) {
+                    var input = document.createElement("input");
+                    input.type = "hidden";
+                    input.name = "access_key";
+                    input.value = key;
+                    memoForm.appendChild(input);
+                }
+            }
+
+            if (window.TomSelect) {
+                var managerSelect = document.getElementById('managerSelect');
+                if (managerSelect && !managerSelect.tomselect) {
+                    new TomSelect(managerSelect, {
+                        create: false,
+                        plugins: ['remove_button'],
+                        hideSelected: false,
+                        closeAfterSelect: false,
+                        placeholder: '',
+                        render: {
+                            optgroup_header: function(data, escape) {
+                                var kind = data.label === '외주팀' ? 'partner' : 'staff';
+                                return '<div class="mgr-group-header ' + kind + '">' + escape(data.label) + '</div>';
+                            },
+                            option: function(data, escape) {
+                                var group = Array.isArray(data.$optgroup) ? data.$optgroup[0] : data.$optgroup;
+                                var kind = group === '외주팀' ? 'partner' : 'staff';
+                                return '<div class="mgr-option-row">' +
+                                    '<span>' + escape(data.text) + '</span>' +
+                                    '<span class="mgr-option-kind ' + kind + '">' + escape(group || '') + '</span>' +
+                                    '<span class="mgr-option-check"><i class="fas fa-check"></i></span>' +
+                                '</div>';
+                            }
+                        },
+                        onInitialize: function() {
+                            this.input.dataset.autoSaveReady = '1';
+                        },
+                        onChange: function() {
+                            if (this.input.dataset.autoSaveReady !== '1') return;
+                            clearTimeout(window.__managerSaveTimer);
+                            window.__managerSaveTimer = setTimeout(function() {
+                                if (typeof saveManagers === 'function') saveManagers();
+                            }, 250);
+                        }
+                    });
+                }
+
+                var useMobileInlineSelect = typeof window.isMobileInlineSelectMode === 'function' && window.isMobileInlineSelectMode();
+
+                ['payMethodInput'].forEach(function(id) {
+                    var el = document.getElementById(id);
+                    if (!el || el.tomselect) return;
+                    if (useMobileInlineSelect) return;
+                    new TomSelect(el, {
+                        create: false,
+                        controlInput: null,
+                        searchField: [],
+                        maxOptions: el.options.length,
+                        dropdownClass: 'touch-select-shell'
+                    });
+                });
+            }
+        });
+
+        // 4. External Access Logic & Helper Functions
+        var extKey = document.getElementById('extAccessKey')?.value;
+
+        if (extKey) {
+            window.changeMainStatus = function(status) {
+                if (status === '방문상담' || status === '시공예정' || status === 'AS요청') {
+                    var savedVal = "";
+                    if (typeof g_savedSchedules !== 'undefined' && g_savedSchedules[status]) {
+                        savedVal = g_savedSchedules[status];
+                    }
+                    openDateModal(status, savedVal); 
+                    return; 
+                }
+                
+                if(!confirm("상태를 '" + status + "'(으)로 변경하시겠습니까?")) return;
+                var oid = document.getElementById('srv-order-id').value;
+                location.href = `/api/status/update?id=${oid}&type=main&val=${status}&access_key=${extKey}`;
+            };
+
+            window.submitDateStatus = async function() {
+                var d = document.getElementById('dateInput').value;
+                var t = document.getElementById('timeInput').value;
+                if(!d || !t) { alert("날짜와 시간을 선택해주세요."); return; }
+                
+                var dateStr = d + " " + t;
+                var target = document.getElementById('targetStatus').value;
+                var oid = document.getElementById('srv-order-id').value;
+
+                try {
+                    let url = `/api/order/update-date?access_key=${extKey}`;
+                    let res = await fetch(url, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ order_id: parseInt(oid), target: target, date_str: dateStr })
+                    });
+                    let data = await res.json();
+                    if(data.status === 'ok') {
+                        var successFeedback = (typeof queueModalSuccessFeedback === 'function')
+                            ? queueModalSuccessFeedback
+                            : (typeof triggerModalSuccessFeedback === 'function' ? triggerModalSuccessFeedback : null);
+                        if (successFeedback) successFeedback();
+                        requestAnimationFrame(function() { location.reload(); });
+                    } 
+                    else { alert("변경 실패: " + data.msg); }
+                } catch(e) { alert("오류 발생"); }
+            };
+
+            window.submitSignature = async function() {
+                var canvas = document.getElementById('sig-canvas');
+                if (isCanvasBlank(canvas)) { alert("서명을 해주세요."); return; }
+                
+                var dataUrl = canvas.toDataURL("image/png");
+                var oid = document.getElementById('srv-order-id').value;
+
+                try {
+                    let res = await fetch(`/api/order/save-signature?access_key=${extKey}`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ order_id: parseInt(oid), image_data: dataUrl })
+                    });
+                    let data = await res.json();
+                    if (data.status === "ok") {
+                        var successFeedback = (typeof queueModalSuccessFeedback === 'function')
+                            ? queueModalSuccessFeedback
+                            : (typeof triggerModalSuccessFeedback === 'function' ? triggerModalSuccessFeedback : null);
+                        if (successFeedback) successFeedback();
+                        requestAnimationFrame(function() { location.reload(); });
+                    } 
+                    else { alert("저장 실패: " + data.msg); }
+                } catch (e) { alert("통신 오류"); }
+            };
+
+            window.saveRemark = async function() {
+                var oid = document.getElementById('srv-order-id').value;
+                var txt = document.getElementById('orderMemo').value;
+                var formData = new FormData();
+                formData.append('id', oid);
+                formData.append('memo', txt);
+                formData.append('access_key', extKey);
+
+                try {
+                    let res = await fetch('/api/order/save-info', { method:'POST', body:formData });
+                    if (res.ok) {
+                        var successFeedback = (typeof queueModalSuccessFeedback === 'function')
+                            ? queueModalSuccessFeedback
+                            : (typeof triggerModalSuccessFeedback === 'function' ? triggerModalSuccessFeedback : null);
+                        if (successFeedback) successFeedback();
+                        else if (typeof showToast === 'function') showToast("저장되었습니다.");
+                        return;
+                    } else alert("저장 실패");
+                } catch(e) { alert("오류 발생"); }
+            };
+
+            window.saveSiteInfo = async function(silent) {
+                var oid = document.getElementById('srv-order-id').value;
+                var surf = [];
+                document.querySelectorAll('input[name="site_surf"]:checked').forEach(el => surf.push(el.value));
+                var checkMemo = document.getElementById('inpChecklist').value;
+
+                var formData = new FormData();
+                formData.append('order_id', oid);
+                formData.append('surface', surf.join(','));
+                formData.append('checklist', checkMemo);
+                formData.append('access_key', extKey);
+
+                try {
+                    let res = await fetch('/api/order/update-site-info', { method:'POST', body:formData });
+                    let data = await res.json();
+                    if(data.status === 'ok') {
+                        if(!silent) showToast("현장 정보가 저장되었습니다.");
+                        var ind = document.getElementById('saveIndicator');
+                        if(ind) { ind.style.display='block'; setTimeout(()=>ind.style.display='none', 2000); }
+                    }
+                } catch(e) { console.error(e); }
+            };
+            
+            function isCanvasBlank(canvas) {
+                const context = canvas.getContext('2d');
+                const pixelBuffer = new Uint32Array(context.getImageData(0, 0, canvas.width, canvas.height).data.buffer);
+                return !pixelBuffer.some(color => color !== 0);
+            }
+
+            setTimeout(function() {
+                var btnManager = document.querySelector('button[onclick="toggleManagerDrop()"]');
+                if(btnManager) {
+                    btnManager.onclick = null;
+                    btnManager.style.pointerEvents = "none";
+                    btnManager.style.opacity = "0.7";
+                    var arrow = btnManager.querySelector('.fa-caret-down');
+                    if(arrow) arrow.style.display = "none";
+                }
+            }, 300);
+        }
+
+        // 5. Smart SMS Function
+        function sendSmartSMS(phone, status) {
+            if (!phone) { alert('연락처가 없습니다.'); return; }
+
+            var dateStr = "";
+            var statusTxt = status;
+
+            if (status === '시공예정' || status === '시공') {
+                dateStr = document.getElementById('raw-const-date').value;
+                statusTxt = "시공예정";
+            } 
+            else if (status === '방문상담') {
+                dateStr = document.getElementById('raw-visit-date').value;
+                statusTxt = "방문상담";
+            }
+            else if (status === 'AS요청') {
+                statusTxt = "AS방문";
+            }
+
+            if (!dateStr || dateStr === '-') {
+                alert(statusTxt + ' 일정이 설정되지 않았습니다.');
+                return;
+            }
+
+            var companyName = "창아름"; 
+            var msgBody = `[${companyName}] [${statusTxt}] ${dateStr}시에 방문드리겠습니다.`;
+
+            var cleanPhone = phone.replace(/-/g, "");
+            var url = "";
+            if (navigator.userAgent.match(/iPhone|iPad/i)) {
+                url = `sms:${cleanPhone}&body=${encodeURIComponent(msgBody)}`;
+            } else {
+                url = `sms:${cleanPhone}?body=${encodeURIComponent(msgBody)}`;
+            }
+            location.href = url;
+        }
+
+        // 6. Work Completion Stub
+        async function completeWork(id) {
+            if(!confirm("작업을 완료 처리하시겠습니까?\n목록에서 사라집니다.")) return;
+            var successFeedback = (typeof queueModalSuccessFeedback === 'function')
+                ? queueModalSuccessFeedback
+                : (typeof triggerModalSuccessFeedback === 'function' ? triggerModalSuccessFeedback : null);
+            if (successFeedback) successFeedback();
+            else if (typeof showToast === 'function') showToast("작업 완료가 보고되었습니다. (기능 연동 필요)");
+            return;
+        }
+
+        // 7. Checkbox Toggle Logic
+        function toggleCheckItem(el) {
+            el.classList.toggle('active');
+            saveSiteInfo(true); 
+        }
+
+        /* 기존 호출 호환용: 새 마케팅 모달로 위임 */
+        async function generateBlogPost() {
+            if (typeof window.openBlogModal === "function") {
+                return window.openBlogModal(g_orderId);
+            }
+            alert("마케팅 생성 모듈을 불러오지 못했습니다.");
+        }
+        
+
+    </script>
+    <div id="photoLightbox" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:999999; flex-direction:column; justify-content:center; align-items:center;" onclick="this.style.display='none'">
+        
+        <span style="position:absolute; top:20px; right:20px; color:#fff; font-size:35px; cursor:pointer; z-index:1000;">&times;</span>
+        
+        <div style="position:relative; width:100%; height:100%; display:flex; justify-content:center; align-items:center;" 
+             ontouchstart="lbTouchStart(event)" ontouchend="lbTouchEnd(event)">
+             
+            <div onclick="prevPhoto(event)" style="position:absolute; left:0; width:60px; height:100%; display:flex; justify-content:center; align-items:center; color:#fff; font-size:40px; cursor:pointer; z-index:10;">&#10094;</div>
+            
+            <img id="lightboxImg" src="" onclick="event.stopPropagation()" style="max-width:100%; max-height:85vh; object-fit:contain; border-radius:8px; user-select:none;">
+            
+            <div onclick="nextPhoto(event)" style="position:absolute; right:0; width:60px; height:100%; display:flex; justify-content:center; align-items:center; color:#fff; font-size:40px; cursor:pointer; z-index:10;">&#10095;</div>
+        </div>
+        
+        <div id="lbCounter" style="position:absolute; bottom:30px; color:#fff; font-size:16px; font-weight:bold; letter-spacing:2px; z-index:1000;"></div>
+    </div>
+
+    {% if not is_external and perms.site %}
+    <div id="siteCheckManageModal" onclick="if(event.target===this) closeSiteCheckManageModal()" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:1000000; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;">
+        <div style="width:min(760px, 100%); max-height:88vh; overflow:auto; background:#fff; border-radius:20px; box-shadow:0 24px 60px rgba(15,23,42,0.24);" onclick="event.stopPropagation()">
+            <div style="padding:18px 20px; border-bottom:1px solid #e9ecef; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                <div>
+                    <div style="font-size:1.05rem; font-weight:900; color:#0f172a;">현장 체크항목 설정</div>
+                    <div style="font-size:0.83rem; color:#64748b; margin-top:4px;">여기서 체크 버튼 항목을 추가, 수정, 삭제합니다.</div>
+                </div>
+                <button type="button" onclick="closeSiteCheckManageModal()" style="border:none; background:#f1f5f9; color:#334155; width:36px; height:36px; border-radius:999px; cursor:pointer;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="site-check-manage-grid" style="padding:18px; display:grid; grid-template-columns:minmax(0, 1.2fr) minmax(280px, 0.9fr); gap:18px;">
+                <div>
+                    <div id="siteCheckManageList" style="display:flex; flex-direction:column; gap:10px;"></div>
+                </div>
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:16px; padding:14px;">
+                    <div style="font-size:0.9rem; font-weight:800; color:#0f172a; margin-bottom:12px;">항목 편집</div>
+                    <div id="siteCheckManageNotice" style="display:none; margin-bottom:10px; padding:10px 12px; border-radius:10px; background:#e6fcf5; color:#0ca678; font-size:0.82rem; font-weight:800;">저장되었습니다.</div>
+                    <form id="siteCheckManageForm" onsubmit="submitSiteCheckManageForm(event)" style="display:flex; flex-direction:column; gap:10px;">
+                        <input type="hidden" id="siteCheckManageId">
+                        <label style="font-size:0.8rem; font-weight:700; color:#475569;">항목명</label>
+                        <input type="text" id="siteCheckManageName" required style="width:100%; height:42px; border:1px solid #cbd5e1; border-radius:10px; padding:0 12px; box-sizing:border-box;">
+                        <label style="font-size:0.8rem; font-weight:700; color:#475569;">설명</label>
+                        <input type="text" id="siteCheckManageSub" style="width:100%; height:42px; border:1px solid #cbd5e1; border-radius:10px; padding:0 12px; box-sizing:border-box;">
+                        <div style="display:flex; gap:8px; margin-top:6px;">
+                            <button type="submit" style="flex:1; height:42px; border:none; border-radius:10px; background:#0d6efd; color:#fff; font-weight:800; cursor:pointer;">저장</button>
+                            <button type="button" onclick="resetSiteCheckManageForm()" style="width:92px; height:42px; border:none; border-radius:10px; background:#e2e8f0; color:#334155; font-weight:800; cursor:pointer;">초기화</button>
+                        </div>
+                    </form>
+                    <div style="height:1px; background:#e2e8f0; margin:16px 0;"></div>
+                    <div style="font-size:0.9rem; font-weight:800; color:#0f172a; margin-bottom:12px;">커튼 발주 높이 보정값</div>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <div>
+                            <label style="font-size:0.8rem; font-weight:700; color:#475569;">속지 보정값</label>
+                            <input type="number" step="0.1" id="siteDeductSokji" style="width:100%; height:42px; border:1px solid #cbd5e1; border-radius:10px; padding:0 12px; box-sizing:border-box;">
+                        </div>
+                        <div>
+                            <label style="font-size:0.8rem; font-weight:700; color:#475569;">겉지 보정값</label>
+                            <input type="number" step="0.1" id="siteDeductGeotji" style="width:100%; height:42px; border:1px solid #cbd5e1; border-radius:10px; padding:0 12px; box-sizing:border-box;">
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button type="button" onclick="saveSiteCurtainDeductions()" style="flex:1; height:42px; border:none; border-radius:10px; background:#12b886; color:#fff; font-weight:800; cursor:pointer;">저장</button>
+                            <button type="button" onclick="copySiteCurtainDeductions()" style="width:92px; height:42px; border:none; border-radius:10px; background:#e7f1ff; color:#0d6efd; font-weight:800; cursor:pointer;">복사</button>
+                        </div>
+                        <div id="siteDeductMsg" style="display:none; font-size:0.8rem; color:#0ca678; font-weight:800;">저장되었습니다.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <style>
+        @media (max-width: 768px) {
+            .site-check-manage-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+    </style>
+
+    {% include '/includes/zoom_widget.html' %}
+    </body>
+</html>

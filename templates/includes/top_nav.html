@@ -1,0 +1,700 @@
+{% set current_path = request.url.path %}
+{% set page_title = '업무 메뉴' %}
+{% if current_path.startswith('/view') %}
+    {% set page_title = '주문 상세' %}
+{% elif current_path.startswith('/schedule') %}
+    {% set page_title = '일정' %}
+{% elif current_path.startswith('/apt/manager') %}
+    {% set page_title = '아파트DB' %}
+{% elif current_path.startswith('/ledger') %}
+    {% set page_title = '지출 관리' %}
+{% elif current_path.startswith('/stats') %}
+    {% set page_title = '통계' %}
+{% elif current_path.startswith('/admin') %}
+    {% set page_title = '관리' %}
+{% endif %}
+
+{% if user_name is defined and user_name %}
+    {% set nav_user_name = user_name %}
+{% elif current_user_name is defined and current_user_name %}
+    {% set nav_user_name = current_user_name %}
+{% elif user is defined and user and user.Name %}
+    {% set nav_user_name = user.Name %}
+{% else %}
+    {% set nav_user_name = '로그인 사용자' %}
+{% endif %}
+
+{% if user_role is defined and user_role %}
+    {% set nav_user_role = user_role %}
+{% elif current_user_role is defined and current_user_role %}
+    {% set nav_user_role = current_user_role %}
+{% else %}
+    {% set nav_user_role = '로그인 정보' %}
+{% endif %}
+
+{% set nav_items = [
+    {'href': '/dashboard', 'label': '대시보드', 'icon': 'fa-house', 'match': '/dashboard'},
+    {'href': '/schedule', 'label': '일정', 'icon': 'fa-calendar-days', 'match': '/schedule'},
+    {'href': '/apt/manager', 'label': '아파트DB', 'icon': 'fa-building', 'match': '/apt/manager'},
+    {'href': '/ledger', 'label': '지출', 'icon': 'fa-file-invoice-dollar', 'match': '/ledger'},
+    {'href': '/stats', 'label': '통계', 'icon': 'fa-chart-pie', 'match': '/stats'},
+    {'href': '/admin', 'label': '관리', 'icon': 'fa-user-shield', 'match': '/admin'}
+] %}
+
+<style>
+    .global-topnav {
+        position: sticky;
+        top: 0;
+        z-index: 1100;
+        background:
+            linear-gradient(135deg, rgba(248, 250, 252, 0.96), rgba(255, 255, 255, 0.98)),
+            radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 42%);
+        backdrop-filter: blur(16px);
+        border-bottom: 1px solid rgba(203, 213, 225, 0.8);
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    }
+    .global-topnav__inner {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 12px 18px;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 16px;
+    }
+    .global-topnav__title {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+    .global-topnav__eyebrow {
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        color: #64748b;
+        text-transform: uppercase;
+    }
+    .global-topnav__page {
+        font-size: 1.15rem;
+        font-weight: 900;
+        color: #0f172a;
+        letter-spacing: -0.02em;
+        white-space: nowrap;
+    }
+    .global-topnav__links {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        min-width: 0;
+    }
+    .global-topnav__link {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 14px;
+        border-radius: 999px;
+        text-decoration: none;
+        color: #475569;
+        font-size: 0.92rem;
+        font-weight: 800;
+        transition: 0.2s ease;
+        border: 1px solid transparent;
+        background: transparent;
+    }
+    .global-topnav__link:hover {
+        color: #0f172a;
+        background: rgba(255, 255, 255, 0.88);
+        border-color: rgba(203, 213, 225, 0.9);
+    }
+    .global-topnav__link.is-active {
+        color: #1d4ed8;
+        background: linear-gradient(135deg, #eff6ff, #e0ecff);
+        border-color: rgba(147, 197, 253, 0.9);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+    .global-topnav__right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .global-topnav__quick {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 40px;
+        padding: 0 14px;
+        border: none;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        color: #fff;
+        font-size: 0.9rem;
+        font-weight: 900;
+        cursor: pointer;
+        box-shadow: 0 10px 20px rgba(37, 99, 235, 0.18);
+    }
+    .global-topnav__account {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 7px 10px 7px 12px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.86);
+        border: 1px solid rgba(203, 213, 225, 0.9);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        min-width: 0;
+    }
+    .global-topnav__avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #1d4ed8;
+        background: linear-gradient(135deg, #dbeafe, #eff6ff);
+        flex-shrink: 0;
+    }
+    .global-topnav__account-text {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+    .global-topnav__account-role {
+        font-size: 0.72rem;
+        font-weight: 800;
+        color: #64748b;
+        white-space: nowrap;
+    }
+    .global-topnav__account-name {
+        font-size: 0.9rem;
+        font-weight: 800;
+        color: #0f172a;
+        white-space: nowrap;
+    }
+    .global-topnav__logout {
+        width: 34px;
+        height: 34px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #475569;
+        text-decoration: none;
+        background: #f8fafc;
+        border: 1px solid rgba(226, 232, 240, 1);
+        flex-shrink: 0;
+    }
+    .global-topnav__logout:hover {
+        color: #0f172a;
+        background: #eef2f7;
+    }
+    .global-topnav__toggle {
+        display: none;
+        width: 42px;
+        height: 42px;
+        border: 1px solid rgba(255, 255, 255, 0.88);
+        border-radius: 16px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(241,245,249,0.92));
+        color: #0f172a;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255,255,255,0.95);
+        backdrop-filter: blur(18px);
+        transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease;
+    }
+    .global-topnav__toggle i {
+        transition: transform 0.24s ease, opacity 0.2s ease;
+    }
+    .global-topnav__toggle:hover,
+    .global-topnav__toggle:active {
+        transform: translateY(-1px) scale(1.02);
+        box-shadow: 0 18px 34px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255,255,255,0.98);
+    }
+    .global-topnav__drawer {
+        display: none;
+    }
+    .global-topnav__scrim {
+        display: none;
+    }
+    .global-topnav-spacer {
+        height: 10px;
+    }
+    .global-order-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        background: rgba(15, 23, 42, 0.42);
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+    }
+    .global-order-modal__panel {
+        width: 100%;
+        max-width: 440px;
+        background: #fff;
+        border-radius: 22px;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+        overflow: hidden;
+    }
+    .global-order-modal__head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 18px 20px 14px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .global-order-modal__title {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 900;
+        color: #0f172a;
+    }
+    .global-order-modal__close {
+        border: none;
+        background: transparent;
+        color: #64748b;
+        font-size: 1.3rem;
+        cursor: pointer;
+    }
+    .global-order-modal__body {
+        padding: 18px 20px 20px;
+    }
+    .global-order-form {
+        display: grid;
+        gap: 12px;
+    }
+    .global-order-form__input,
+    .global-order-form__select {
+        width: 100%;
+        min-height: 46px;
+        border: 1px solid #dbe2ea;
+        border-radius: 12px;
+        padding: 11px 13px;
+        font-size: 0.95rem;
+        box-sizing: border-box;
+        background: #fff;
+    }
+    .global-order-form__submit {
+        min-height: 48px;
+        border: none;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        color: #fff;
+        font-size: 0.98rem;
+        font-weight: 900;
+        cursor: pointer;
+    }
+
+    @media (max-width: 980px) {
+        .global-topnav {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            left: auto;
+            background: transparent;
+            border-bottom: none;
+            box-shadow: none;
+            backdrop-filter: none;
+            pointer-events: none;
+        }
+        .global-topnav__inner {
+            max-width: none;
+            margin: 0;
+            padding: 0;
+            grid-template-columns: auto;
+            justify-content: end;
+            gap: 0;
+            pointer-events: none;
+        }
+        .global-topnav__links,
+        .global-topnav__right,
+        .global-topnav__title {
+            display: none;
+        }
+        .global-topnav__toggle {
+            display: inline-flex;
+            width: 40px;
+            height: 40px;
+            border-radius: 13px;
+            border-color: #0f172a;
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+            pointer-events: auto;
+        }
+        .global-topnav.is-open .global-topnav__toggle {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: #fff;
+            border-color: rgba(15, 23, 42, 0.92);
+        }
+        .global-topnav.is-open .global-topnav__toggle i {
+            transform: rotate(90deg) scale(1.05);
+        }
+        .global-topnav__scrim {
+            display: block;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.7);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.24s ease, visibility 0.24s ease;
+            backdrop-filter: blur(3px);
+            z-index: 1098;
+        }
+        .global-topnav.is-open .global-topnav__scrim {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+        .global-topnav__drawer {
+            display: block;
+            position: fixed;
+            top: 62px;
+            left: 14px;
+            right: 14px;
+            margin: 0;
+            padding: 12px;
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid rgba(226, 232, 240, 0.95);
+            box-shadow: 0 26px 50px rgba(15, 23, 42, 0.18);
+            max-height: calc(100dvh - 110px);
+            overflow-y: auto;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: translateY(-6px) scaleY(0.82);
+            transform-origin: top center;
+            transition: opacity 0.2s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.2s ease;
+            z-index: 1099;
+        }
+        .global-topnav.is-open .global-topnav__drawer {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transform: translateY(0) scaleY(1);
+        }
+        .global-topnav__drawer-account,
+        .global-topnav__drawer-grid,
+        .global-topnav__drawer-quick {
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.18s ease, transform 0.22s ease;
+        }
+        .global-topnav.is-open .global-topnav__drawer-account,
+        .global-topnav.is-open .global-topnav__drawer-grid,
+        .global-topnav.is-open .global-topnav__drawer-quick {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .global-topnav.is-open .global-topnav__drawer-account { transition-delay: 0.02s; }
+        .global-topnav.is-open .global-topnav__drawer-grid { transition-delay: 0.06s; }
+        .global-topnav.is-open .global-topnav__drawer-quick { transition-delay: 0.1s; }
+        .global-topnav__drawer-grid .global-topnav__drawer-link {
+            opacity: 0;
+            transform: translateY(-8px);
+            transition: opacity 0.16s ease, transform 0.2s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+        }
+        .global-topnav.is-open .global-topnav__drawer-grid .global-topnav__drawer-link {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .global-topnav.is-open .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(1) { transition-delay: 0.04s; }
+        .global-topnav.is-open .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(2) { transition-delay: 0.06s; }
+        .global-topnav.is-open .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(3) { transition-delay: 0.08s; }
+        .global-topnav.is-open .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(4) { transition-delay: 0.1s; }
+        .global-topnav.is-open .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(5) { transition-delay: 0.12s; }
+        .global-topnav.is-open .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(6) { transition-delay: 0.14s; }
+        .global-topnav.is-open .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(7) { transition-delay: 0.16s; }
+        .global-topnav.is-open .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(8) { transition-delay: 0.18s; }
+        .global-topnav.is-open .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(9) { transition-delay: 0.2s; }
+        .global-topnav.is-open .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(10) { transition-delay: 0.22s; }
+        .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(1) { transition-delay: 0.18s; }
+        .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(2) { transition-delay: 0.16s; }
+        .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(3) { transition-delay: 0.14s; }
+        .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(4) { transition-delay: 0.12s; }
+        .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(5) { transition-delay: 0.1s; }
+        .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(6) { transition-delay: 0.08s; }
+        .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(7) { transition-delay: 0.06s; }
+        .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(8) { transition-delay: 0.04s; }
+        .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(9) { transition-delay: 0.02s; }
+        .global-topnav__drawer-grid .global-topnav__drawer-link:nth-child(10) { transition-delay: 0s; }
+        .global-topnav__drawer-account {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            padding: 12px 14px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, #ffffff, #f8fbff);
+            border: 1px solid rgba(226, 232, 240, 0.95);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+        }
+        .global-topnav__drawer-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .global-topnav__drawer-link,
+        .global-topnav__drawer-quick {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 54px;
+            padding: 11px 13px;
+            border-radius: 16px;
+            text-decoration: none;
+            color: #334155;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 8px 16px rgba(15, 23, 42, 0.045);
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+            position: relative;
+            overflow: hidden;
+            font-size: 0.92rem;
+        }
+        .global-topnav__drawer-link::after {
+            content: '\f054';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            margin-left: auto;
+            font-size: 0.82rem;
+            color: #94a3b8;
+            transition: transform 0.18s ease, color 0.18s ease;
+        }
+        .global-topnav__drawer-link:hover,
+        .global-topnav__drawer-link:active,
+        .global-topnav__drawer-quick:hover,
+        .global-topnav__drawer-quick:active {
+            transform: translateY(-1px);
+            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+        }
+        .global-topnav__drawer-link.is-active {
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            border-color: #93c5fd;
+            color: #1d4ed8;
+        }
+        .global-topnav__drawer-link.is-active::after {
+            color: #2563eb;
+            transform: translateX(2px);
+        }
+        .global-topnav__drawer-quick {
+            justify-content: center;
+            background: #fff;
+            color: #1d4ed8;
+            border-color: #bfd3ff;
+            box-shadow: 0 12px 24px rgba(37, 99, 235, 0.1);
+            min-height: 58px;
+            font-size: 0.96rem;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+        }
+        .global-topnav__drawer-quick i {
+            font-size: 0.98rem;
+            width: 28px;
+            height: 28px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #e8f0ff;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        }
+    }
+
+    @media (max-width: 640px) {
+        .global-topnav {
+            top: 10px;
+            right: 10px;
+        }
+        .global-topnav__toggle {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+        }
+        .global-topnav__drawer { top: 58px; left: 12px; right: 12px; padding: 11px; border-radius: 20px; }
+        .global-topnav__drawer-account { padding: 11px 13px; }
+        .global-topnav__drawer-link { min-height: 35px; padding: 10px 12px; }
+        .global-topnav__drawer-quick { min-height: 56px; }
+        .global-topnav-spacer {
+            display: none;
+            height: 0;
+        }
+    }
+</style>
+
+<nav class="global-topnav" id="globalTopNav">
+    <div class="global-topnav__inner">
+        <div class="global-topnav__title">
+            <span class="global-topnav__eyebrow">Workspace</span>
+            <span class="global-topnav__page">{{ page_title }}</span>
+        </div>
+
+        <div class="global-topnav__links">
+            {% for item in nav_items %}
+                {% set active = current_path.startswith(item.match) %}
+                <a href="{{ item.href }}" class="global-topnav__link{% if active %} is-active{% endif %}">
+                    <i class="fas {{ item.icon }}"></i>
+                    <span>{{ item.label }}</span>
+                </a>
+            {% endfor %}
+        </div>
+
+        <div class="global-topnav__right">
+            <button type="button" class="global-topnav__quick" onclick="openGlobalOrderModal()">
+                <i class="fas fa-plus"></i>
+                <span>신규접수</span>
+            </button>
+
+            <div class="global-topnav__account">
+                <span class="global-topnav__avatar"><i class="fas fa-user"></i></span>
+                <div class="global-topnav__account-text">
+                    <span class="global-topnav__account-role">{{ nav_user_role }}</span>
+                    <span class="global-topnav__account-name">{{ nav_user_name }}</span>
+                </div>
+                <a href="/logout" class="global-topnav__logout" title="로그아웃">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </div>
+
+        <button type="button" class="global-topnav__toggle" aria-label="메뉴 열기" onclick="toggleGlobalTopNav()">
+            <i class="fas fa-bars"></i>
+        </button>
+    </div>
+
+    <div class="global-topnav__drawer">
+        <div class="global-topnav__drawer-account">
+            <span class="global-topnav__avatar"><i class="fas fa-user"></i></span>
+            <div class="global-topnav__account-text">
+                <span class="global-topnav__account-role">{{ nav_user_role }}</span>
+                <span class="global-topnav__account-name">{{ nav_user_name }}</span>
+            </div>
+            <a href="/logout" class="global-topnav__logout" title="로그아웃">
+                <i class="fas fa-sign-out-alt"></i>
+            </a>
+        </div>
+        <div class="global-topnav__drawer-grid">
+            {% for item in nav_items %}
+                {% set active = current_path.startswith(item.match) %}
+                <a href="{{ item.href }}" class="global-topnav__drawer-link{% if active %} is-active{% endif %}">
+                    <i class="fas {{ item.icon }}"></i>
+                    <span>{{ item.label }}</span>
+                </a>
+            {% endfor %}
+        </div>
+        <button type="button" class="global-topnav__drawer-quick" onclick="openGlobalOrderModal()">
+            <i class="fas fa-plus"></i>
+            <span>신규접수</span>
+        </button>
+    </div>
+</nav>
+<button type="button" class="global-topnav__scrim" id="globalTopNavScrim" aria-label="메뉴 닫기" onclick="setGlobalTopNavOpen(false)"></button>
+<div class="global-topnav-spacer"></div>
+
+<div id="globalOrderModal" class="global-order-modal" onclick="closeGlobalOrderModal(event)">
+    <div class="global-order-modal__panel" onclick="event.stopPropagation()">
+        <div class="global-order-modal__head">
+            <h3 class="global-order-modal__title">신규 접수</h3>
+            <button type="button" class="global-order-modal__close" onclick="closeGlobalOrderModal()">&times;</button>
+        </div>
+        <div class="global-order-modal__body">
+            <form id="globalOrderForm" class="global-order-form" onsubmit="submitGlobalOrder(event)">
+                <select name="RequestType" class="global-order-form__select">
+                    <option value="견적상담">견적상담</option>
+                    <option value="방문상담">방문상담</option>
+                </select>
+                <input type="datetime-local" name="RequestDate" id="globalRequestDate" class="global-order-form__input">
+                <input type="text" name="CustomerName" class="global-order-form__input" placeholder="고객명 (필수)" required>
+                <input type="text" name="Address" class="global-order-form__input" placeholder="주소">
+                <input type="tel" name="PhoneNumber" class="global-order-form__input" placeholder="연락처">
+                <button type="submit" class="global-order-form__submit">접수 저장</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function setGlobalTopNavOpen(isOpen) {
+        const nav = document.getElementById('globalTopNav');
+        if (!nav) return;
+        nav.classList.toggle('is-open', !!isOpen);
+        document.body.style.overflow = isOpen ? 'hidden' : '';
+    }
+
+    function toggleGlobalTopNav() {
+        const nav = document.getElementById('globalTopNav');
+        if (!nav) return;
+        setGlobalTopNavOpen(!nav.classList.contains('is-open'));
+    }
+
+    function openGlobalOrderModal() {
+        const modal = document.getElementById('globalOrderModal');
+        const dateInput = document.getElementById('globalRequestDate');
+        setGlobalTopNavOpen(false);
+        if (dateInput) {
+            const now = new Date();
+            const offset = now.getTimezoneOffset() * 60000;
+            dateInput.value = new Date(now - offset).toISOString().slice(0, 16);
+        }
+        if (modal) modal.style.display = 'flex';
+    }
+
+    function closeGlobalOrderModal(event) {
+        if (event && event.target && event.target.id !== 'globalOrderModal') return;
+        const modal = document.getElementById('globalOrderModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    async function submitGlobalOrder(event) {
+        event.preventDefault();
+        const form = document.getElementById('globalOrderForm');
+        const submitButton = form.querySelector('button[type="submit"]');
+        const formData = new FormData(form);
+
+        try {
+            submitButton.disabled = true;
+            const res = await fetch('/create-order', { method: 'POST', body: formData });
+            const result = await res.json();
+
+            if (!res.ok || result.status !== 'ok') {
+                alert(result.msg || '신규 접수 저장에 실패했습니다.');
+                return;
+            }
+
+            closeGlobalOrderModal();
+            form.reset();
+
+            if (result.order_id) {
+                location.href = '/view/' + result.order_id;
+                return;
+            }
+
+            location.reload();
+        } catch (error) {
+            alert('신규 접수 저장 중 오류가 발생했습니다.');
+        } finally {
+            submitButton.disabled = false;
+        }
+    }
+
+    document.addEventListener('click', function (event) {
+        const nav = document.getElementById('globalTopNav');
+        if (!nav || !nav.classList.contains('is-open')) return;
+        const scrim = document.getElementById('globalTopNavScrim');
+        if (!nav.contains(event.target) && (!scrim || !scrim.contains(event.target))) setGlobalTopNavOpen(false);
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') return;
+        const nav = document.getElementById('globalTopNav');
+        if (nav && nav.classList.contains('is-open')) setGlobalTopNavOpen(false);
+    });
+    </script>
+<script src="/static/js/mobile_select.js?v=1"></script>

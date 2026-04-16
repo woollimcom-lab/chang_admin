@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>통합 지출 관리 시스템</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/common.css?v=2">
+    <style>
+        body { background-color: #f4f7fa; font-family: 'Pretendard', -apple-system, sans-serif; padding-bottom: 80px; color: #343a40; }
+        .main-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .kpi-card { border-radius: 20px; border: none; box-shadow: 0 4px 24px rgba(0,0,0,0.04); background: #fff; overflow: hidden; }
+        
+        .bg-gradient-dark { background: #151a25; color: #f8f9fa; }
+        .bg-gradient-dark input::placeholder { color: rgba(255, 255, 255, 0.3) !important; font-weight: normal; }
+        #formContainer { transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease; }
+        #formContainer.ledger-form-exp { background: linear-gradient(180deg, #10263f 0%, #151a25 100%); box-shadow: 0 10px 28px rgba(51, 154, 240, 0.14); }
+        #formContainer.ledger-form-mat { background: linear-gradient(180deg, #3b2c04 0%, #151a25 100%); box-shadow: 0 10px 28px rgba(252, 196, 25, 0.16); }
+        .donut-split-row { --bs-gutter-x: 12px; --bs-gutter-y: 10px; }
+        .donut-split-item { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+        .donut-split-item canvas { max-width: 100%; }
+        
+        /* 모드 전환 버튼 */
+        .mode-selector { 
+            display: flex; background: #e9ecef; border-radius: 14px; padding: 5px; margin-bottom: 20px; 
+            position: sticky; top: 10px; z-index: 10; 
+        }
+        .mode-option { flex: 1; text-align: center; padding: 12px; font-weight: 800; cursor: pointer; border-radius: 10px; transition: 0.3s; color: #adb5bd; }
+        .mode-option.active-exp { background: #fff; color: #339af0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .mode-option.active-mat { background: #fff; color: #f59f00; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+
+        /* 사진 업로드 영역 */
+        .upload-zone { width: 100%; height: 90px; border-radius: 16px; border: 2px dashed #dee2e6; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f8f9fa; cursor: pointer; position: relative; overflow: hidden; transition: 0.2s; }
+        .upload-zone img { position: absolute; width: 100%; height: 100%; object-fit: cover; top: 0; left: 0; }
+        .upload-zone:hover, .upload-zone.dragover { border-color: #339af0; background: #e7f5ff; }
+
+        select option { color: #212529 !important; background-color: #fff !important; font-weight: 600; }
+
+        /* 검색 및 필터 박스 (UI/UX 고도화) */
+        .advanced-filter-box { background: #fff; border-radius: 16px; padding: 15px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 15px; border: 1px solid #e9ecef; transition: all 0.3s ease; }
+        .search-bar { display: flex; align-items: center; background: #f8f9fa; border-radius: 12px; padding: 10px 15px; border: 1px solid #dee2e6; }
+        .search-bar input { border: none; outline: none; width: 100%; margin-left: 10px; font-weight: 600; background: transparent; }
+
+        /* 확장 필터 컨테이너 부드러운 전환 */
+        #extendedFilters { overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease, padding-top 0.3s ease; }
+
+        /* 퀵 태그 스크롤 영역 */
+        .quick-tag-scroll { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; align-items: center; }
+        .quick-tag-scroll::-webkit-scrollbar { height: 0px; }
+        .quick-period-btn { white-space: nowrap; border-radius: 20px; padding: 6px 14px; font-size: 0.8rem; font-weight: 700; border: 1px solid #dee2e6; background: #fff; color: #495057; cursor: pointer; transition: 0.2s; flex-shrink: 0; }
+        .quick-period-btn:hover, .quick-period-btn.active { background: #343a40; color: #fff; border-color: #343a40; }
+        
+        .quick-search-btn { white-space: nowrap; border-radius: 20px; padding: 5px 12px; font-size: 0.8rem; font-weight: 600; border: 1px solid rgba(51, 154, 240, 0.3); background: rgba(51, 154, 240, 0.05); color: #339af0; cursor: pointer; transition: 0.2s; flex-shrink: 0; }
+        .quick-search-btn:hover, .quick-search-btn.active { background: #339af0; color: #fff; }
+        
+        .supplier-tag-btn { white-space: nowrap; border-radius: 20px; padding: 5px 12px; font-size: 0.8rem; font-weight: 600; border: 1px solid rgba(245, 159, 0, 0.3); background: rgba(245, 159, 0, 0.05); color: #e67700; cursor: pointer; transition: 0.2s; flex-shrink: 0; }
+        .supplier-tag-btn:hover, .supplier-tag-btn.active { background: #f59f00; color: #fff; }
+
+        /* 리스트 필터 탭 */
+        .filter-tabs { 
+            display: flex; width: 100%; gap: 10px; padding-bottom: 15px;
+            position: sticky; top: 10px; z-index: 10; background-color: #f4f7fa; 
+        }
+        .tab-btn { flex: 1; border-radius: 14px; padding: 12px 10px; font-size: 0.95rem; font-weight: 800; border: none; background: #e9ecef; color: #868e96; transition: 0.2s; cursor: pointer; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+        .tab-btn.active-all { background: #6c757d; color: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .tab-btn.active-mat { background: #fcc419; color: #343a40; box-shadow: 0 4px 10px rgba(252, 196, 25, 0.3); }
+        .tab-btn.active-exp { background: #339af0; color: #fff; box-shadow: 0 4px 10px rgba(51, 154, 240, 0.3); }
+        
+        /* 기록 폼 내 퀵 카테고리 버튼 */
+        .quick-btn-group { display: flex; flex-wrap: wrap; gap: 8px; }
+        .quick-btn { border-radius: 20px; padding: 8px 16px; font-size: 0.85rem; font-weight: 700; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: #adb5bd; cursor: pointer; transition: 0.2s; }
+        .quick-btn.active { background: #339af0; border-color: #339af0; color: #fff; }
+
+        /* 리스트 아이템 스타일 */
+        .list-item { background: #fff; border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-left: 6px solid #adb5bd; display: flex; align-items: center; gap: 15px; transition: transform 0.2s; cursor: pointer; }
+        .list-item:hover { transform: translateX(5px); }
+        .list-item.exp { border-left-color: #339af0; }
+        .list-item.mat { border-left-color: #fcc419; }
+
+        .list-thumb { width: 45px; height: 45px; border-radius: 10px; object-fit: cover; border: 1px solid #eee; cursor: zoom-in; }
+        .list-no-img { width: 45px; height: 45px; border-radius: 10px; background: #f1f3f5; display: flex; align-items: center; justify-content: center; color: #ced4da; font-size: 1.1rem; }
+        .receipt-preview-modal .modal-content { background: #111827; border: none; }
+        .receipt-preview-stage { overflow: auto; max-height: 80vh; border-radius: 16px; background: rgba(255,255,255,0.04); padding: 12px; }
+        .receipt-preview-image { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+        .chart-zoom-trigger { cursor: zoom-in; }
+        .chart-zoom-stage { height: min(58vh, 520px); }
+        .chart-zoom-bar-stage { height: min(28vh, 220px); margin-top: 12px; }
+        .icon-picker-toggle { min-width: 84px; font-size: 1.4rem; line-height: 1; }
+        .icon-picker-panel { border: 1px solid #e9ecef; border-radius: 14px; background: #f8fafc; padding: 10px; }
+        .icon-picker-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+        .icon-picker-btn { height: 44px; border-radius: 12px; border: 1px solid #dbe4f0; background: #fff; font-size: 1.2rem; }
+        .icon-picker-btn:hover, .icon-picker-btn.active { border-color: #86b7fe; background: #eef4ff; box-shadow: inset 0 0 0 1px #86b7fe; }
+
+        .sticky-form { position: sticky; top: 15px; z-index: 5; }
+        .chart-scroll-wrapper { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+
+        @media (max-width: 768px) {
+            .main-container { padding: 10px; }
+            .kpi-card { border-radius: 16px; margin-bottom: 15px !important; }
+            .card-body { padding: 15px !important; }
+            .row.g-4 { --bs-gutter-y: 15px; } 
+            .mode-selector { margin-bottom: 15px; top: 5px; }
+            .list-item { padding: 12px 10px; gap: 10px; border-radius: 12px; }
+            .form-label { margin-bottom: 0.25rem; }
+            .mb-3 { margin-bottom: 0.75rem !important; }
+            .filter-tabs { top: 5px; padding-bottom: 10px; }
+            .tab-btn { padding: 10px 5px; font-size: 0.85rem; }
+            .donut-split-row { --bs-gutter-x: 8px; }
+            #expenseCategoryManageModal .modal-dialog { max-width: calc(100vw - 12px); margin: 6px auto; }
+            #expenseCategoryManageModal .modal-body { padding-left: 12px; padding-right: 12px; }
+            #donutZoomModal .modal-dialog { max-width: calc(100vw - 8px); width: calc(100vw - 8px); margin: 4px auto; }
+            #donutZoomModal .modal-body { padding-left: 10px; padding-right: 10px; }
+            .icon-picker-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+        }
+    </style>
+</head>
+<body>
+{% include "includes/top_nav.html" %}
+ 
+<div class="main-container">
+    <header class="d-flex justify-content-between align-items-center mb-3 pt-2">
+        <h4 class="m-0 fw-black text-dark" style="letter-spacing: -1px;"><i class="fas fa-wallet text-primary me-2"></i>통합 지출 관리</h4>
+        <div class="d-flex gap-2">
+            <select class="form-select form-select-sm border-0 shadow-sm fw-bold bg-white text-dark" id="roleTester" onchange="testRole(this.value)" style="width: 110px;">
+                <option value="staff">직원 뷰</option>
+                <option value="admin">관리자 뷰</option>
+            </select>
+        </div>
+    </header>
+
+    <!-- [2] 상단 합산 차트 (요구사항 반영: 검색어/기간 필터 무시하고 항상 전체 데이터 유지) -->
+    <div class="card kpi-card mb-4 shadow-sm border-0" id="trendCard">
+        <div class="card-body p-4">
+            <h6 class="fw-bolder text-secondary mb-3"><i class="fas fa-chart-line me-2 text-primary"></i>현금 유출 종합 추이 (전체 기간)</h6>
+            <div class="chart-scroll-wrapper" id="trendScroll">
+                <div id="chartInnerContainer" style="min-width: 800px; height: 200px;"><canvas id="outflowChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2단 구조 레이아웃 -->
+    <div class="row g-4">
+        <!-- 좌측: 입력 폼 -->
+        <div class="col-12 col-lg-5">
+            <div class="card kpi-card bg-gradient-dark p-1 sticky-form" id="formContainer" style="cursor: pointer;">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold text-white mb-3"><i class="fas fa-plus-circle me-2 text-info"></i>신규 내역 기록</h5>
+                    
+                    <input type="hidden" id="editId" value="">
+                    <input type="hidden" id="currentMode" value="exp">
+                    <input type="hidden" id="inputCategory" value="식대">
+
+                    <div class="mode-selector shadow-sm mb-3">
+                        <div id="tabExp" class="mode-option active-exp" onclick="setMode('exp')">일반 경비</div>
+                        <div id="tabMat" class="mode-option admin-only" onclick="setMode('mat')" style="display: none;">자재 매입</div>
+                    </div>
+
+                    <form id="unifiedForm" onsubmit="submitForm(event)">
+                        <div class="row g-2 g-md-3">
+                            <div class="col-12" id="expField">
+                                <!-- [요구사항 5] 지출항목 확장성을 위한 UI (톱니바퀴 추가) -->
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="form-label small fw-bold text-white-50 m-0">지출 항목 (터치하여 선택)</label>
+                                    <button type="button" class="btn btn-sm btn-link text-white-50 p-0" onclick="openCategoryModal()" title="항목 관리"><i class="fas fa-cog"></i> 설정</button>
+                                </div>
+                                <div class="quick-btn-group" id="catGroupForm">
+                                    <!-- 동적으로 채워짐 -->
+                                </div>
+                            </div>
+
+                            <div class="col-12" id="matField" style="display:none;">
+                                <label class="form-label small fw-bold text-white-50">매입 거래처</label>
+                                <div class="d-flex gap-2">
+                                    <select class="form-select form-select-lg fw-bold border-0 bg-white bg-opacity-10 text-white rounded-3" id="inputSupplier">
+                                        <option value="">🏢 거래처 선택</option>
+                                    </select>
+                                    <button type="button" class="btn btn-info text-dark fw-bold px-3 shadow-sm rounded-3" onclick="openSupplierModal('add')"><i class="fas fa-plus"></i></button>
+                                    <button type="button" class="btn btn-outline-light text-white border-opacity-25 fw-bold px-3 shadow-sm rounded-3" onclick="openSupplierModal('edit')"><i class="fas fa-cog"></i></button>
+                                </div>
+                            </div>
+
+                            <div class="col-7">
+                                <div class="d-flex justify-content-between align-items-end mb-1">
+                                    <label class="form-label small fw-bold text-white-50 m-0">금액 (원)</label>
+                                    <!-- [요구사항 3] 글씨 삭제하고 아이콘만 남겨 깔끔하게 처리 -->
+                                </div>
+                                <input type="text" class="form-control form-control-lg fw-black border-0 bg-white bg-opacity-10 text-white" id="displayAmount" placeholder="0" oninput="formatCurrency(this)" required>
+                                <input type="hidden" id="realAmount">
+                            </div>
+
+                            <div class="col-5">
+                                <label class="form-label small fw-bold text-white-50 mb-1">날짜</label>
+                                <!-- [요구사항 4] 날짜 글씨 크기 1rem 강제 적용 -->
+                                <input type="date" class="form-control form-control-lg border-0 bg-white bg-opacity-10 text-white fw-bold" id="inputDate" style="font-size: 1rem !important;">
+                            </div>
+
+                            <div class="col-12 mt-2" id="paidToggleField" style="display:none;">
+                                <div class="p-2 px-3 bg-white bg-opacity-10 rounded-3 border border-white border-opacity-10 d-flex justify-content-between align-items-center">
+                                    <label class="form-check-label fw-bold text-success small" id="paidToggleLabel" for="inputIsPaid"><i class="fas fa-check-circle me-1"></i>결제완료</label>
+                                    <div class="form-check form-switch m-0 d-flex align-items-center">
+                                        <input class="form-check-input m-0" type="checkbox" id="inputIsPaid" style="width: 40px; height: 20px;" checked onchange="updatePaidLabel(this)">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 mt-2">
+                                <label class="form-label small fw-bold text-white-50">메모</label>
+                                <input type="text" class="form-control border-0 bg-white bg-opacity-10 text-white" id="inputMemo" placeholder="내용 입력">
+                            </div>
+
+                            <div class="col-12 mt-2">
+                                <label class="form-label small fw-bold text-white-50">영수증 첨부 (이미지 드래그 & Ctrl+V 지원)</label>
+                                <label for="receiptFile" class="upload-zone shadow-sm bg-white bg-opacity-10 border-white border-opacity-20" id="dropZone">
+                                    <i class="fas fa-camera text-white-50 fs-3 mb-1" id="cameraIcon"></i>
+                                    <span class="text-white-50 small fw-bold" id="cameraText">이미지를 끌어오거나 터치하세요</span>
+                                    <img id="previewImg" style="display:none;">
+                                </label>
+                                <input type="file" id="receiptFile" accept="image/*" style="display:none;" onchange="previewReceipt(this)">
+                            </div>
+
+                            <div class="col-12 mt-3 d-flex gap-2">
+                                <button type="submit" class="btn btn-primary w-100 py-3 fw-black fs-5 rounded-4 shadow" id="submitBtn">기록 저장하기</button>
+                                <button type="button" class="btn btn-danger py-3 fw-bold rounded-4 px-4 shadow d-none" id="deleteEditBtn" onclick="deleteCurrentEdit()">삭제</button>
+                                <button type="button" class="btn btn-secondary py-3 fw-bold rounded-4 px-4 shadow d-none" id="cancelEditBtn" onclick="cancelEdit()">취소</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 우측: 심층 분석 및 리스트 -->
+        <div class="col-12 col-lg-7">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 id="listMainTitle" class="fw-black text-dark m-0" style="letter-spacing: -1.5px;">전체 지출내역</h3>
+            </div>
+
+            <!-- [요구사항 1] 점진적 공개(Progressive Disclosure)가 적용된 검색 박스 -->
+            <div class="advanced-filter-box">
+                <!-- 1열: 기본 검색창 & 필터 확장 버튼 -->
+                <div class="d-flex align-items-center gap-2">
+                    <div class="search-bar mb-0 flex-grow-1">
+                        <i class="fas fa-search text-secondary"></i>
+                        <input type="text" id="searchInput" placeholder="검색어 입력 (내용, 분류, 업체 등)..." oninput="applyFilters()">
+                    </div>
+                    <button class="btn btn-dark d-flex align-items-center shadow-sm" onclick="toggleAdvancedFilters()" id="btnAdvancedFilter" style="height: 44px; border-radius: 12px; white-space: nowrap;">
+                        <i class="fas fa-sliders-h me-1"></i> 필터
+                    </button>
+                </div>
+
+                <!-- 2열: 숨겨져 있는 확장 필터 옵션들 -->
+                <div id="extendedFilters" style="max-height: 0; opacity: 0; margin-top: 0; padding-top: 0; border-top: 1px dashed #dee2e6;">
+                    <!-- 기간 필터 -->
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="month" id="filterStartMonth" class="form-control form-control-sm fw-bold border-secondary" onchange="applyFilters()">
+                            <span class="text-secondary fw-black">~</span>
+                            <input type="month" id="filterEndMonth" class="form-control form-control-sm fw-bold border-secondary" onchange="applyFilters()">
+                        </div>
+                        <div class="quick-tag-scroll">
+                            <button class="quick-period-btn" onclick="setQuickPeriod(1)">1개월</button>
+                            <button class="quick-period-btn" onclick="setQuickPeriod(3)">3개월</button>
+                            <button class="quick-period-btn" onclick="setQuickPeriod(6)">6개월</button>
+                            <button class="quick-period-btn" onclick="setQuickPeriod(12)">1년</button>
+                            <button class="quick-period-btn border-danger text-danger bg-white ms-1" onclick="clearPeriodFilter()" title="필터 초기화"><i class="fas fa-redo"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- 지출 항목 필터 (동적 로드) -->
+                    <div class="quick-tag-scroll mb-2 pb-2">
+                        <span class="text-secondary small fw-bold me-1">항목:</span>
+                        <div id="catGroupFilter" class="d-flex gap-1"></div>
+                    </div>
+                    
+                    <!-- 업체 리스트 필터 (관리자 전용) -->
+                    <div class="quick-tag-scroll admin-only" id="supplierTagContainer" style="display: none;">
+                        <!-- JS로 렌더링 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 지출 구조 심층 분석 원그래프 (필터된 데이터로만 연동) -->
+            <div class="card kpi-card mb-4 shadow-sm border-0 cursor-pointer" id="chartContainer" style="cursor: pointer;">
+                <div class="card-body p-3 p-md-4 text-center">
+                    <h6 class="fw-bolder text-dark mb-3" id="donutCardTitle"><i class="fas fa-chart-pie me-2 text-warning"></i>지출 구조 심층 분석</h6>
+                    
+                    <!-- 관리자 뷰 -->
+                    <div class="row text-center admin-only donut-split-row" id="adminDonutContainer" style="display: none;">
+                        <div class="col-12 mb-3">
+                            <span class="badge bg-light text-secondary border rounded-pill px-3 py-1 mb-1 fw-bold" style="font-size:0.75rem;">전체 비중 (매입 vs 경비)</span>
+                            <div style="height: 140px; position: relative; margin: 0 auto;"><canvas id="expTotalChartAdmin"></canvas></div>
+                        </div>
+                        <div class="col-6 donut-split-item">
+                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning rounded-pill px-3 py-1 mb-1 fw-bold" style="font-size:0.7rem;">자재 매입 (업체별)</span>
+                            <div style="height: 120px; position: relative;"><canvas id="expMatChartAdmin"></canvas></div>
+                        </div>
+                        <div class="col-6 donut-split-item">
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill px-3 py-1 mb-1 fw-bold" style="font-size:0.7rem;">현장 경비 (항목별)</span>
+                            <div style="height: 120px; position: relative;"><canvas id="expOpChartAdmin"></canvas></div>
+                        </div>
+                    </div>
+
+                    <!-- 현장직 뷰 -->
+                    <div class="row text-center mb-1 staff-only" id="staffDonutContainer">
+                        <div class="col-12">
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill px-3 py-1 mb-2 fw-bold" style="font-size:0.7rem;">현장 경비 (항목별)</span>
+                            <div style="height: 160px; position: relative; margin: 0 auto;"><canvas id="expOpChartStaff"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 통제 탭 -->
+            <div class="filter-tabs" id="filterTabGroup">
+                <button class="tab-btn active-all" id="btnFilterAll" onclick="setTabFilter('all')">전체 보기</button>
+                <button class="tab-btn admin-only" id="btnFilterMat" onclick="setTabFilter('mat')" style="display: none;">매입 상세</button>
+                <button class="tab-btn" id="btnFilterExp" onclick="setTabFilter('exp')">경비 상세</button>
+            </div>
+
+            <!-- 리스트 컨테이너 -->
+            <div id="unifiedListContainer"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 줌 위젯 포함 -->
+
+<script src="/static/js/voice_core.js"></script>
+<div class="modal fade receipt-preview-modal" id="receiptPreviewModal" tabindex="-1">
+     <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-2 pb-3">
+                <div class="receipt-preview-stage">
+                    <img id="receiptPreviewImage" class="receipt-preview-image" alt="receipt preview">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="donutZoomModal" tabindex="-1">
+     <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bolder text-dark" id="donutZoomTitle">지출 구조 상세</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-0 pb-3">
+                <div class="chart-zoom-stage position-relative">
+                    <canvas id="donutZoomCanvas"></canvas>
+                </div>
+                <div class="chart-zoom-bar-stage position-relative">
+                    <canvas id="donutZoomBarCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openLedgerVoiceDraft(){
+  const supplierOptions = Array.from(document.querySelectorAll('#inputSupplier option')).map(o=>o.textContent.trim()).filter(Boolean).slice(0,10);
+  const catNames = (window.expenseCategories || []).map(x => x.id || x.CategoryName).filter(Boolean);
+  window.voiceSystem.promptAndOpen({
+    pageContext:'ledger',
+    promptText:'예: 식대 12000원 / 금강상사 자재 8만5천원 외상 / 내 돈으로 주유 5만원',
+    context:{ recentSuppliers: supplierOptions, recentCategories: catNames }
+  });
+}
+</script>
+{% include '/includes/zoom_widget.html' %}
+
+
+<!-- [요구사항 5] 항목 카테고리 관리 모달 (DB 연동 준비용) -->
+<div class="modal fade" id="categoryModal" tabindex="-1">
+     <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bolder text-dark">지출 항목 관리</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-3 text-center">
+                <p class="text-secondary small mb-4">현재 데모 버전입니다.<br>향후 백엔드 데이터베이스 확장을 통해 자유로운 추가/삭제가 가능해집니다.</p>
+                <button type="button" class="btn btn-dark w-100 py-2 rounded-3" data-bs-dismiss="modal">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 거래처 추가/수정 모달 -->
+<div class="modal fade" id="expenseCategoryManageModal" tabindex="-1">
+     <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bolder text-dark">지출 항목 관리</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <form id="categoryForm" onsubmit="saveExpenseCategory(event)" class="mb-3">
+                    <input type="hidden" id="catEditId" name="category_id">
+                    <div class="row g-2">
+                        <div class="col-3 col-sm-3">
+                            <label class="form-label small fw-bold text-secondary">아이콘</label>
+                            <button type="button" class="form-control text-center bg-white icon-picker-toggle" id="catIconTrigger" onclick="toggleExpenseCategoryIconPicker()">
+                                <span id="catIconPreview">🍚</span>
+                            </button>
+                            <input type="hidden" id="catIcon" name="icon" maxlength="4" value="🍚">
+                        </div>
+                        <div class="col-9 col-sm-9">
+                            <label class="form-label small fw-bold text-secondary">항목명</label>
+                            <input type="text" class="form-control fw-bold" id="catName" name="category_name" maxlength="20" required>
+                        </div>
+                        <div class="col-12">
+                            <div id="catIconPicker" class="d-none icon-picker-panel">
+                                <div id="catIconPickerGrid" class="icon-picker-grid"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-3">
+                        <button type="submit" class="btn btn-dark flex-fill py-2 rounded-3">저장</button>
+                        <button type="button" class="btn btn-outline-secondary py-2 rounded-3" onclick="resetExpenseCategoryForm()">초기화</button>
+                    </div>
+                </form>
+                <div id="categoryList" class="d-flex flex-column gap-2"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="supplierModal" tabindex="-1">
+     <div class="modal-dialog modal-dialog-centered">
+        <!-- 기존 거래처 모달 내용 유지 -->
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bolder text-dark" id="supplierModalTitle">거래처 추가</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <form id="supplierForm" onsubmit="saveSupplier(event)">
+                    <input type="hidden" id="supEditId" name="supplier_id">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary">거래처명 (필수)</label>
+                        <input type="text" class="form-control fw-bold" id="supName" name="SupplierName" required>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small fw-bold text-secondary">담당자</label>
+                            <input type="text" class="form-control" id="supContact" name="ContactName">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small fw-bold text-secondary">대표 연락처</label>
+                            <input type="text" class="form-control" id="supPhone" name="Phone">
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small fw-bold text-secondary">연락처(휴대폰)</label>
+                            <input type="text" class="form-control" id="supMobile" name="Mobile">
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small fw-bold text-secondary">계좌정보</label>
+                            <input type="text" class="form-control" id="supAccount" name="AccountInfo">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary">주요품목</label>
+                        <input type="text" class="form-control" id="supItems" name="MainItems">
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-warning w-100 py-3 fw-black fs-5 rounded-3 text-dark shadow-sm">거래처 저장</button>
+                        <button type="button" class="btn btn-danger py-3 fw-bold rounded-3 px-4 shadow-sm d-none" id="deleteSupplierBtn" onclick="deleteSupplier()">삭제</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 도넛 차트 중앙 텍스트 플러그인 (월평균 지원) -->
+<script>
+    Chart.register({
+        id: 'centerText',
+        beforeDraw: function(chart) {
+            if (chart.config.type !== 'doughnut') return;
+            const config = chart.config.options.plugins.centerText;
+            if (config && config.display !== false) {
+                let width = chart.width, height = chart.height, ctx = chart.ctx;
+                ctx.restore();
+                
+                let text = config.text || "";
+                let subText = config.subText || "";
+                let fontSize = Math.min(height / 110, width / Math.max(7, String(text).length * 18));
+                ctx.font = "900 " + fontSize.toFixed(2) + "em Pretendard";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = "#151a25";
+                
+                let textX = Math.round((width - ctx.measureText(text).width) / 2);
+                let textY = subText ? height / 2 - (height * 0.08) : height / 2; 
+                ctx.fillText(text, textX, textY);
+
+                if (subText) {
+                    let subFontSize = (height / 200).toFixed(2); 
+                    ctx.font = "700 " + subFontSize + "em Pretendard";
+                    ctx.fillStyle = "#868e96"; 
+                    let subTextX = Math.round((width - ctx.measureText(subText).width) / 2);
+                    let subTextY = height / 2 + (height * 0.12);
+                    ctx.fillText(subText, subTextX, subTextY);
+                }
+                ctx.save();
+            }
+        }
+    });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let rawData = [];
+    let outflowChartInst = null;
+    let chartInsts = {};
+    let donutChartMeta = {};
+    let receiptPreviewModalInst = null;
+    let donutZoomModalInst = null;
+    let donutZoomChartInst = null;
+    let donutZoomBarChartInst = null;
+    let bsSupplierModal = null;
+    let bsCategoryModal = null;
+    const expenseCategoryIconOptions = ['🍚', '⛽', '🛒', '🚌', '🧾', '📦', '🧰', '🚚', '🧼', '🔧', '💡', '🏢', '📢', '💳', '📌', '📝', '📍', '🚪', '🪟', '🧵'];
+
+    const CAN_ADMIN_LEDGER_VIEW = {{ 'true' if can_admin_ledger_view else 'false' }};
+    const INITIAL_LEDGER_ROLE = '{{ initial_ledger_role or "staff" }}';
+    let USER_ROLE = INITIAL_LEDGER_ROLE;
+    let currentTab = 'all';
+
+    let expenseCategories = [
+        { id: '??', icon: '??' },
+        { id: '??', icon: '?' },
+        { id: '????', icon: '??' },
+        { id: '???', icon: '??' },
+        { id: '???', icon: '??' },
+        { id: '??', icon: '??' }
+    ];
+
+
+    function formatCenterTotal(val) {
+        if (val === 0) return '0';
+        return val >= 10000 ? Math.round(val / 10000).toLocaleString() + '만' : val.toLocaleString();
+    }
+
+    function isMobileReceiptPreview() {
+        return window.matchMedia('(max-width: 768px)').matches || navigator.maxTouchPoints > 0;
+    }
+
+    const getUrl = (path) => {
+        const origin = window.location.origin;
+        if (!origin || origin === 'null') return path;
+        return origin + path;
+    };
+
+    function snapToTop(elementId) {
+        const el = document.getElementById(elementId);
+        if(el) {
+            const y = el.getBoundingClientRect().top + window.scrollY - 60;
+            window.scrollTo({top: y, behavior: 'smooth'});
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const roleTester = document.getElementById('roleTester');
+        if (roleTester) {
+            if (!CAN_ADMIN_LEDGER_VIEW) {
+                const adminOption = roleTester.querySelector('option[value="admin"]');
+                if (adminOption) adminOption.remove();
+            }
+            roleTester.value = USER_ROLE;
+        }
+        document.getElementById('inputDate').valueAsDate = new Date();
+        
+        loadCategories(); // 동적 카테고리 렌더링 호출
+        loadSuppliers();
+        refreshData();
+        initDragAndPaste();
+        
+        bsSupplierModal = new bootstrap.Modal(document.getElementById('supplierModal'));
+        bsCategoryModal = new bootstrap.Modal(document.getElementById('expenseCategoryManageModal'));
+        receiptPreviewModalInst = new bootstrap.Modal(document.getElementById('receiptPreviewModal'));
+        donutZoomModalInst = new bootstrap.Modal(document.getElementById('donutZoomModal'));
+        initializeExpenseCategoryIconPicker();
+
+        document.getElementById('formContainer').addEventListener('click', () => snapToTop('formContainer'));
+        document.getElementById('chartContainer').addEventListener('click', () => snapToTop('chartContainer'));
+
+        setQuickPeriod(1);
+    });
+
+    // [요구사항 1] 필터 토글 UI 로직
+    function toggleAdvancedFilters() {
+        const ext = document.getElementById('extendedFilters');
+        const btn = document.getElementById('btnAdvancedFilter');
+        if (ext.style.maxHeight === '0px' || ext.style.maxHeight === '') {
+            ext.style.maxHeight = '300px';
+            ext.style.opacity = '1';
+            ext.style.marginTop = '15px';
+            ext.style.paddingTop = '15px';
+            btn.classList.replace('btn-dark', 'btn-secondary');
+        } else {
+            ext.style.maxHeight = '0px';
+            ext.style.opacity = '0';
+            ext.style.marginTop = '0px';
+            ext.style.paddingTop = '0px';
+            btn.classList.replace('btn-secondary', 'btn-dark');
+        }
+    }
+
+    // [요구사항 5] 지출 항목 동적 렌더링 (확장성 대비)
+    function loadCategories() {
+        const formGroup = document.getElementById('catGroupForm');
+        const filterGroup = document.getElementById('catGroupFilter');
+        
+        formGroup.innerHTML = '';
+        filterGroup.innerHTML = '';
+
+        expenseCategories.forEach((cat, index) => {
+            // 폼 영역 렌더링
+            let fBtn = document.createElement('div');
+            fBtn.className = `quick-btn ${index === 0 ? 'active' : ''}`;
+            fBtn.innerText = `${cat.icon} ${cat.id}`;
+            fBtn.onclick = function() { setQuickCat(this, cat.id); };
+            formGroup.appendChild(fBtn);
+
+            // 필터 영역 렌더링
+            let sBtn = document.createElement('button');
+            sBtn.className = 'quick-search-btn';
+            sBtn.innerText = cat.id;
+            sBtn.onclick = () => setQuickSearch(cat.id);
+            filterGroup.appendChild(sBtn);
+        });
+    }
+
+    function setQuickSearch(keyword) {
+        document.getElementById('searchInput').value = keyword;
+        applyFilters();
+    }
+
+    function setQuickPeriod(months) {
+        const end = new Date();
+        const start = new Date();
+        start.setMonth(start.getMonth() - months + 1); 
+
+        const formatMonth = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        
+        document.getElementById('filterStartMonth').value = formatMonth(start);
+        document.getElementById('filterEndMonth').value = formatMonth(end);
+        
+        applyFilters();
+    }
+
+    function clearPeriodFilter() {
+        document.getElementById('filterStartMonth').value = '';
+        document.getElementById('filterEndMonth').value = '';
+        document.getElementById('searchInput').value = '';
+        applyFilters();
+    }
+
+    function applyRoleUI() {
+        const adminEls = document.querySelectorAll('.admin-only');
+        const staffEls = document.querySelectorAll('.staff-only');
+
+        if (USER_ROLE === 'staff') {
+            adminEls.forEach(el => el.style.display = 'none');
+            staffEls.forEach(el => el.style.display = '');
+            setTabFilter('exp');
+            setMode('exp');
+        } else {
+            adminEls.forEach(el => el.style.display = '');
+            // 업체목록 태그 컨테이너 디스플레이 복구
+            document.getElementById('supplierTagContainer').style.display = 'flex';
+            staffEls.forEach(el => el.style.display = 'none');
+            setTabFilter('all');
+            setMode('exp');
+        }
+    }
+
+    function testRole(role) {
+        if (role === 'admin' && !CAN_ADMIN_LEDGER_VIEW) {
+            role = 'staff';
+        }
+        USER_ROLE = role;
+        const roleTester = document.getElementById('roleTester');
+        if (roleTester && roleTester.value !== role) roleTester.value = role;
+        applyRoleUI();
+        applyFilters();
+    }
+
+    function updatePaidLabel(el) {
+        const label = document.getElementById('paidToggleLabel');
+        if (el.checked) {
+            label.innerHTML = '<i class="fas fa-check-circle me-1"></i>????';
+            label.className = 'form-check-label fw-bold text-success small';
+        } else {
+            label.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i>???';
+            label.className = 'form-check-label fw-bold text-danger small';
+        }
+    }
+
+    function sttPrompt() {
+        let spoken = prompt("영수증 금액을 말해주세요 (예: 십오만 삼천원)");
+        if(spoken) {
+            let val = parseInt(spoken.replace(/[^0-9]/g, '')) || 0; 
+            if(typeof parseSpokenNumberKo === 'function') val = parseSpokenNumberKo(spoken, true);
+            document.getElementById('realAmount').value = val;
+            document.getElementById('displayAmount').value = val.toLocaleString();
+        }
+    }
+
+    function setQuickCat(btnEl, catName) {
+        document.querySelectorAll('#catGroupForm .quick-btn').forEach(b => b.classList.remove('active'));
+        btnEl.classList.add('active');
+        document.getElementById('inputCategory').value = catName;
+    }
+
+    async function openSupplierModal(mode) {
+        const form = document.getElementById('supplierForm');
+        form.reset();
+        document.getElementById('supEditId').value = '';
+        document.getElementById('deleteSupplierBtn').classList.add('d-none');
+
+        if (mode === 'edit') {
+            const supplierId = document.getElementById('inputSupplier').value;
+            if (!supplierId) {
+                alert('수정할 거래처를 먼저 선택해주세요.');
+                return;
+            }
+            const data = await safeFetchJSON(getUrl(`/api/ledger/suppliers/${supplierId}`), null);
+            if (!data || !data.SupplierID) {
+                alert('거래처 정보를 불러오지 못했습니다.');
+                return;
+            }
+            document.getElementById('supplierModalTitle').innerText = '거래처 수정';
+            document.getElementById('supEditId').value = data.SupplierID || '';
+            document.getElementById('supName').value = data.SupplierName || '';
+            document.getElementById('supContact').value = data.ContactName || '';
+            document.getElementById('supPhone').value = data.Phone || '';
+            document.getElementById('supMobile').value = data.Mobile || '';
+            document.getElementById('supAccount').value = data.AccountInfo || '';
+            document.getElementById('supItems').value = data.MainItems || '';
+            document.getElementById('deleteSupplierBtn').classList.remove('d-none');
+        } else {
+            document.getElementById('supplierModalTitle').innerText = '거래처 추가';
+        }
+        bsSupplierModal.show();
+    }
+
+    async function saveSupplier(e) {
+        e.preventDefault();
+        const formData = new FormData(document.getElementById('supplierForm'));
+        const supplierId = document.getElementById('supEditId').value;
+        const url = supplierId ? getUrl(`/api/ledger/suppliers/${supplierId}`) : getUrl('/api/ledger/suppliers');
+
+        try {
+            const res = await fetch(url, { method: 'POST', body: formData });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(payload.detail || payload.msg || '거래처 저장에 실패했습니다.');
+            }
+            bsSupplierModal.hide();
+            await loadSuppliers();
+            if (payload.SupplierID) {
+                document.getElementById('inputSupplier').value = String(payload.SupplierID);
+            }
+            alert(supplierId ? '거래처가 수정되었습니다.' : '거래처가 등록되었습니다.');
+        } catch (err) {
+            alert(err.message || '거래처 저장 중 오류가 발생했습니다.');
+        }
+    }
+
+    async function deleteSupplier() {
+        const supplierId = document.getElementById('supEditId').value;
+        if (!supplierId) return;
+        if (!confirm('현재 거래처를 삭제하시겠습니까?')) return;
+        try {
+            const res = await fetch(getUrl(`/api/ledger/suppliers/${supplierId}`), { method: 'DELETE' });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(payload.detail || payload.msg || '거래처 삭제에 실패했습니다.');
+            }
+            bsSupplierModal.hide();
+            await loadSuppliers();
+            document.getElementById('inputSupplier').value = '';
+            alert('거래처가 삭제되었습니다.');
+        } catch (err) {
+            alert(err.message || '거래처 삭제 중 오류가 발생했습니다.');
+        }
+    }
+
+    async function safeFetchJSON(url, fallback = []) {
+        try {
+            const res = await fetch(url);
+            if (res.ok) return await res.json();
+            return fallback;
+        } catch (e) {
+            return fallback;
+        }
+    }
+
+    function initDragAndPaste() {
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('receiptFile');
+
+        ['dragenter', 'dragover'].forEach(evt => {
+            dropZone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.add('dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(evt => {
+            dropZone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.remove('dragover');
+            });
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files && files[0]) {
+                fileInput.files = files;
+                previewReceipt(fileInput);
+            }
+        });
+
+        document.addEventListener('paste', (e) => {
+            const items = e.clipboardData?.items || [];
+            for (const item of items) {
+                if (item.type && item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+                    fileInput.files = dt.files;
+                    previewReceipt(fileInput);
+                    break;
+                }
+            }
+        });
+    }
+
+    function previewReceipt(input) {
+        const file = input.files && input.files[0];
+        const preview = document.getElementById('previewImg');
+        const icon = document.getElementById('cameraIcon');
+        const text = document.getElementById('cameraText');
+
+        if (!file) {
+            preview.style.display = 'none';
+            preview.removeAttribute('src');
+            icon.style.display = '';
+            text.style.display = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+            icon.style.display = 'none';
+            text.style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function applyReceiptZoom() {
+        const img = document.getElementById('receiptPreviewImage');
+        if (!img) return;
+        img.style.transform = `scale(${receiptZoomScale})`;
+    }
+
+    function resetReceiptZoom() {
+        receiptZoomScale = 1;
+        applyReceiptZoom();
+    }
+
+    function zoomReceipt(delta) {
+        receiptZoomScale = Math.max(0.4, Math.min(4, receiptZoomScale + delta));
+        applyReceiptZoom();
+    }
+
+    function openReceiptPreview(src) {
+        if (!src) return;
+        if (isMobileReceiptPreview()) {
+            window.open(src, '_blank', 'noopener');
+            return;
+        }
+        const img = document.getElementById('receiptPreviewImage');
+        if (!img || !receiptPreviewModalInst) return;
+        img.src = src;
+        receiptPreviewModalInst.show();
+    }
+
+    function openDonutZoomModal(chartId) {
+        const meta = donutChartMeta[chartId];
+        const canvas = document.getElementById('donutZoomCanvas');
+        const barCanvas = document.getElementById('donutZoomBarCanvas');
+        if (!meta || !canvas || !barCanvas || !donutZoomModalInst) return;
+
+        document.getElementById('donutZoomTitle').innerText = meta.title || '?? ?? ??';
+        if (donutZoomChartInst) donutZoomChartInst.destroy();
+        if (donutZoomBarChartInst) donutZoomBarChartInst.destroy();
+
+        donutZoomChartInst = new Chart(canvas.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: meta.labels,
+                datasets: [{ data: meta.data, backgroundColor: meta.colors, borderWidth: 0 }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '62%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: meta.tooltipLabel } },
+                    centerText: meta.centerText || undefined,
+                }
+            }
+        });
+
+        const barItems = meta.labels
+            .map((label, index) => ({ label, value: Number(meta.data[index] || 0), color: meta.colors[index] || '#94a3b8' }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 7);
+
+        donutZoomBarChartInst = new Chart(barCanvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: barItems.map(item => item.label),
+                datasets: [{
+                    data: barItems.map(item => item.value),
+                    backgroundColor: barItems.map(item => item.color),
+                    borderRadius: 8,
+                    barThickness: 16,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (c) => ` ${Number(c.parsed.x || 0).toLocaleString()}` } },
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(148, 163, 184, 0.16)' },
+                        ticks: { display: false },
+                        border: { display: false }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { font: { weight: '700' } }
+                    }
+                }
+            }
+        });
+
+        donutZoomModalInst.show();
+    }
+
+    function setMode(mode) {
+        if (USER_ROLE === 'staff' && mode === 'mat') { alert('권한이 없습니다.'); return; }
+        document.getElementById('currentMode').value = mode;
+        const tabExp = document.getElementById('tabExp');
+        const tabMat = document.getElementById('tabMat');
+        const expField = document.getElementById('expField');
+        const matField = document.getElementById('matField');
+        const paidField = document.getElementById('paidToggleField');
+        const btn = document.getElementById('submitBtn');
+        const formCard = document.getElementById('formContainer');
+
+        formCard.classList.remove('ledger-form-exp', 'ledger-form-mat');
+
+        if(mode === 'exp') {
+            formCard.classList.add('ledger-form-exp');
+            tabExp.className = 'mode-option active-exp';
+            tabMat.className = 'mode-option' + (USER_ROLE === 'staff' ? ' admin-only' : '');
+            expField.style.display = 'block';
+            matField.style.display = 'none';
+            paidField.style.display = 'none';
+            btn.className = 'btn btn-primary w-100 py-3 fw-black fs-5 rounded-4 shadow';
+            btn.innerText = '경비 기록하기';
+        } else {
+            formCard.classList.add('ledger-form-mat');
+            tabExp.className = 'mode-option';
+            tabMat.className = 'mode-option active-mat' + (USER_ROLE === 'staff' ? ' admin-only' : '');
+            expField.style.display = 'none';
+            matField.style.display = 'block';
+            paidField.style.display = 'block';
+            btn.className = 'btn btn-warning w-100 py-3 fw-black fs-5 rounded-4 shadow text-dark';
+            btn.innerText = '매입 청구 기록하기';
+        }
+    }
+
+    function formatCurrency(input) {
+        let val = input.value.replace(/,/g, '').replace(/[^0-9]/g, '');
+        document.getElementById('realAmount').value = val || 0;
+        input.value = val ? Number(val).toLocaleString() : '';
+    }
+
+    function formatDateTime(dateString) {
+        if(!dateString) return '';
+        const d = new Date(dateString);
+        if(isNaN(d)) return dateString;
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}.${mm}.${dd}`; 
+    }
+
+    function getExpenseCategoryIcon(categoryName) {
+        const normalizedName = String(categoryName || '').trim();
+        if (!normalizedName) return '';
+        const matched = expenseCategories.find(cat => String(cat.id || '').trim() === normalizedName);
+        return matched?.icon || '';
+    }
+
+    async function loadSuppliers() {
+        const data = await safeFetchJSON(getUrl('/api/ledger/suppliers'));
+        const sel = document.getElementById('inputSupplier');
+        const tagContainer = document.getElementById('supplierTagContainer');
+        const optionMap = new Map();
+        const normalizeSupplierName = (value) => String(value || '').replace(/\s+/g, '').trim();
+        const splitSupplierTokens = (value) => {
+            const raw = String(value || '').trim();
+            if (!raw) return [];
+            return raw.split(/\s*[/,+]\s*/).map(v => v.trim()).filter(Boolean);
+        };
+        const upsertSupplierOption = (supplierId, supplierName) => {
+            const label = String(supplierName || '').trim();
+            const key = normalizeSupplierName(label);
+            if (!key) return;
+            const nextId = Number(supplierId || 0);
+            const prev = optionMap.get(key);
+            if (!prev || (Number(prev.SupplierID || 0) <= 0 && nextId > 0)) {
+                optionMap.set(key, { SupplierID: nextId, SupplierName: label });
+            }
+        };
+        
+        sel.innerHTML = '<option value="">🏢 거래처 선택</option>';
+        tagContainer.innerHTML = '<span class="text-secondary small fw-bold me-1 align-self-center">업체:</span>';
+
+        data.forEach(s => {
+            const tokens = splitSupplierTokens(s.SupplierName);
+            if (tokens.length >= 2) {
+                tokens.forEach(token => upsertSupplierOption(0, token));
+            } else {
+                upsertSupplierOption(s.SupplierID, s.SupplierName);
+            }
+        });
+
+        Array.from(optionMap.values())
+            .sort((a, b) => String(a.SupplierName || '').localeCompare(String(b.SupplierName || ''), 'ko'))
+            .forEach(s => {
+                let opt = document.createElement('option');
+                opt.value = s.SupplierID; opt.innerText = s.SupplierName;
+                sel.appendChild(opt);
+
+                let btn = document.createElement('button');
+                btn.className = 'supplier-tag-btn';
+                btn.innerText = s.SupplierName;
+                btn.onclick = () => setQuickSearch(s.SupplierName);
+                tagContainer.appendChild(btn);
+            });
+    }
+
+    async function refreshData() {
+        const container = document.getElementById('unifiedListContainer');
+        container.innerHTML = '<div class="text-center p-5 text-muted fw-bold">데이터 로드 중...</div>';
+        
+        const exps = await safeFetchJSON(getUrl('/api/ledger/expenses'));
+        const mats = await safeFetchJSON(getUrl('/api/ledger/transactions'));
+        
+        rawData = [
+            ...exps.map(e => ({ id: e.ExpenseID, type: 'exp', date: (e.ExpensedAt || '').toString(), title: e.Category, amount: e.Amount, memo: e.Memo, receipt: e.ReceiptPath, member_id: e.MemberID, member_name: e.MemberName || '' })),
+            ...mats.map(m => ({ id: m.TxID, type: 'mat', date: (m.TxDate || '').toString(), title: m.SupplierName, sup_id: m.SupplierID, supplier_links: Array.isArray(m.SupplierLinks) ? m.SupplierLinks : [], amount: m.Amount, memo: m.Memo, receipt: m.ReceiptPath, isPaid: m.IsPaid }))
+        ];
+        rawData.sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        applyRoleUI();
+        applyFilters();
+    }
+
+    function setTabFilter(tab) {
+        if(USER_ROLE === 'staff' && tab === 'mat') return;
+        currentTab = tab;
+        document.getElementById('btnFilterAll').className = 'tab-btn'; 
+        document.getElementById('btnFilterMat').className = 'tab-btn' + (USER_ROLE === 'staff' ? ' admin-only' : ''); 
+        document.getElementById('btnFilterExp').className = 'tab-btn';
+        
+        if (tab === 'all') document.getElementById('btnFilterAll').classList.add('active-all');
+        if (tab === 'mat') document.getElementById('btnFilterMat').classList.add('active-mat');
+        if (tab === 'exp') document.getElementById('btnFilterExp').classList.add('active-exp');
+        
+        applyFilters();
+    }
+
+    function getMonthDiff(startStr, endStr) {
+        let d1 = new Date(startStr + '-01');
+        let d2 = new Date(endStr + '-01');
+        let months = (d2.getFullYear() - d1.getFullYear()) * 12;
+        months -= d1.getMonth();
+        months += d2.getMonth();
+        return months <= 0 ? 1 : months + 1;
+    }
+
+    // [핵심 로직 분리] 차트는 전체, 리스트/원그래프는 검색어 기반
+    function applyFilters() {
+        const keyword = document.getElementById('searchInput').value.toLowerCase() || '';
+        const startM = document.getElementById('filterStartMonth').value; 
+        const endM = document.getElementById('filterEndMonth').value;
+
+        // --- A. 상단 트렌드 차트용 데이터 (검색어 무시, 전체 기간 유지) ---
+        let fullRoleData = rawData;
+        if (USER_ROLE === 'staff') { fullRoleData = fullRoleData.filter(d => d.type === 'exp'); }
+        
+        // [요구사항 2] 막대그래프는 항상 전체 흐름이 보이도록 fullRoleData 주입
+        renderTrendChart(fullRoleData);
+
+        // --- B. 하위 필터링 데이터 (기간, 검색어 모두 적용) ---
+        let searchedData = fullRoleData;
+        
+        if (startM) { searchedData = searchedData.filter(d => d.date.slice(0,7) >= startM); }
+        if (endM) { searchedData = searchedData.filter(d => d.date.slice(0,7) <= endM); }
+        if (keyword) {
+            searchedData = searchedData.filter(d => 
+                (d.title && d.title.toLowerCase().includes(keyword)) || 
+                (d.memo && d.memo.toLowerCase().includes(keyword))
+            );
+        }
+
+        // 타이틀 및 텍스트 교체
+        let titleText = "전체 기간 지출내역";
+        let donutText = "전체 기간";
+        if (startM && endM && startM === endM) {
+            const [y, m] = startM.split('-');
+            titleText = `${y}년 ${parseInt(m)}월 지출내역`;
+            donutText = `${y}년 ${parseInt(m)}월`;
+        } else if (startM || endM) {
+            const s = startM ? `${startM.split('-')[0]}년 ${parseInt(startM.split('-')[1])}월` : "과거";
+            const e = endM ? `${endM.split('-')[0]}년 ${parseInt(endM.split('-')[1])}월` : "현재";
+            titleText = `${s} ~ ${e} 지출내역`;
+            donutText = `검색 기간`;
+        }
+        
+        if (keyword) { titleText += ` ("${keyword}")`; donutText += ` 필터됨`; }
+        document.getElementById('listMainTitle').innerText = titleText;
+        document.getElementById('donutCardTitle').innerHTML = `<i class="fas fa-chart-pie me-2 text-warning"></i>지출 구조 심층 분석 (${donutText})`;
+
+        // --- C. 리스트 탭 전용 필터 적용 ---
+        let listData = searchedData;
+        if (currentTab !== 'all') { listData = listData.filter(d => d.type === currentTab); }
+        renderListHTML(listData);
+        
+        // 원그래프 월평균 계산 및 렌더링
+        let monthsCount = 1;
+        if (startM && endM) {
+            monthsCount = getMonthDiff(startM, endM);
+        } else if (searchedData.length > 0) {
+            const uniqueMonths = new Set(searchedData.map(d => d.date.slice(0,7)));
+            monthsCount = uniqueMonths.size;
+        }
+        renderDeepDiveCharts(searchedData, monthsCount, keyword); 
+    }
+
+    function renderListHTML(filtered) { 
+        const container = document.getElementById('unifiedListContainer');
+        container.innerHTML = filtered.map(item => {
+            const timeStr = formatDateTime(item.date);
+            const expenseIcon = item.type === 'exp' ? getExpenseCategoryIcon(item.title) : '';
+            let paidStatusHTML = '';
+            const spenderName = item.type === 'exp' ? String(item.member_name || '').trim() : '';
+            if (item.type === 'mat') {
+                if (item.isPaid) {
+                    paidStatusHTML = `<button class="btn btn-success btn-sm rounded-pill px-2 py-0 fw-bold shadow-sm" style="font-size:0.7rem; cursor:pointer; height:22px; line-height:1;" onclick="event.stopPropagation(); togglePaid(${item.id})">결제완료</button>`;
+                } else {
+                    paidStatusHTML = `<button class="btn btn-danger btn-sm rounded-pill px-2 py-0 fw-bold shadow-sm" style="font-size:0.7rem; cursor:pointer; height:22px; line-height:1;" onclick="event.stopPropagation(); togglePaid(${item.id})">미결제</button>`;
+                }
+            }
+
+            return `
+            <div class="list-item ${item.type}" onclick="editItem('${item.type}', ${item.id})">
+                ${item.receipt ? `<img src="${item.receipt}" class="list-thumb" onclick="event.stopPropagation(); openReceiptPreview('${String(item.receipt).replace(/'/g, "\\'")}')">` : `<div class="list-no-img"><i class="fas fa-image"></i></div>`}
+                <div class="flex-grow-1 text-truncate">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="badge ${item.type === 'exp' ? 'bg-primary' : 'bg-warning text-dark'} px-2 py-1" style="font-size:0.7rem;">${item.type === 'exp' ? '경비' : '매입'}</span>
+                        ${item.type === 'exp' && expenseIcon ? `<span class="fs-6" title="${item.title}">${expenseIcon}</span>` : ''}
+                        ${item.type === 'exp' && spenderName ? `<span class="text-secondary small fw-bold text-truncate">${spenderName}</span>` : ''}
+                        ${paidStatusHTML}
+                        ${item.receipt ? `<button class="btn btn-sm btn-outline-dark rounded-pill px-2 py-0 fw-bold" style="font-size:0.7rem; line-height:1.6;" onclick="event.stopPropagation(); openReceiptPreview('${String(item.receipt).replace(/'/g, "\\'")}')">영수증</button>` : ''}
+                    </div>
+                    <div class="fw-black text-dark fs-6 text-truncate lh-sm mb-1">${item.title}</div>
+                    <div class="d-flex align-items-center mt-1">
+                        <span class="text-dark fw-bolder" style="font-size: 1rem;">${timeStr}</span>
+                        <span class="text-secondary small ms-2 text-truncate" style="font-size: 0.8rem;">${item.memo || '내역없음'}</span>
+                    </div>
+                </div>
+                <div class="text-end ms-2 d-flex flex-column align-items-end justify-content-between h-100">
+                    <div class="fw-black text-dark fs-5 mb-2">${Math.round(item.amount).toLocaleString()}원</div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-secondary text-white p-2 d-flex align-items-center justify-content-center shadow-sm border-0 rounded-circle" style="width: 32px; height: 32px;" onclick="event.stopPropagation(); editItem('${item.type}', ${item.id})" title="수정"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-danger text-white p-2 d-flex align-items-center justify-content-center shadow-sm border-0 rounded-circle" style="width: 32px; height: 32px;" onclick="event.stopPropagation(); deleteItem('${item.type}', ${item.id})" title="삭제"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                </div>
+            </div>
+        `}).join('') || '<div class="text-center p-5 text-muted fw-bold bg-white rounded-4 shadow-sm border">지출 내역이 없습니다.</div>';
+    }
+
+    async function submitForm(e) {
+        e.preventDefault();
+
+        const mode = document.getElementById('currentMode').value;
+        const editId = document.getElementById('editId').value;
+        const amount = Number(document.getElementById('realAmount').value || 0);
+        const memo = document.getElementById('inputMemo').value.trim();
+        const date = document.getElementById('inputDate').value;
+        const receipt = document.getElementById('receiptFile').files[0];
+
+        if (!amount || amount <= 0) {
+            alert('금액을 입력해주세요.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('amount', amount);
+        formData.append('memo', memo);
+        formData.append('date', date);
+        if (receipt) formData.append('receipt', receipt);
+
+        let url = '';
+        if (mode === 'exp') {
+            formData.append('category', document.getElementById('inputCategory').value);
+            if (editId) formData.append('expense_id', editId);
+            url = getUrl('/api/ledger/expenses');
+        } else {
+            const supplierId = document.getElementById('inputSupplier').value;
+            if (!supplierId) {
+                alert('거래처를 선택해주세요.');
+                return;
+            }
+            const supplierEl = document.getElementById('inputSupplier');
+            const supplierRaw = supplierEl?.selectedOptions?.[0]?.textContent?.trim() || '';
+            formData.append('supplier_id', supplierId);
+            formData.append('supplier_links_raw', supplierRaw);
+            formData.append('tx_type', '청구');
+            formData.append('is_paid', document.getElementById('inputIsPaid').checked ? 'true' : 'false');
+            if (editId) formData.append('tx_id', editId);
+            url = getUrl('/api/ledger/transactions');
+        }
+
+        try {
+            const res = await fetch(url, { method: 'POST', body: formData });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(payload.detail || payload.msg || '저장에 실패했습니다.');
+            }
+            alert(editId ? '수정되었습니다.' : '저장되었습니다.');
+            cancelEdit(true);
+            await refreshData();
+        } catch (err) {
+            console.error(err);
+            alert(err.message || '저장 중 오류가 발생했습니다.');
+        }
+    }
+
+    async function togglePaid(id) {
+        try {
+            const res = await fetch(getUrl(`/api/ledger/transactions/${id}/toggle-paid`), { method: 'POST' });
+            if (!res.ok) throw new Error('결제 상태 변경에 실패했습니다.');
+            await refreshData();
+        } catch (err) {
+            alert(err.message || '결제 상태 변경 중 오류가 발생했습니다.');
+        }
+    }
+
+    async function deleteItem(type, id) {
+        if (!confirm('삭제하시겠습니까?')) return;
+        const url = type === 'exp' ? getUrl(`/api/ledger/expenses/${id}`) : getUrl(`/api/ledger/transactions/${id}`);
+        try {
+            const res = await fetch(url, { method: 'DELETE' });
+            if (!res.ok) throw new Error('삭제에 실패했습니다.');
+            await refreshData();
+        } catch (err) {
+            alert(err.message || '삭제 중 오류가 발생했습니다.');
+        }
+    }
+
+    async function deleteCurrentEdit() {
+        const editId = document.getElementById('editId').value;
+        const mode = document.getElementById('currentMode').value;
+        if (!editId || mode !== 'mat') return;
+        if (!confirm('현재 매입 거래를 삭제하시겠습니까?')) return;
+        await deleteItem('mat', editId);
+        cancelEdit();
+    }
+
+    // 막대그래프: 검색에 구애받지 않고 항상 전체(또는 권한별 전체) 렌더링
+    function renderTrendChart(fullData) {
+        const map = {};
+        fullData.forEach(d => {
+            const ym = d.date.slice(0, 7);
+            if(!map[ym]) map[ym] = { exp: 0, mat: 0 };
+            map[ym][d.type] += Number(d.amount);
+        });
+        
+        const keys = Object.keys(map).sort();
+        const minW = Math.max(800, keys.length * 60);
+        document.getElementById('chartInnerContainer').style.minWidth = minW + 'px';
+
+        let ma6Data = [], ma12Data = [];
+        keys.forEach((k, i) => {
+            let sum6 = 0, cnt6 = 0, sum12 = 0, cnt12 = 0;
+            for(let j=0; j<6; j++) { 
+                if(i-j >= 0) { 
+                    let val = USER_ROLE === 'admin' ? (map[keys[i-j]].mat + map[keys[i-j]].exp) : map[keys[i-j]].exp;
+                    sum6 += val; cnt6++; 
+                } 
+            }
+            for(let j=0; j<12; j++) { 
+                if(i-j >= 0) { 
+                    let val = USER_ROLE === 'admin' ? (map[keys[i-j]].mat + map[keys[i-j]].exp) : map[keys[i-j]].exp;
+                    sum12 += val; cnt12++; 
+                } 
+            }
+            ma6Data.push(sum6/cnt6);
+            ma12Data.push(sum12/cnt12);
+        });
+
+        let datasets = [];
+        if (USER_ROLE === 'admin') {
+            datasets = [
+                { type: 'line', label: '6개월 평균', data: ma6Data, borderColor: '#fa5252', borderWidth: 2, borderDash: [5,5], tension: 0.4 },
+                { type: 'line', label: '12개월 평균', data: ma12Data, borderColor: '#20c997', borderWidth: 2, tension: 0.4 },
+                { type: 'bar', label: '자재 매입', data: keys.map(k => map[k].mat), backgroundColor: '#fcc419', stacked: true, barPercentage: 0.8 },
+                { type: 'bar', label: '현장 경비', data: keys.map(k => map[k].exp), backgroundColor: '#339af0', stacked: true, barPercentage: 0.8 }
+            ];
+        } else {
+            datasets = [
+                { type: 'line', label: '6개월 평균(경비)', data: ma6Data, borderColor: '#fa5252', borderWidth: 2, borderDash: [5,5], tension: 0.4 },
+                { type: 'line', label: '12개월 평균(경비)', data: ma12Data, borderColor: '#20c997', borderWidth: 2, tension: 0.4 },
+                { type: 'bar', label: '현장 경비', data: keys.map(k => map[k].exp), backgroundColor: '#339af0', stacked: true, barPercentage: 0.8 }
+            ];
+        }
+
+        const ctx = document.getElementById('outflowChart').getContext('2d');
+        if(outflowChartInst) outflowChartInst.destroy();
+        outflowChartInst = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: keys.map(k => k.split('-')[1]+'월'), datasets: datasets },
+            options: { 
+                responsive: true, maintainAspectRatio: false, 
+                scales: { x: { stacked: true, grid: {display:false} }, y: { stacked: true, display:false } }, 
+                plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: {size: 11, weight:'bold'} } } },
+                onClick: (e, els) => {
+                    if(els.length > 0) {
+                        const clickedMonth = keys[els[0].index];
+                        document.getElementById('filterStartMonth').value = clickedMonth;
+                        document.getElementById('filterEndMonth').value = clickedMonth;
+                        applyFilters();
+                        // 닫혀있다면 열어주기
+                        if(document.getElementById('extendedFilters').style.maxHeight === '0px') {
+                            toggleAdvancedFilters();
+                        }
+                    }
+                }
+            }
+        });
+        
+        setTimeout(() => { document.getElementById('trendScroll').scrollLeft = 9999; }, 100);
+    }
+
+    function renderDeepDiveCharts(filteredData, monthsCount, keyword) {
+        let matTotal = 0, expTotal = 0;
+        let matMap = {}, expMap = {};
+
+        filteredData.forEach(d => {
+            if(d.type === 'mat') {
+                matTotal += Number(d.amount);
+                matMap[d.title] = (matMap[d.title] || 0) + Number(d.amount);
+            } else {
+                expTotal += Number(d.amount);
+                expMap[d.title] = (expMap[d.title] || 0) + Number(d.amount);
+            }
+        });
+
+        const matLabels = Object.keys(matMap);
+        const matData = Object.values(matMap);
+        const expLabels = Object.keys(expMap);
+        const expData = Object.values(expMap);
+
+        const distinctColors1 = ['#FF6B6B', '#339AF0', '#FCC419', '#20C997', '#845EF7', '#F06595', '#FF922B', '#51CF66', '#22B8CF', '#5C7CFA'];
+        const distinctColors2 = ['#845EF7', '#20C997', '#FF922B', '#339AF0', '#F06595', '#FCC419', '#5C7CFA', '#FF6B6B', '#51CF66', '#22B8CF'];
+        const grandTotal = matTotal + expTotal;
+
+        const drawDonut = (id, labels, dsData, colors, totalValue = null) => {
+            const canvas = document.getElementById(id);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (chartInsts[id]) chartInsts[id].destroy();
+
+            const total = dsData.reduce((a, b) => a + b, 0);
+            const hasData = total > 0;
+            const safeLabels = hasData ? labels : ['?? ??'];
+            const safeData = hasData ? dsData : [1];
+            const safeColors = hasData ? colors : ['#e9ecef'];
+            const tooltipLabel = (c) => hasData ? ` ${c.label}: ${c.parsed.toLocaleString()}` : ' ?? ??';
+            let chartOptions = {
+                responsive: true, maintainAspectRatio: false, cutout: '70%',
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: tooltipLabel } } }
+            };
+
+            if (totalValue !== null) {
+                let centerObj = { text: formatCenterTotal(totalValue) };
+                if (keyword && totalValue > 0) {
+                    centerObj.subText = '??? ' + formatCenterTotal(Math.round(totalValue / Math.max(1, monthsCount)));
+                }
+                chartOptions.plugins.centerText = centerObj;
+            }
+
+            donutChartMeta[id] = {
+                title: (canvas.closest('.donut-split-item, .col-12')?.querySelector('.badge')?.textContent || document.getElementById('donutCardTitle')?.textContent || '?? ?? ??').trim(),
+                labels: safeLabels,
+                data: safeData,
+                colors: safeColors,
+                centerText: chartOptions.plugins.centerText || null,
+                tooltipLabel,
+            };
+
+            chartInsts[id] = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels: safeLabels, datasets: [{ data: safeData, backgroundColor: safeColors, borderWidth: 0 }] },
+                options: chartOptions
+            });
+
+            canvas.classList.add('chart-zoom-trigger');
+            canvas.onclick = () => openDonutZoomModal(id);
+        };
+
+        if (USER_ROLE === 'admin') {
+            drawDonut('expTotalChartAdmin', ['자재 매입', '현장 경비'], [matTotal, expTotal], ['#fcc419', '#339af0'], grandTotal);
+            drawDonut('expMatChartAdmin', matLabels, matData, distinctColors1, matTotal);
+            drawDonut('expOpChartAdmin', expLabels, expData, distinctColors2, expTotal);
+        } else {
+            drawDonut('expOpChartStaff', expLabels, expData, distinctColors2, expTotal);
+        }
+    }
+
+    function fillFormForEdit(item) {
+        document.getElementById('editId').value = item.id;
+        document.getElementById('inputDate').value = (item.date || '').slice(0, 10);
+        document.getElementById('inputMemo').value = item.memo || '';
+        document.getElementById('realAmount').value = Number(item.amount || 0);
+        document.getElementById('displayAmount').value = Number(item.amount || 0).toLocaleString();
+        previewReceipt({ files: [] });
+
+        if (item.type === 'exp') {
+            setMode('exp');
+            const targetBtn = Array.from(document.querySelectorAll('#catGroupForm .quick-btn')).find(btn => btn.innerText.includes(item.title));
+            if (targetBtn) {
+                setQuickCat(targetBtn, item.title);
+            } else {
+                document.getElementById('inputCategory').value = item.title || '기타';
+            }
+        } else {
+            setMode('mat');
+            document.getElementById('inputSupplier').value = item.sup_id ? String(item.sup_id) : '';
+            document.getElementById('inputIsPaid').checked = !!item.isPaid;
+            updatePaidLabel(document.getElementById('inputIsPaid'));
+        }
+
+        document.getElementById('submitBtn').innerText = '수정 저장하기';
+        document.getElementById('deleteEditBtn').classList.toggle('d-none', item.type !== 'mat');
+        document.getElementById('cancelEditBtn').classList.remove('d-none');
+    }
+
+    function editItem(type, id) {
+        const item = rawData.find(x => x.type === type && Number(x.id) === Number(id));
+        if (!item) {
+            alert('수정할 데이터를 찾지 못했습니다.');
+            return;
+        }
+        fillFormForEdit(item);
+        snapToTop('formContainer');
+    }
+
+    function cancelEdit(preserveMode = false) {
+        const activeMode = document.getElementById('currentMode').value || 'exp';
+        document.getElementById('unifiedForm').reset();
+        document.getElementById('editId').value = '';
+        document.getElementById('realAmount').value = '';
+        document.getElementById('displayAmount').value = '';
+        document.getElementById('inputDate').valueAsDate = new Date();
+        document.getElementById('submitBtn').innerText = document.getElementById('currentMode').value === 'mat' ? '매입 청구 기록하기' : '경비 기록하기';
+        document.getElementById('deleteEditBtn').classList.add('d-none');
+        document.getElementById('cancelEditBtn').classList.add('d-none');
+        document.getElementById('inputSupplier').value = '';
+        document.getElementById('inputIsPaid').checked = true;
+        updatePaidLabel(document.getElementById('inputIsPaid'));
+        previewReceipt({ files: [] });
+        const firstBtn = document.querySelector('#catGroupForm .quick-btn');
+        if (firstBtn) {
+            setQuickCat(firstBtn, expenseCategories[0]?.id || '식대');
+        }
+        setMode(preserveMode ? activeMode : 'exp');
+    }
+
+    expenseCategories = [];
+
+    function normalizeExpenseCategoryPayload(row) {
+        return {
+            id: String(row?.CategoryName || row?.id || '').trim(),
+            icon: String(row?.Icon || row?.icon || '').trim(),
+            categoryId: row?.CategoryID || row?.categoryId || null,
+            isLocked: !!(row?.IsLocked || row?.isLocked),
+        };
+    }
+
+    function renderExpenseCategoryManager() {
+        const listEl = document.getElementById('categoryList');
+        if (!listEl) return;
+        if (!expenseCategories.length) {
+            listEl.innerHTML = '<div class="text-center text-secondary small py-3">등록된 항목이 없습니다.</div>';
+            return;
+        }
+        listEl.innerHTML = expenseCategories.map((cat) => `
+            <div class="d-flex justify-content-between align-items-center border rounded-3 px-3 py-2">
+                <div class="d-flex align-items-center gap-2 min-w-0">
+                    <span class="fw-bold">${cat.icon || '•'}</span>
+                    <span class="fw-bold text-truncate">${cat.id}</span>
+                </div>
+                <div class="d-flex gap-2">
+                    ${cat.isLocked ? `<span class="badge text-bg-secondary">고정</span>` : `<button type="button" class="btn btn-sm btn-outline-dark" onclick="editExpenseCategory(${cat.categoryId || 0})">수정</button><button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteExpenseCategory(${cat.categoryId || 0})">삭제</button>`}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function loadCategories() {
+        const rows = await safeFetchJSON(getUrl('/api/ledger/expense-categories'), []);
+        expenseCategories = Array.isArray(rows) ? rows.map(normalizeExpenseCategoryPayload).filter(cat => cat.id) : [];
+
+        const formGroup = document.getElementById('catGroupForm');
+        const filterGroup = document.getElementById('catGroupFilter');
+        if (!formGroup || !filterGroup) return;
+
+        formGroup.innerHTML = '';
+        filterGroup.innerHTML = '';
+
+        expenseCategories.forEach((cat, index) => {
+            const fBtn = document.createElement('div');
+            fBtn.className = `quick-btn ${index === 0 ? 'active' : ''}`;
+            fBtn.innerText = `${cat.icon || ''} ${cat.id}`.trim();
+            fBtn.onclick = function() { setQuickCat(this, cat.id); };
+            formGroup.appendChild(fBtn);
+
+            const sBtn = document.createElement('button');
+            sBtn.type = 'button';
+            sBtn.className = 'quick-search-btn';
+            sBtn.innerText = cat.id;
+            sBtn.onclick = () => setQuickSearch(cat.id);
+            filterGroup.appendChild(sBtn);
+        });
+
+        renderExpenseCategoryManager();
+
+        const currentCategory = String(document.getElementById('inputCategory').value || '').trim();
+        const targetBtn = Array.from(document.querySelectorAll('#catGroupForm .quick-btn')).find(btn => btn.innerText.includes(currentCategory));
+        const firstBtn = document.querySelector('#catGroupForm .quick-btn');
+        if (targetBtn) {
+            setQuickCat(targetBtn, currentCategory);
+        } else if (firstBtn && expenseCategories[0]) {
+            setQuickCat(firstBtn, expenseCategories[0].id);
+        }
+
+        if (rawData.length) {
+            applyFilters();
+        }
+    }
+
+    function openCategoryModal() {
+        resetExpenseCategoryForm();
+        renderExpenseCategoryManager();
+        hideExpenseCategoryIconPicker();
+        bsCategoryModal.show();
+    }
+
+    function resetExpenseCategoryForm() {
+        const form = document.getElementById('categoryForm');
+        if (form) form.reset();
+        const editEl = document.getElementById('catEditId');
+        if (editEl) editEl.value = '';
+        updateExpenseCategoryIconPreview(expenseCategoryIconOptions[0] || '');
+        hideExpenseCategoryIconPicker();
+    }
+
+    function editExpenseCategory(categoryId) {
+        const item = expenseCategories.find(cat => Number(cat.categoryId || 0) === Number(categoryId));
+        if (!item) return;
+        document.getElementById('catEditId').value = item.categoryId || '';
+        document.getElementById('catIcon').value = item.icon || '';
+        updateExpenseCategoryIconPreview(item.icon || '');
+        document.getElementById('catName').value = item.id || '';
+        hideExpenseCategoryIconPicker();
+    }
+
+    function initializeExpenseCategoryIconPicker() {
+        const inputEl = document.getElementById('catIcon');
+        const pickerEl = document.getElementById('catIconPicker');
+        const gridEl = document.getElementById('catIconPickerGrid');
+        if (!inputEl || !pickerEl || !gridEl) return;
+
+        gridEl.innerHTML = expenseCategoryIconOptions.map((icon) => `
+            <button type="button" class="icon-picker-btn" data-expense-icon="${icon}">${icon}</button>
+        `).join('');
+
+        gridEl.querySelectorAll('[data-expense-icon]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const selectedIcon = button.dataset.expenseIcon || '';
+                inputEl.value = selectedIcon;
+                updateExpenseCategoryIconPreview(selectedIcon);
+                gridEl.querySelectorAll('[data-expense-icon]').forEach((btn) => btn.classList.remove('active'));
+                button.classList.add('active');
+                hideExpenseCategoryIconPicker();
+            });
+        });
+
+        updateExpenseCategoryIconPreview(inputEl.value || expenseCategoryIconOptions[0] || '');
+
+        document.addEventListener('click', (event) => {
+            const triggerEl = document.getElementById('catIconTrigger');
+            if (!pickerEl.contains(event.target) && event.target !== triggerEl && !triggerEl?.contains(event.target)) {
+                hideExpenseCategoryIconPicker();
+            }
+        });
+    }
+
+    function updateExpenseCategoryIconPreview(icon) {
+        const inputEl = document.getElementById('catIcon');
+        const previewEl = document.getElementById('catIconPreview');
+        const selectedIcon = String(icon || expenseCategoryIconOptions[0] || '').trim();
+        if (inputEl) inputEl.value = selectedIcon;
+        if (previewEl) previewEl.textContent = selectedIcon || '•';
+
+        document.querySelectorAll('#catIconPickerGrid [data-expense-icon]').forEach((button) => {
+            button.classList.toggle('active', button.dataset.expenseIcon === selectedIcon);
+        });
+    }
+
+    function toggleExpenseCategoryIconPicker() {
+        const pickerEl = document.getElementById('catIconPicker');
+        if (!pickerEl) return;
+        pickerEl.classList.contains('d-none') ? showExpenseCategoryIconPicker() : hideExpenseCategoryIconPicker();
+    }
+
+    function showExpenseCategoryIconPicker() {
+        const pickerEl = document.getElementById('catIconPicker');
+        if (!pickerEl) return;
+        pickerEl.classList.remove('d-none');
+    }
+
+    function hideExpenseCategoryIconPicker() {
+        const pickerEl = document.getElementById('catIconPicker');
+        if (!pickerEl) return;
+        pickerEl.classList.add('d-none');
+    }
+
+    async function saveExpenseCategory(e) {
+        e.preventDefault();
+        const formData = new FormData(document.getElementById('categoryForm'));
+        const res = await fetch(getUrl('/api/ledger/expense-categories'), { method: 'POST', body: formData });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            alert(payload.detail || '지출 항목 저장에 실패했습니다.');
+            return;
+        }
+        await loadCategories();
+        resetExpenseCategoryForm();
+    }
+
+    async function deleteExpenseCategory(categoryId) {
+        if (!categoryId) return;
+        if (!confirm('이 지출 항목을 삭제하시겠습니까?')) return;
+        const res = await fetch(getUrl(`/api/ledger/expense-categories/${categoryId}`), { method: 'DELETE' });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            alert(payload.detail || '지출 항목 삭제에 실패했습니다.');
+            return;
+        }
+        await loadCategories();
+        resetExpenseCategoryForm();
+    }
+</script>
+</body>
+</html>

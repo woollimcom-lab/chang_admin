@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "features": {
+    "runtime_korean_guard": {
+      "goal": "Fix runtime Korean string corruption and fail verification when suspicious runtime strings appear again.",
+      "target_files": [
+        "static\\js\\view_ui.js",
+        "scripts\\verify_ui_strings.py"
+      ],
+      "reuse_symbols": [
+        "formatCompactManagerNames"
+      ],
+      "do_not_touch": [
+        "unrelated UI strings",
+        "backend"
+      ],
+      "acceptance": [
+        "runtime Korean strings render correctly in compact manager labels",
+        "broken runtime Korean literals fail automated verification"
+      ],
+      "verification_preset": "basic_visible"
+    },
+    "remote_restart_rollback": {
+      "goal": "If upload succeeded but restart or later verification fails, remote files must be restored before the next attempt.",
+      "target_files": [
+        "scripts\\night_agent_v2.ps1"
+      ],
+      "reuse_symbols": [
+        "Invoke-UploadChangedFiles",
+        "Restore-WorkspaceSnapshot",
+        "Invoke-RemoteRestartIfNeeded"
+      ],
+      "do_not_touch": [
+        "normal success path",
+        "task parsing"
+      ],
+      "acceptance": [
+        "restart failure triggers remote restore before the next attempt",
+        "browser verification failure still restores remote state",
+        "final failure does not leave partial remote changes behind"
+      ],
+      "verification_preset": "log_assertion"
+    },
+    "checklist_manual_override": {
+      "goal": "Protect manual checklist edits from later auto-fill overwrites and provide a reset path.",
+      "target_files": [
+        "static\\js\\view_ui.js"
+      ],
+      "reuse_symbols": [
+        "#inpChecklist",
+        "setChecklistManualOverride",
+        "hasChecklistManualOverride"
+      ],
+      "do_not_touch": [
+        "DB schema",
+        "other fields"
+      ],
+      "acceptance": [
+        "manual checklist edits are not overwritten by later auto-fill while override is enabled",
+        "there is a clear path to reset override back to automatic mode"
+      ],
+      "verification_preset": "manual_override_guard"
+    },
+    "success_feedback_verification": {
+      "goal": "Strengthen non-blocking success feedback tasks so blocking dialogs cannot false-pass verification.",
+      "target_files": [
+        "night_agent.v2.json"
+      ],
+      "reuse_symbols": [
+        "forbidDialogs",
+        "steps"
+      ],
+      "do_not_touch": [
+        "unrelated task entries"
+      ],
+      "acceptance": [
+        "success feedback tasks set forbidDialogs true",
+        "verification contains at least one real assertion beyond screenshot"
+      ],
+      "verification_preset": "contract_only"
+    },
+    "location_picker": {
+      "goal": "Improve the location picker UX within the existing structure.",
+      "target_files": [
+        "templates\\includes\\item_master.html",
+        "static\\js\\view_ui.js"
+      ],
+      "reuse_symbols": [
+        "#locPickerDisplay",
+        "#selLocation",
+        "#inpLocation",
+        "toggleLocation",
+        "syncLocationPickerLabel",
+        "openLocationPicker"
+      ],
+      "do_not_touch": [
+        "backend",
+        "DB schema",
+        "other templates"
+      ],
+      "acceptance": [
+        "#locPickerDisplay shows saved location options first",
+        "#inpLocation still allows direct input",
+        "existing select compatibility remains intact"
+      ],
+      "verification_preset": "autocomplete_direct_input"
+    }
+  }
+}

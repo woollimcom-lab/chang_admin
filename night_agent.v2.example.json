@@ -1,0 +1,180 @@
+{
+  "defaults": {
+    "sshTarget": "ubuntu@43.202.209.122",
+    "sshKeyPath": "d:\\dev\\changarum.pem",
+    "serviceName": "mysite",
+    "remotePath": "/home/ubuntu/mysite",
+    "model": "gpt-5.4-mini",
+    "modelReasoningEffort": "medium",
+    "codexTimeoutSeconds": 180,
+    "maxAttempts": 2,
+    "maxChangedFiles": 2,
+    "allowNewFiles": false,
+    "requirePlanJson": true
+  },
+  "tasks": [
+    {
+      "task_id": "view-api-save-site-info-success-001",
+      "goal": "Only the non-silent success branch in saveSiteInfo should stop using a blocking alert in static/js/view_api.js.",
+      "name": "view api saveSiteInfo success feedback cleanup",
+      "instruction": "Update only static/js/view_api.js. In saveSiteInfo(isSilent), replace only the non-silent success alert branch with the existing non-blocking success feedback flow. Keep isSilent behavior, saveIndicator behavior, error alerts, validation alerts, confirm dialogs, and unrelated reload logic unchanged.",
+      "paths": [
+        "static\\js\\view_api.js"
+      ],
+      "target_files": [
+        "static\\js\\view_api.js"
+      ],
+      "reuseSymbols": [
+        "saveSiteInfo",
+        "saveIndicator",
+        "triggerModalSuccessFeedback",
+        "showToast"
+      ],
+      "reuse_symbols": [
+        "saveSiteInfo",
+        "saveIndicator",
+        "triggerModalSuccessFeedback",
+        "showToast"
+      ],
+      "doNotTouch": [
+        "Korean UI strings",
+        "files outside target paths",
+        "other success flows in view_api.js",
+        "unrelated refresh or render logic"
+      ],
+      "do_not_touch": [
+        "Korean UI strings",
+        "files outside target paths",
+        "other success flows in view_api.js",
+        "unrelated refresh or render logic"
+      ],
+      "acceptance": [
+        "saveSiteInfo non-silent success no longer blocks with an extra OK click",
+        "saveSiteInfo silent branch still uses saveIndicator only",
+        "error and validation alerts still behave the same"
+      ],
+      "rollback_plan": "restore workspace snapshot and re-upload original target files if scope or verification fails",
+      "promotion_rule": "promote only after the same acceptance passes again on a similar task",
+      "url": "http://43.202.209.122/view/6075",
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": false,
+        "steps": [
+          { "action": "waitFor", "selector": "body", "timeout": 15000 },
+          { "action": "screenshot" }
+        ]
+      }
+    },
+    {
+      "task_id": "view-template-schedule-signature-success-001",
+      "goal": "Only extKey inline success alerts for schedule update and signature save should stop blocking in templates/view.html.",
+      "name": "view template schedule signature success cleanup",
+      "instruction": "Update only templates/view.html. Replace only the extKey inline success alerts in submitDateStatus and submitSignature with the existing non-blocking success feedback flow. Preserve Korean UI strings, validation alerts, failure alerts, confirm dialogs, and existing reload behavior.",
+      "paths": [
+        "templates\\view.html"
+      ],
+      "target_files": [
+        "templates\\view.html"
+      ],
+      "reuseSymbols": [
+        "submitDateStatus",
+        "submitSignature",
+        "queueModalSuccessFeedback",
+        "triggerModalSuccessFeedback"
+      ],
+      "reuse_symbols": [
+        "submitDateStatus",
+        "submitSignature",
+        "queueModalSuccessFeedback",
+        "triggerModalSuccessFeedback"
+      ],
+      "doNotTouch": [
+        "Korean UI strings",
+        "files outside target paths",
+        "saveRemark",
+        "completeWork",
+        "unrelated refresh or render logic"
+      ],
+      "do_not_touch": [
+        "Korean UI strings",
+        "files outside target paths",
+        "saveRemark",
+        "completeWork",
+        "unrelated refresh or render logic"
+      ],
+      "acceptance": [
+        "submitDateStatus success no longer blocks with an extra OK click",
+        "submitSignature success no longer blocks with an extra OK click",
+        "failure and validation alerts still behave the same"
+      ],
+      "rollback_plan": "restore workspace snapshot and re-upload original target files if scope or verification fails",
+      "promotion_rule": "promote only after the same acceptance passes again on a similar task",
+      "url": "http://43.202.209.122/view/6075",
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": false,
+        "steps": [
+          { "action": "waitFor", "selector": "body", "timeout": 15000 },
+          { "action": "screenshot" }
+        ]
+      }
+    },
+    {
+      "task_id": "view-template-remark-complete-success-001",
+      "goal": "Only extKey inline success alerts for remark save and work completion should stop blocking in templates/view.html.",
+      "name": "view template remark complete success cleanup",
+      "instruction": "Update only templates/view.html. Replace only the extKey inline success alerts in saveRemark and completeWork with the existing non-blocking success feedback flow. Preserve Korean UI strings, validation alerts, failure alerts, confirm dialogs, and unrelated reload logic.",
+      "paths": [
+        "templates\\view.html"
+      ],
+      "target_files": [
+        "templates\\view.html"
+      ],
+      "reuseSymbols": [
+        "saveRemark",
+        "completeWork",
+        "triggerModalSuccessFeedback",
+        "showToast"
+      ],
+      "reuse_symbols": [
+        "saveRemark",
+        "completeWork",
+        "triggerModalSuccessFeedback",
+        "showToast"
+      ],
+      "doNotTouch": [
+        "Korean UI strings",
+        "files outside target paths",
+        "submitDateStatus",
+        "submitSignature",
+        "unrelated refresh or render logic"
+      ],
+      "do_not_touch": [
+        "Korean UI strings",
+        "files outside target paths",
+        "submitDateStatus",
+        "submitSignature",
+        "unrelated refresh or render logic"
+      ],
+      "acceptance": [
+        "saveRemark success no longer blocks with an extra OK click",
+        "completeWork success no longer blocks with an extra OK click",
+        "failure and validation alerts still behave the same"
+      ],
+      "rollback_plan": "restore workspace snapshot and re-upload original target files if scope or verification fails",
+      "promotion_rule": "promote only after the same acceptance passes again on a similar task",
+      "url": "http://43.202.209.122/view/6075",
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": false,
+        "steps": [
+          { "action": "waitFor", "selector": "body", "timeout": 15000 },
+          { "action": "screenshot" }
+        ]
+      }
+    }
+  ]
+}

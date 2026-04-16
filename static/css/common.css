@@ -1,0 +1,156 @@
+/* ==========================================================================
+   [1] 통합 색상 시스템 (Global Color System)
+   모든 페이지는 이 변수를 참조하여 색상을 표시합니다.
+   ========================================================================== */
+:root {
+    /* --- [1] 메인 상태 (Main Status) --- */
+    --c-req:   #3f9478; /* 견적상담 (차분한 그레이블루) */
+    --c-visit: #10b918; /* 방문상담 (그린) */
+    --c-const: #246de4; /* 시공예정 (블루) */
+    --c-as:    #9036e4; /* AS요청   (퍼플) */
+    --c-done:  #333333; /* 작업완료 (다크 그레이) */
+
+    /* --- [2] 서브 상태 (Sub Status) --- */
+    --c-order: #10b981; /* 제품주문 (방문과 동일 계열) */
+    --c-recv:  #3b82f6; /* 제품수령 (시공과 동일 계열) */
+    --c-pay:   #ef4444; /* 입금확인 (레드 - 강조) */
+    --c-wait:  #f59e0b; /* 작업대기 (오렌지 - 주의) */
+    --c-hold:  #64748b; /* 작업보류 (그레이) */
+
+    /* --- [3] 기타 공통 --- */
+    --c-text:  #1f2937; /* 기본 텍스트 */
+    --c-bg:    #f3f4f6; /* 배경색 */
+}
+
+/* ==========================================================================
+   [2] 공통 유틸리티 클래스 (배경/텍스트/테두리)
+   ========================================================================== */
+
+/* 메인 상태 배경 */
+.bg-req   { background-color: var(--c-req); color: #fff; }
+.bg-visit { background-color: var(--c-visit); color: #fff; }
+.bg-const { background-color: var(--c-const); color: #fff; }
+.bg-as    { background-color: var(--c-as); color: #fff; }
+.bg-done  { background-color: var(--c-done); color: #fff; }
+
+/* 서브 상태 배경 (대시보드 등에서 사용) */
+.bg-order { background-color: var(--c-order); color: #fff; }
+.bg-recv  { background-color: var(--c-recv); color: #fff; }
+.bg-pay   { background-color: var(--c-pay); color: #fff; }
+.bg-wait  { background-color: var(--c-wait); color: #fff; }
+.bg-hold  { background-color: var(--c-hold); color: #fff; }
+
+/* 텍스트 컬러 */
+.text-req   { color: var(--c-req); }
+.text-visit { color: var(--c-visit); }
+.text-const { color: var(--c-const); }
+.text-as    { color: var(--c-as); }
+.text-done  { color: var(--c-done); }
+.text-pay   { color: var(--c-pay); }
+
+/* 캘린더 등에서 사용되는 범례 */
+.legend-dot.req   { background-color: var(--c-req); }
+.legend-dot.visit { background-color: var(--c-visit); }
+.legend-dot.const { background-color: var(--c-const); }
+.legend-dot.as    { background-color: var(--c-as); }
+.legend-dot.done  { background-color: var(--c-done); }
+
+
+/* 2. 범례(Legend) 공통 디자인 */
+.legend-box {
+    padding: 5px 5px 5px 10px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    font-size: 0.9rem;
+    border-top: 1px solid #eee;
+    background: #fff;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+/* 범례 및 배경 색상 유틸리티 클래스 */
+.bg-req   { background-color: var(--c-req); }
+.bg-visit { background-color: var(--c-visit); }
+.bg-const { background-color: var(--c-const); }
+.bg-as    { background-color: var(--c-as); }
+.bg-done  { background-color: var(--c-done); }
+.bg-hold  { background-color: var(--c-hold); }
+
+/* 3. 캘린더(FullCalendar) 공통 오버라이딩 */
+
+/* 날짜 숫자 스타일 (밑줄 제거, 색상 통일) */
+.fc .fc-daygrid-day-number {
+    text-decoration: none !important;
+    color: var(--c-text);
+    padding: 8px 8px 0 0; /* 여백 조정 */
+}
+
+/* 일요일 숫자 빨간색 처리 */
+.fc-day-sun .fc-daygrid-day-number {
+    color: var(--c-holiday) !important;
+}
+
+/* 공휴일 (배경색이 있는 이벤트) 텍스트 흰색 */
+.fc-event-holiday {
+    background-color: var(--c-holiday) !important;
+    border-color: var(--c-holiday) !important;
+    color: #fff !important;
+}
+
+/* 4. 상태 배지/버튼 공통 컬러 (변수 사용) */
+/* 대시보드나 View에서 쓰는 버튼들에도 변수 적용 가능 */
+.btn-visit { background-color: var(--c-visit); color: white; border-color: var(--c-visit); }
+.btn-const { background-color: var(--c-const); color: white; border-color: var(--c-const); }
+.btn-as    { background-color: var(--c-as);    color: white; border-color: var(--c-as); }
+
+/* 모달 스타일 (DB, 일반) */
+.modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+.modal-content { background-color: #fff; padding: 15px; border-radius: 16px; width: 95%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; max-height: 90vh; overflow-y: auto; }
+.modal-close { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #999; }
+.modal-input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; }
+
+/* Mobile inline select */
+.mobile-inline-select {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 100320;
+    width: min(320px, calc(100vw - 16px));
+    max-height: min(56vh, 360px);
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #dbe4ff;
+    border-radius: 14px;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+    padding: 6px;
+    box-sizing: border-box;
+}
+.mobile-inline-select__item {
+    width: 100%;
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    border: none;
+    border-radius: 10px;
+    background: #fff;
+    color: #1f2937;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+}
+.mobile-inline-select__item + .mobile-inline-select__item { margin-top: 4px; }
+.mobile-inline-select__item.is-selected {
+    background: #eef2ff;
+    color: #364fc7;
+}
+.mobile-inline-select__item:active { background: #e7f5ff; }
+.mobile-inline-select__scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 100319;
+    background: transparent;
+    border: none;
+}

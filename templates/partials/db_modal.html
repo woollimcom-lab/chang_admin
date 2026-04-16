@@ -1,0 +1,29 @@
+<div id="dbModal" class="db-modal">
+    <div class="db-modal-con">
+        <div class="db-header">
+            <h3 style="margin:0; font-size:1.1rem;"><i class="fas fa-building"></i> 아파트DB 불러오기</h3>
+            <span class="modal-close" onclick="closeDbModal()">&times;</span>
+        </div>
+        <div class="db-body">
+            <div class="d-flex gap-2 mb-2">
+                <select id="mdlComplex" class="form-select" onchange="mdlLoadPlans(this.value)">
+                    <option value="">1. 단지 선택</option>
+                </select>
+                <select id="mdlPlan" class="form-select" disabled onchange="mdlLoadWindows(this.value)">
+                    <option value="">2. 평형 선택</option>
+                </select>
+            </div>
+            
+            <form id="bulkForm" action="/api/apt/import-to-order" method="post">
+                <input type="hidden" name="order_id" value="{{ order.OrderID }}">
+                <div id="mdlListContainer" class="db-list-container">
+                    <div style="padding:40px; text-align:center; color:#999;">단지와 평형을 선택해주세요.</div>
+                </div>
+                <input type="hidden" name="window_ids" id="hidWindowIds">
+            </form>
+        </div>
+        <div class="db-footer">
+            <button type="button" class="btn btn-primary w-100 py-2" onclick="submitBulk()">선택 항목 저장</button>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,26 @@
+{
+  "defaults": {
+    "sshTarget": "ubuntu@43.202.209.122",
+    "sshKeyPath": "d:\\dev\\changarum.pem",
+    "serviceName": "mysite",
+    "maxAttempts": 3
+  },
+  "tasks": [
+    {
+      "name": "order list layout fix",
+      "instruction": "Update only templates/order_list.html for the requested UI change. Do not touch unrelated files.",
+      "paths": [
+        "templates\\order_list.html"
+      ],
+      "url": "http://43.202.209.122/view/6075"
+    },
+    {
+      "name": "main backend fix",
+      "instruction": "Update only main.py for the requested backend change. If verification fails, use the failure log and retry up to 3 attempts.",
+      "paths": [
+        "main.py"
+      ],
+      "url": "http://43.202.209.122/view/6075"
+    }
+  ]
+}

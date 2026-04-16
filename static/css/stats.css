@@ -1,0 +1,97 @@
+@charset "utf-8";
+
+/* [1] 기본 설정 및 Root 폰트 */
+:root {
+    --bg-color: #f4f6f9;
+    --text-main: #333;
+    --primary: #4e73df;
+}
+
+html { font-size: 16px; transition: font-size 0.3s ease; }
+@media (min-width: 1200px) { html { font-size: 14px; } }
+
+body {
+    background-color: var(--bg-color);
+    font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+    margin: 0; padding: 0; color: var(--text-main); font-size: 1rem;
+}
+.container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+
+/* [2] 헤더 */
+.header-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+.header-controls h2 { font-size: 1.5rem; color: #444; margin: 0; }
+.year-select { padding: 0.5rem 1.2rem; font-size: 1rem; border-radius: 8px; border: 1px solid #ddd; font-weight: bold; cursor: pointer; }
+.btn-reset, .btn-dash { padding: 0.4rem 0.8rem; font-size: 0.9rem; border: 1px solid #ccc; background: #fff; border-radius: 6px; cursor: pointer; margin-left: 10px; }
+.btn-reset:hover, .btn-dash:hover { background: #eee; }
+
+/* [3] 요약 카드 */
+.summary-card {
+    background: #fff; padding: 1.5rem; border-radius: 12px; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;
+}
+.sum-col { text-align: center; display: flex; flex-direction: column; justify-content: center; }
+.sum-col:first-child { border-right: 1px solid #eee; }
+.label { font-size: 0.9rem; color: #888; margin-bottom: 0.4rem; }
+.value { font-size: 1.6rem; font-weight: 800; color: #2c3e50; }
+.value.price { color: #4e73df; }
+.cat-dashboard { display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.8rem; flex-wrap: wrap; }
+.cat-item { font-size: 0.8rem; background: #f8f9fa; padding: 0.2rem 0.6rem; border-radius: 20px; color: #666; border: 1px solid #eee; }
+.cat-item b { color: #333; font-weight: 800; margin-left: 3px; }
+
+/* [4] 차트 */
+.chart-box { 
+    background: #fff; padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05); height: 350px; position: relative; overflow: hidden;
+}
+.chart-guide { position: absolute; top: 1rem; right: 1.5rem; font-size: 0.8rem; color: #aaa; z-index: 10; }
+.chart-scroll-wrap { width: 100%; height: 100%; position: relative; }
+.chart-min-width { width: 100%; height: 100%; }
+
+/* [5] 리스트 */
+.list-header { font-weight: bold; margin-bottom: 0.8rem; color: #555; display: flex; justify-content: space-between; align-items: flex-end; font-size: 1.1rem; }
+.current-filter { font-size: 0.9rem; color: #4e73df; background: #eef2fd; padding: 0.3rem 0.8rem; border-radius: 20px; display: none; font-weight: bold; border: 1px solid #d1d3e2; }
+.order-list { list-style: none; padding: 0; margin: 0; }
+.order-item { background: #fff; border-bottom: 1px solid #f1f1f1; padding: 1rem 1.2rem; cursor: pointer; transition: background 0.2s; font-size: 1rem; }
+.order-item:first-child { border-radius: 12px 12px 0 0; }
+.order-item:last-child { border-bottom: none; border-radius: 0 0 12px 12px; }
+.order-item:hover { background: #f8f9fa; }
+.no-data { padding: 2rem; text-align: center; background: #fff; color: #bbb; border-radius: 12px; font-size: 1rem; }
+
+/* 뱃지 */
+.badges-wrap { display: flex; gap: 4px; flex-wrap: wrap; }
+.badge { font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: bold; color: #fff; white-space: nowrap; }
+.badge-curtain { background: #3498db; }
+.badge-blind { background: #27ae60; }
+.badge-etc { background: #95a5a6; }
+.badge-none { background: #eee; color:#aaa; }
+
+/* 줌 버튼 */
+.zoom-controls { display: none; }
+.btn-circle { width: 50px; height: 50px; border-radius: 50%; border: 2px solid #fff; background-color: #000; color: #fff; font-size: 24px; cursor: pointer; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 8px rgba(0,0,0,0.3); z-index: 9999; }
+
+@media (max-width: 767px) {
+    .zoom-controls { display: flex; gap: 10px; position: fixed; bottom: 20px; left: 20px; }
+    .chart-scroll-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .chart-min-width { min-width: 700px; height: 300px; }
+    .chart-guide { right: auto; left: 1rem; }
+    .order-item { display: flex; flex-direction: column; position: relative; }
+    .col-date { font-size: 0.85rem; color: #999; margin-bottom: 2px; }
+    .col-badge { position: absolute; top: 1rem; right: 1.2rem; }
+    .col-name { font-size: 1.1rem; font-weight: bold; color: #333; margin-bottom: 2px; }
+    .col-addr { font-size: 0.95rem; color: #666; }
+    .col-phone { font-size: 0.95rem; color: #888; display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+    .col-price { position: absolute; bottom: 1rem; right: 1.2rem; font-size: 1.2rem; font-weight: 800; color: #333; }
+    .mobile-icon { display: inline-block; font-size: 0.8rem; color: #aaa; }
+}
+
+@media (min-width: 768px) {
+    .order-item { display: flex; align-items: center; gap: 15px; }
+    .col-date { width: 90px; color: #888; font-size: 0.9rem; }
+    .col-name { width: 140px; font-weight: bold; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .col-addr { flex: 1; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9rem; }
+    .col-badge { width: 140px; }
+    .col-phone { width: 120px; color: #555; text-align: center; font-size: 0.9rem; }
+    .col-price { width: 100px; text-align: right; font-weight: bold; color: #333; font-size: 1rem; }
+    .mobile-icon { display: none; }
+    .unit { font-size: 0.8rem; color: #888; font-weight: normal; }
+}

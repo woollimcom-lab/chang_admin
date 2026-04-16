@@ -1,0 +1,112 @@
+{
+  "defaults": {
+    "sshTarget": "ubuntu@43.202.209.122",
+    "sshKeyPath": "d:\\dev\\changarum.pem",
+    "serviceName": "mysite",
+    "remotePath": "/home/ubuntu/mysite",
+    "model": "gpt-5.4-mini",
+    "modelReasoningEffort": "medium",
+    "codexTimeoutSeconds": 180,
+    "maxAttempts": 2,
+    "maxChangedFiles": 2,
+    "allowNewFiles": false,
+    "requirePlanJson": true
+  },
+  "tasks": [
+    {
+      "task_id": "runtime-korean-guard-001",
+      "priority": "critical",
+      "goal": "Fix runtime Korean string corruption and keep runtime string verification active.",
+      "target_files": [
+        "static\\js\\view_ui.js",
+        "scripts\\verify_ui_strings.py"
+      ],
+      "reuse_symbols": [
+        "formatCompactManagerNames"
+      ],
+      "do_not_touch": [
+        "unrelated Korean UI strings",
+        "backend"
+      ],
+      "acceptance": [
+        "runtime Korean labels remain readable",
+        "runtime string corruption fails verification"
+      ],
+      "verification": {
+        "url": "http://43.202.209.122/view/6075",
+        "useAuth": true,
+        "forbidDialogs": false,
+        "steps": [
+          {
+            "action": "waitFor",
+            "selector": "body",
+            "timeout": 15000
+          },
+          {
+            "action": "screenshot"
+          }
+        ]
+      },
+      "rollback_plan": "restore workspace snapshot and remote target files if runtime string verification fails",
+      "promotion_rule": "promote after the same guard passes again on another runtime string bug"
+    },
+    {
+      "task_id": "remote-rollback-restart-failure-001",
+      "priority": "critical",
+      "goal": "Ensure remote restore runs after upload succeeded but restart or later verification fails.",
+      "target_files": [
+        "scripts\\night_agent_v2.ps1"
+      ],
+      "reuse_symbols": [
+        "Invoke-UploadChangedFiles",
+        "Restore-WorkspaceSnapshot",
+        "Invoke-RemoteRestartIfNeeded",
+        "Restore-RemoteStateIfPossible"
+      ],
+      "do_not_touch": [
+        "normal success path",
+        "task parsing"
+      ],
+      "acceptance": [
+        "restart failure restores remote state before next attempt",
+        "browser verification failure restores remote state",
+        "final failure restores remote target files"
+      ],
+      "verification": {
+        "url": "",
+        "useAuth": false,
+        "forbidDialogs": false,
+        "steps": []
+      },
+      "rollback_plan": "restore workspace snapshot and re-upload original target files before retry",
+      "promotion_rule": "promote after another deployment-related task proves the same rollback helper"
+    },
+    {
+      "task_id": "success-feedback-verification-001",
+      "priority": "high",
+      "goal": "Strengthen success-feedback tasks so blocking dialogs cannot false-pass verification.",
+      "target_files": [
+        "night_agent.v2.json"
+      ],
+      "reuse_symbols": [
+        "forbidDialogs",
+        "steps"
+      ],
+      "do_not_touch": [
+        "unrelated task entries"
+      ],
+      "acceptance": [
+        "success-feedback tasks set forbidDialogs true",
+        "verification contains at least one real assertion beyond screenshot"
+      ],
+      "verification": {
+        "url": "",
+        "useAuth": false,
+        "forbidDialogs": true,
+        "steps": []
+      },
+      "rollback_plan": "restore the queue file if canonical task documentation becomes inconsistent",
+      "promotion_rule": "promote after the same preset is reused in at least two real tasks"
+    }
+  ]
+}

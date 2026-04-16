@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="refresh" content="0; url=/login?next=/codex-chat">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Codex 브리지 연결</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: linear-gradient(180deg, #f8fafc 0%, #eefbf6 100%);
+      --card: #ffffff;
+      --line: #d7ebe0;
+      --text: #111827;
+      --muted: #6b7280;
+      --accent: #0f766e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    main {
+      width: min(100%, 640px);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 24px 60px rgba(15, 118, 110, 0.12);
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 1.5rem;
+      line-height: 1.2;
+    }
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .actions {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 16px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      text-decoration: none;
+      font-weight: 800;
+    }
+    .button.secondary {
+      background: #fff;
+      color: var(--accent);
+      border: 1px solid #99f6e4;
+    }
+    .meta {
+      margin-top: 18px;
+      font-size: 0.9rem;
+      color: var(--muted);
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Codex 브리지로 연결합니다.</h1>
+    <p>모바일에서 한 줄 명령을 보내고, 회사 PC의 로컬 Codex 실행 결과만 확인하는 화면입니다.</p>
+    <div class="actions">
+      <a class="button" href="/login?next=/codex-chat">로그인 후 열기</a>
+      <a class="button secondary" href="/codex-chat">현재 세션으로 열기</a>
+    </div>
+    <div class="meta">연결 대상: /codex-chat</div>
+  </main>
+</body>
+</html>

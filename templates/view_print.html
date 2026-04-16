@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    {% set print_doc_mode = 'estimate' %}
+    {% set print_doc_label = '견적서' %}
+    {% set print_doc_heading = '견 적 서' %}
+    {% if order.ProgressStatus == '작업완료' %}
+        {% set print_doc_mode = 'receipt' %}
+        {% set print_doc_label = '영수증' %}
+        {% set print_doc_heading = '영 수 증' %}
+    {% elif order.ClientSignature %}
+        {% set print_doc_mode = 'work-order' %}
+        {% set print_doc_label = '작업지시서' %}
+        {% set print_doc_heading = '작 업 지 시 서' %}
+    {% endif %}
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{{ print_doc_label }} :: {{ order.CustomerName }}</title>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
+    <style>
+        /* ==========================================================================
+           [1] PC 기본 스타일
+           ========================================================================== */
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Pretendard', sans-serif;
+            font-size: 12px; color: #333; margin: 0; padding: 40px; background: #fff; 
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        /* 유틸리티 */
+        .text-left { text-align: left !important; padding-left: 5px; }
+        .text-right { text-align: right !important; padding-right: 5px; }
+        .no-wrap { white-space: nowrap; overflow: hidden; }
+        .opt { color: #888; font-size: 10px; margin-left: 2px; }
+        .item-memo { display: block; color: #666; font-size: 10px; margin-top: 2px; }
+        .item-main-name { font-weight: 700; color: #222; line-height: 1.25; }
+        .item-sub-line { display: block; margin-top: 2px; font-size: 10px; line-height: 1.25; color: #555; }
+        .item-sub-label { display: inline-block; min-width: 24px; color: #888; font-weight: 700; }
+        .size-cell { overflow: hidden; }
+        .size-stack { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px; line-height: 1.2; max-width: 100%; }
+        .size-line { display: flex; align-items: center; justify-content: flex-end; gap: 6px; white-space: nowrap; max-width: 100%; }
+        .size-line--compact ~ .size-line { display: none; }
+        .size-stack--blind { display: flex; width: 100%; align-items: flex-end; white-space: normal; overflow: hidden; }
+        .size-stack--blind div { width: 100%; text-align: right; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: clip; }
+        .size-blind-count { display: block; margin-top: 6px; color: #888; font-size: 9px; text-align: right; white-space: nowrap; }
+        .qty-stack { display: inline-flex; flex-direction: row; align-items: baseline; justify-content: center; gap: 2px; line-height: 1.15; white-space: nowrap; }
+        .qty-value { font-weight: 400; color: #222; }
+        .qty-unit { font-size: 10px; color: #777; font-weight: 700; }
+        .qty-cell, .amount-cell { white-space: nowrap; }
+        .qty-cell { min-width: 68px; }
+        .amount-cell { min-width: 92px; }
+        .pc-view { display: flex; }
+        .mobile-view { display: none; }
+
+        /* 헤더 */
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+        .header h1 { margin: 0; font-size: 24px; letter-spacing: 5px; }
+        .header p { margin: 5px 0 0 0; font-size: 12px; color: #555; }
+
+        /* 정보 박스 */
+        .info-wrap { justify-content: space-between; margin-bottom: 20px; }
+        .info-box { border: 1px solid #ccc; padding: 15px; position: relative; }
+        .left-box { width: 38%; }
+        .right-box { width: 60%; }
+        
+        .box-title { 
+            text-align: center; background: #eee; font-weight: bold; padding: 5px; 
+            margin: -15px -15px 10px -15px; border-bottom: 1px solid #ccc;
+        }
+        .row { display: flex; margin-bottom: 5px; align-items: flex-start; }
+        .label { width: 60px; font-weight: bold; color: #555; flex-shrink: 0; }
+        .val { flex: 1; word-break: break-all; }
+
+        /* 도장 이미지 */
+        .stamp-img { 
+            position: absolute; right: 10px; bottom: 10px; width: 50px; 
+            opacity: 0.8; mix-blend-mode: multiply;
+        }
+        
+        /* 영수증 전용 확인 도장 */
+        .confirm-stamp {
+            position: absolute; right: 0; top: -5px; width: 40px; 
+            opacity: 0.8; mix-blend-mode: multiply;
+        }
+
+        /* 테이블 */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
+        th { 
+            background: #f9f9f9; border-top: 2px solid #333; border-bottom: 1px solid #999; 
+            padding: 8px 0; text-align: center; font-size: 11px;
+        }
+        td { 
+            border-bottom: 1px solid #ddd; padding: 8px 2px; text-align: center; 
+            vertical-align: middle; font-size: 11px; 
+        }
+        tr:last-child td { border-bottom: 1px solid #333; }
+
+        /* 비고 */
+        .remark-note {
+            margin-top: 20px; padding: 8px 10px; border: 1px dashed #ccc;
+            background: #fafafa; font-size: 11px; line-height: 1.4;
+        }
+        .remark { margin-top: 20px; border: 1px solid #ccc; padding: 10px; min-height: 50px; font-size: 11px; line-height: 1.4; }
+
+        /* 결제 영역 (2단) */
+        .total-area {
+            display: flex; flex-direction: row; justify-content: space-between; align-items: center;
+            padding: 12px 10px; border: 1px solid #ddd; background: #fdfdfd;
+            border-radius: 6px; gap: 0; margin-top: 20px;
+        }
+        .bill-details {
+            display: flex; flex-direction: column; width: 55%; 
+            border-right: 1px solid #ccc; padding-right: 10px;
+        }
+        .bill-row { display: flex; justify-content: space-between; gap: 0; margin: 0; font-size: 11px; }
+        .bill-row span:first-child { font-weight: bold; color: #555; }
+        .bill-row span:last-child { text-align: right; color: #333; }
+
+        .bill-total {
+            display: flex; flex-direction: column; align-items: flex-end;
+            width: 45%; border-top: none; padding-top: 0; padding-left: 10px; margin-top: 0; gap: 2px;
+        }
+        .bill-total .lbl { font-size: 12px; color: #555; margin-bottom: 2px; }
+        .bill-total .val { font-size: 17px; font-weight: bold; color: #333; line-height: 1.1; margin-bottom: 2px; } 
+        .bill-total .bal { font-size: 11px; font-weight: bold; color: #d63384; margin-top: 0; }
+        .customer-signature-box {
+            width: 100%; min-height: 76px; margin-top: 8px; padding: 6px;
+            border: 1px solid #ccc; border-radius: 4px; background: #fff;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+        }
+        .customer-signature-box img { display: block; max-width: 100%; max-height: 62px; object-fit: contain; }
+
+        /* 영수증 문구 */
+        .receipt-msg {
+            text-align: center; font-size: 14px; font-weight: bold; color: #007bff;
+            margin-top: 20px; padding: 10px; border: 2px solid #007bff; border-radius: 4px;
+            display: flex; justify-content: center; align-items: center; gap: 10px; position: relative;
+        }
+
+        /* 버튼 및 인쇄 */
+        .control-bar { text-align: center; margin: 30px 0; }
+        .btn { padding: 10px 20px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; font-size: 14px; }
+        .btn-print { background: #333; color: #fff; }
+        .btn-close { background: #eee; border: 1px solid #ccc; margin-left: 10px; }
+        .btn-action-group { display: none; }
+
+        @media print {
+            .control-bar, .btn-action-group { display: none !important; }
+            body { padding: 0; margin: 1cm; }
+            @page { size: A4; margin: 0; }
+        }
+
+        /* ==========================================================================
+           [2] 모바일 최적화
+           ========================================================================== */
+        @media screen and (max-width: 768px) {
+            body { padding: 15px; padding-bottom: 100px; font-size: 11px; } 
+            .pc-view { display: none !important; }
+            .mobile-view { display: block !important; }
+            
+            .header { margin-bottom: 15px; padding-bottom: 8px; }
+            .header h1 { font-size: 20px; }
+            .header p { font-size: 11px; }
+
+            .mobile-info-container {
+                display: flex; flex-direction: column; gap: 12px; 
+                border: 1px solid #ddd; background: #fafafa; padding: 12px; margin-bottom: 15px;
+            }
+            .mob-section h3 { 
+                font-size: 13px; border-bottom: 1px solid #ccc; padding: 4px 2px; margin: 10px 0 6px 0; background:#fff;
+            }
+            .mob-text { margin: 2px 0; font-size: 11px; line-height: 1; color: #444; }
+
+            th { font-size: 10px; padding: 5px 0; letter-spacing: -0.5px; }
+            td { font-size: 10px; padding: 5px 0; }
+            .opt { font-size: 9px; }
+            .item-sub-line, .size-label, .qty-unit { font-size: 9px; }
+            .qty-cell, .amount-cell { white-space: nowrap; }
+            .size-cell { overflow: hidden; }
+            .qty-cell { min-width: 62px; font-size: 9px; }
+            .amount-cell { min-width: 84px; font-size: 9px; }
+            .amount-cell { font-weight: 700; }
+            .size-stack, .size-stack--blind, .size-stack--blind div, .size-line { font-size: 9px; }
+            
+            .btn-action-group {
+                display: block; position: fixed; bottom: 0; left: 0; width: 100%;
+                padding: 10px; background: #fff; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 999;
+            }
+            .btn-full-blue {
+                width: 100%; background-color: #007bff; color: #fff; border: none;
+                padding: 12px 0; font-size: 14px; font-weight: bold; border-radius: 6px;
+                display: flex; align-items: center; justify-content: center; gap: 6px;
+            }
+        }
+        @media screen and (max-width: 560px) {
+            .size-stack, .size-stack--blind, .size-stack--blind div, .size-line { font-size: 8px; }
+            .size-blind-count { font-size: 8px; }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body data-print-doc-mode="{{ print_doc_mode }}">
+
+    <div class="header">
+        <h1>{{ print_doc_heading }}</h1>
+        <p>작성일: {{ today.strftime('%Y.%m.%d') }}</p>
+    </div>
+
+    <div class="info-wrap pc-view">
+        <div class="info-box left-box">
+            <div class="box-title">공급받는자</div>
+            <div class="row"><span class="label">성 명</span> <span class="val">{{ order.CustomerName }} 귀하</span></div>
+            <div class="row"><span class="label">연락처</span> <span class="val">{{ order.PhoneNumber | format_phone }}</span></div>
+            <div class="row"><span class="label">주 소</span> <span class="val">{{ order.Address }}</span></div>
+            <div class="row">
+                <span class="label">시공일</span> 
+                <span class="val">{{ order.ConstructionDate.strftime('%Y-%m-%d') if order.ConstructionDate else '' }}</span>
+            </div>
+        </div>
+        <div class="info-box right-box">
+             <div class="box-title">공급자</div>
+             <div class="row"><span class="label">등록번호</span> <span class="val">{{ company.BizNum or '' }}</span></div>
+             <div class="row"><span class="label">상 호</span> <span class="val">{{ company.CompanyName }} (대표:{{ company.CeoName or '' }})</span></div>
+             <div class="row"><span class="label">주 소</span> <span class="val">{{ company.CompanyAddress or '' }}</span></div>
+             <div class="row"><span class="label">연락처</span> <span class="val">{{ company.CompanyPhone or '' }}</span></div>
+             <div class="row"><span class="label">계좌번호</span> <span class="val">{{ company.BankInfo or '' }}</span></div>
+             
+             {% if company.SealPath %}
+                <img src="{{ company.SealPath }}" alt="인" class="stamp-img">
+             {% else %}
+                <img src="/static/img/dojang.png" alt="인" class="stamp-img" onerror="this.style.display='none'">
+             {% endif %}
+        </div>
+    </div>
+
+    <div class="mobile-view mobile-info-container">
+        <div class="mob-section">
+            <h3>공급받는자</h3>
+            <p class="mob-text"><strong>{{ order.CustomerName }}</strong> 귀하 ({{ order.PhoneNumber | format_phone }})</p>
+            <p class="mob-text">{{ order.Address }}</p>
+            <p class="mob-text" style="color:#007bff; font-weight:bold;">
+                시공일: {{ order.ConstructionDate.strftime('%Y-%m-%d') if order.ConstructionDate else '' }}
+            </p>
+        </div>
+        <div class="mob-section" style="position:relative;">
+            <h3>공급자</h3>
+            <p class="mob-text">{{ company.CompanyName }} ({{ company.BizNum or '' }})</p>
+            <p class="mob-text">{{ company.CompanyAddress or '' }}</p>
+            <p class="mob-text">문의: {{ company.CompanyPhone or '' }}</p>
+            <p class="mob-text">계좌: {{ company.BankInfo or '' }}</p>
+            
+            {% if company.SealPath %}
+                <img src="{{ company.SealPath }}" alt="인" class="stamp-img" style="bottom:0; right:0; width:40px;">
+            {% else %}
+                <img src="/static/img/dojang.png" alt="인" class="stamp-img" style="bottom:0; right:0; width:40px;" onerror="this.style.display='none'">
+            {% endif %}
+        </div>
+    </div>
+
+    <table>
+        <colgroup>
+            <col style="width:9%"> <col style="width:9%"> <col style="width:28%"> 
+            <col style="width:23%"> <col style="width:12%"> <!--col style="width:12%"--> <col style="width:19%">
+        </colgroup>
+        <thead>
+            <tr>
+                <th>위치</th><th>구분</th><th>제품/칼라/옵션/비고</th><th>사이즈</th><th>수량</th><!--th>단가</th--><th>금액</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set ns = namespace(grand_total=0) %}
+            
+            {% if items %}
+                {% for item in items %}
+                    {% set qty = safe_num(item.Quantity) %}
+                    {% set price = safe_num(item.UnitPrice) %}
+                    
+                    {% set row_total = (item.LineTotal | float) if item.LineTotal else (qty * price) %}
+                    {% set ns.grand_total = ns.grand_total + row_total %}
+
+                    {% set has_size = safe_num(item.Width) > 0 and safe_num(item.Height) > 0 %}
+                    {% set is_curtain = item.Category == "커튼" %}
+                    {% set is_blind = item.Category == "블라인드" %}
+                    {% set qty_display = "{:g}".format(qty) %}
+                    {% set qty_unit = "개" %}
+                    {% if is_curtain %}
+                        {% set qty_display = "{:.0f}".format(qty) %}
+                        {% set qty_unit = "폭" %}
+                    {% elif is_blind %}
+                        {% set qty_display = "{:.1f}".format((((qty * 10) | round(0, 'ceil')) / 10)) %}
+                        {% set qty_unit = "㎡" %}
+                    {% elif has_size %}
+                        {% set qty_unit = "㎡" %}
+                    {% endif %}
+                    {% set color_text = item.cate2 or "" %}
+                    {% set opt_text = item.cate3 or "" %}
+                    {% if item.Category == "블라인드" and "평식" in opt_text %}
+                        {% set opt_text = opt_text.replace("평식", "연창") %}
+                    {% endif %}
+                    {% set opt_text = opt_text.replace("(", "").replace(")", "") %}
+                <tr>
+                    <td>{{ item.Location }}</td>
+                    <td>{{ item.Category1 or item.Category }}</td>
+                    <td class="text-left">
+                        <div class="item-main-name">{{ item.cate1 or "" }}</div>
+                        {% if color_text %}
+                            <span class="item-sub-line"><span class="item-sub-label">칼라</span>{{ color_text }}</span>
+                        {% endif %}
+                        {% if opt_text %}
+                            <span class="item-sub-line"><span class="item-sub-label">옵션</span>{{ opt_text }}</span>
+                        {% endif %}
+                        {% if item.cate4 %}
+                            <span class='item-memo'>※ {{ item.cate4 }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="no-wrap size-cell">
+                        <div class="size-stack">
+                        {% if item.Category == "블라인드" and item.BlindSize %}
+                            <div class="size-stack--blind">{{ item.BlindSize | replace(',', '<br>') | replace('\n', '<br>') | safe }}</div>
+                            {% if safe_num(item.BlindCount) > 1 %}
+                                <span class="size-blind-count">({{ item.BlindCount }}창)</span>
+                            {% endif %}
+                        {% else %}
+                            {% if has_size %}
+                                <div class="size-line size-line--compact"><strong>{{ "{:g}".format(safe_num(item.Width)) }} x {{ "{:g}".format(safe_num(item.Height)) }}</strong></div>
+                            {% endif %}
+                        {% endif %}
+                        </div>
+                    </td>
+                    <td class="qty-cell"><div class="qty-stack"><div class="qty-value">{{ qty_display }}</div><div class="qty-unit">{{ qty_unit }}</div></div></td>
+                    <!--td class="text-right">{{ price | format_comma }}</td-->
+                    <td class="text-right amount-cell" style="font-weight:bold;">{{ row_total | format_comma }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="7" style="padding:20px;">등록된 품목이 없습니다.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+
+    <div class="remark-note">?쒓났? 二쇰Ц ??5~7???뚯슂?⑸땲??</div>
+
+    <div class="remark">
+        <div style="font-weight:bold; border-bottom:1px dashed #ddd; margin-bottom:5px; padding-bottom:3px;">📝 비고 / 요청사항</div>
+        {{ (order.Memo or "") | replace('\n', '<br>') | safe }}
+    </div>
+
+    {% set base_total = ns.grand_total | float %}
+    {% set discount = safe_num(order.DiscountAmount) | float %}
+    {% set supply_price = base_total - discount %}
+    {% set vat_amount = 0 %}
+    {% set vat_text = "별도" %}
+    
+    {% if order.IsVatIncluded == 'Y' %}
+        {% set vat_amount = (supply_price * 0.1) | round %}
+        {% set vat_text = vat_amount | format_comma ~ " 원" %}
+    {% endif %}
+
+    {% set final_total = supply_price + vat_amount %}
+    {% set deposit_amt = safe_num(order.DepositAmount) | float %}
+    {% set balance = final_total - deposit_amt %}
+
+    <div class="total-area">
+        <div class="bill-details">
+            <div class="bill-row"><span>총 합계</span> <span>{{ base_total | format_comma }} 원</span></div>
+            <div class="bill-row"><span>할인</span> <span>- {{ discount | format_comma }} 원</span></div>
+            <div class="bill-row"><span>공급가액</span> <span>{{ supply_price | format_comma }} 원</span></div>
+            <div class="bill-row"><span>부가세</span> <span>{{ vat_text }}</span></div>
+            <div class="bill-row"><span>선금</span> <span style="color:#007bff;">{{ deposit_amt | format_comma }} 원</span></div>
+        </div>
+        <div class="bill-total">
+            <div class="customer-signature-box" data-customer-signature-box>
+                {% if order.ClientSignature %}
+                    <img src="{{ order.ClientSignature }}" alt="customer-signature">
+                {% endif %}
+            </div>
+            <div class="lbl">최종 결제 금액</div>
+            <div class="val">{{ final_total | format_comma }} 원</div>
+            
+            {% if order.PaymentStatus == '입금완료' %}
+                <div class="bal" style="color:#28a745;">(완납)</div>
+            {% else %}
+                <div class="bal">(잔금: {{ balance | format_comma }} 원)</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if order.PaymentStatus == '입금완료' %}
+    <div class="receipt-msg">
+        <span>위 금액을 정히 영수하였습니다.</span>
+        <div style="margin-left:20px; font-weight:normal; font-size:12px; color:#333; position:relative; padding-right:50px;">
+            <span style="font-weight:bold;">입금확인 : {{ company.CompanyName }} (인)</span>
+            {% if company.SealPath %}
+                <img src="{{ company.SealPath }}" class="confirm-stamp">
+            {% else %}
+                <img src="/static/img/dojang.png" class="confirm-stamp" onerror="this.style.display='none'">
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="control-bar pc-view">
+        <button onclick="window.print()" class="btn btn-print">🖨️ 인쇄하기</button>
+        <button onclick="window.close()" class="btn btn-close">닫기</button>
+    </div>
+
+    <div class="mobile-view btn-action-group" id="mobileActionBtn">
+        <button onclick="saveAndSendSms()" class="btn-full-blue">
+            💾 이미지 저장 후 문자 발송
+        </button>
+    </div>
+
+    <script>
+    var isImageSaved = false;
+    
+    function saveAndSendSms() {
+        var btn = document.querySelector('.btn-full-blue');
+        var btnGroup = document.getElementById('mobileActionBtn');
+
+        if (isImageSaved) {
+            if(confirm('문자 메시지 앱을 여시겠습니까?')) {
+                sendSmsLink();
+            }
+            return;
+        }
+
+        btn.innerHTML = "⏳ 이미지 생성 중...";
+        btn.disabled = true;
+        btnGroup.style.opacity = '0';
+        window.scrollTo(0, 0);
+
+        setTimeout(function() {
+            html2canvas(document.body, {
+                scale: 2, 
+                backgroundColor: "#ffffff",
+                windowWidth: document.body.scrollWidth,
+                windowHeight: document.body.scrollHeight,
+                useCORS: true,
+                ignoreElements: (element) => element.id === 'mobileActionBtn' 
+            }).then(function(canvas) {
+                canvas.toBlob(function(blob) {
+                    var link = document.createElement('a');
+                    var cleanName = "{{ order.CustomerName | replace(' ', '') }}";
+                    var docType = "{{ print_doc_label }}";
+                    var fileName = docType + '_' + cleanName + '.jpg';
+                    var url = URL.createObjectURL(blob);
+                    
+                    link.download = fileName;
+                    link.href = url;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+
+                    // 버튼 복구 및 상태 변경
+                    btnGroup.style.opacity = '1';
+                    btn.disabled = false;
+                    isImageSaved = true;
+                    btn.innerHTML = "📩 저장 완료! 여기를 눌러 문자 발송";
+                    btn.style.backgroundColor = "#28a745"; 
+
+                    alert("이미지 다운로드가 시작되었습니다.\n\n상단/하단에 '파일 다운로드' 경고가 뜨면 [유지] 또는 [다운로드]를 꼭 눌러주세요.\n\n그 후, 바뀐 녹색 버튼을 누르면 문자가 발송됩니다.");
+                }, 'image/jpeg', 0.95);
+
+            }).catch(function(err) {
+                alert('오류 발생: ' + err);
+                btnGroup.style.opacity = '1';
+                btn.disabled = false;
+                btn.innerHTML = "💾 이미지 저장 후 문자 발송"; 
+            });
+        }, 300);
+    }
+
+    function sendSmsLink() {
+        var targetNumber = "{{ order.PhoneNumber | replace('-', '') }}";
+        var docType = "{{ print_doc_label }}";
+        var msg = "[{{ company.CompanyName }} " + docType + "] 요청하신 문서 이미지입니다. 확인 부탁드립니다.";
+        
+        var userAgent = navigator.userAgent.toLowerCase();
+        var url = "";
+        if (userAgent.indexOf("iphone") > -1 || userAgent.indexOf("ipad") > -1) {
+            url = "sms:" + targetNumber + "&body=" + encodeURIComponent(msg);
+        } else {
+            url = "sms:" + targetNumber + "?body=" + encodeURIComponent(msg);
+        }
+        
+        location.href = url;
+    }
+    </script>
+</body>
+</html>

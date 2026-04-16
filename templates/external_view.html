@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>시공 일정 :: {{ member.Name }}</title>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css" />
+    <link rel="stylesheet" href="/static/css/common.css?v=2">
+    <style>
+    body { background: #f0f2f5; font-family: 'Pretendard', sans-serif; margin: 0; padding: 15px; color:#333; overflow-x: hidden; }
+    
+    /* 헤더 스타일 */
+    .header { margin-bottom: 15px; display:flex; justify-content:space-between; align-items:center; }
+    .header h2 { margin: 0; font-size: 1.3rem; color: #333; }
+    .btn-calendar { background: #fff; border: 1px solid #ddd; padding: 6px 10px; border-radius: 6px; cursor: pointer; color: #4361ee; font-weight: bold; display: flex; align-items: center; gap: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); font-size: 0.85rem; }
+    
+    /* 리스트 컨테이너 */
+    .list-container { display: flex; flex-direction: column; gap: 15px; }
+    
+    /* [수정] 스와이프 래퍼 & 배경 스타일 (갤럭시 스타일) */
+    .swipe-wrapper { 
+        position: relative; 
+        overflow: hidden; 
+        border-radius: 12px; 
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
+        background: #fff; /* 카드가 투명해질 때 뒤에 보일 기본 배경 */
+    }
+    
+    .swipe-bg { 
+        position: absolute; 
+        top: 0; bottom: 0; 
+        width: 100%; 
+        display: flex; 
+        align-items: center; 
+        padding: 0 25px; 
+        font-weight: bold; 
+        font-size: 1.1rem; 
+        color: white; 
+        z-index: 1; /* 카드 뒤 */
+        opacity: 0; /* 기본적으로 숨김 */
+        transition: opacity 0.1s;
+    }
+    
+    .bg-call { background: #007bff; justify-content: flex-start; left: 0; } /* 갤럭시 파란색 */
+    .bg-sms  { background: #fe7e14; justify-content: flex-end; right: 0; }  /* 갤럭시 주황색 */
+    
+    /* [수정] 카드 본문 (움직이는 요소) */
+    .card { 
+        position: relative; 
+        background: #fff; 
+        padding: 0; 
+        z-index: 10; 
+        cursor: pointer;
+        border-bottom: 1px solid #f1f3f5;
+        /* 드래그 중에는 transition을 제거하고, 놓았을 때만 적용 */
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease-out;
+    }
+
+    /* 1. 상단 헤더 */
+    .c-header {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        display: flex; justify-content: space-between; align-items: center;
+        background: #fff;
+    }
+    .date-badge-group { display: flex; align-items: center; gap: 6px; }
+    .date-box { 
+        background: #ced4da; color: #333; 
+        padding: 4px 8px; border-radius: 4px; 
+        font-weight: 800; font-size: 1rem; letter-spacing: -0.5px;
+    }
+    .time-box {
+        background: #e7f5ff; color: #1c7ed6;
+        padding: 4px 6px; border-radius: 4px; 
+        font-weight: bold; font-size: 0.9rem;
+    }
+    .status-area { display: flex; gap: 3px; }
+
+    /* 2. 본문 영역 */
+    .c-body { padding: 15px; }
+    
+    .info-row { 
+        margin-bottom: 8px; 
+        line-height: 1.3;
+        display: flex;             
+        justify-content: space-between; 
+        align-items: flex-start;   
+        gap: 10px;                 
+    }
+    .c-name-wrap { display: flex; align-items: center; flex-shrink: 0; } 
+    .c-name { font-size: 1.1rem; font-weight: 800; color: #333; margin-right: 6px; }
+    
+    .c-addr { 
+        font-size: 0.9rem; 
+        color: #666; 
+        text-align: right;        
+        word-break: keep-all;     
+        margin-left: auto;        
+    }
+    
+    .item-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+    .item-tag { padding: 3px 8px; background: #fff; color: #495057; border: 1px solid #dee2e6; border-radius: 4px; font-size: 0.85rem; font-weight: bold; }
+
+    .manager-row { display: none !important; }
+
+    .price-row { text-align: right; font-size: 1.1rem; font-weight: 800; color: #d63384; margin-top: -5px; margin-bottom: 10px; }
+
+    .block-group { display: flex; flex-direction: column; gap: 6px; }
+    
+    .info-block { 
+        padding: 10px; 
+        border-radius: 6px; 
+        font-size: 0.9rem; 
+        display: flex; 
+        align-items: center; 
+        gap: 8px; 
+        line-height: 1.4;
+        overflow: hidden; 
+    }
+    
+    .info-block div {
+        white-space: nowrap;      
+        overflow: hidden;         
+        text-overflow: ellipsis;  
+        flex: 1;                  
+    }
+    
+    .ib-memo { background: #fff9db; color: #e67700; border: 1px solid #ffec99; }
+    .ib-site { background: #e6fcf5; color: #0ca678; border: 1px solid #96f2d7; }
+    .ib-history { background: #f1f3f5; color: #495057; border: 1px solid #dee2e6; cursor: pointer; flex-direction: column; gap:0; padding: 0; align-items: stretch; } 
+
+    .h-header { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 10px; box-sizing: border-box; }
+    .h-latest { display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; }
+    .h-count { background: #adb5bd; color: white; font-size: 0.75rem; padding: 2px 6px; border-radius: 10px; font-weight: bold; margin-left: 10px; flex-shrink: 0; }
+    
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; color: #fff; font-weight: bold; }
+    
+    /* FullCalendar 오버라이딩 */
+    .bg-req   .fc-daygrid-event-dot { border-color: var(--c-req) !important; }
+    .bg-visit .fc-daygrid-event-dot { border-color: var(--c-visit) !important; }
+    .bg-const .fc-daygrid-event-dot { border-color: var(--c-const) !important; }
+    .bg-as    .fc-daygrid-event-dot { border-color: var(--c-as) !important; }
+    .bg-done  .fc-daygrid-event-dot { border-color: var(--c-done) !important; }
+
+    .fc-event.bg-req   { background-color: var(--c-req) !important; border-color: var(--c-req) !important; }
+    .fc-event.bg-visit { background-color: var(--c-visit) !important; border-color: var(--c-visit) !important; }
+    .fc-event.bg-const { background-color: var(--c-const) !important; border-color: var(--c-const) !important; }
+    .fc-event.bg-as    { background-color: var(--c-as) !important; border-color: var(--c-as) !important; }
+    .fc-event.bg-done  { background-color: var(--c-done) !important; border-color: var(--c-done) !important; }
+
+    .fc-event.bg-req, .fc-event.bg-visit, .fc-event.bg-const, .fc-event.bg-as, .fc-event.bg-done {
+        color: #fff !important;
+    }
+
+    .h-full { display: none; border-top: 1px solid #dee2e6; padding: 0; background: #fff; width: 100%; border-radius: 0 0 6px 6px; }
+    .h-row { display: flex; border-bottom: 1px solid #f1f3f5; font-size: 0.85rem; color: #555; }
+    .h-row:last-child { border-bottom: none; }
+    .h-date { flex-shrink: 0; width: 85px; padding: 8px 10px; background: #f8f9fa; color: #868e96; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; border-right: 1px solid #f1f3f5; }
+    .h-txt { padding: 8px 10px; line-height: 1.4; word-break: break-all; flex: 1; }
+
+    /* 뱃지 컬러 매핑 */
+    .bg-req   { background-color: var(--c-req); }   
+    .bg-visit { background-color: var(--c-visit); } 
+    .bg-const { background-color: var(--c-const); } 
+    .bg-as    { background-color: var(--c-as); }    
+    .bg-done  { background-color: var(--c-done); }  
+    .bg-pay   { background-color: var(--c-pay); }   
+    .bg-wait  { background-color: var(--c-wait); }  
+
+/* [수정] 서브 상태 뱃지 (Flexbox로 중앙 정렬) */
+    .s-bdg {
+        display: inline-flex;       /* inline-block에서 변경: 내부 요소를 flex로 제어 */
+        align-items: center;        /* 세로 중앙 정렬 */
+        justify-content: center;    /* 가로 중앙 정렬 */
+        padding: 3px 6px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: bold;
+        color: #fff;
+        margin-right: 3px;
+        /* line-height: 1;  <- 제거 (Flexbox가 알아서 처리) */
+        /* vertical-align: middle; <- 제거 (Flexbox가 알아서 처리) */
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        height: 18px; /* 높이를 고정하면 더 안정적입니다 (선택사항) */
+    }
+
+    /* common.css에 정의된 변수 사용 -> 색상 불일치 해결 */
+    .sb-order { background-color: var(--c-order); } /* 주문 (Green) */
+    .sb-recv  { background-color: var(--c-recv); }  /* 수령 (Blue) */
+    .sb-pay   { background-color: var(--c-pay); }   /* 입금 (Red) */
+    .sb-wait  { background-color: var(--c-wait); }  /* 대기 (Orange) */
+    .sb-hold  { background-color: var(--c-hold); }  /* 보류 (Gray) */
+
+</style>
+</head>
+<body>
+    <input type="hidden" id="extAccessKey" value="{{ access_key }}">
+    <input type="hidden" id="extCompanyName" value="{{ company_name }}">
+    <div class="header">
+        <div>
+            <div style="font-size:0.85rem; color:#888; margin-bottom:2px;">{{ member.Name }}님 일정</div>
+            <h2>📅 나의 일정</h2>
+        </div>
+        <div style="display:flex; gap:8px;">
+            <button onclick="openExternalCalendar()" class="btn-calendar"><i class="far fa-calendar-alt"></i> 달력보기</button>
+            <button onclick="location.href='/w/{{ access_key }}'" style="border:none; background:none; font-size:1.2rem; color:#4361ee;"><i class="fas fa-sync-alt"></i></button>
+        </div>
+    </div>
+    
+    {% if search_date %}
+    <div style="margin-bottom:10px; color:#1c7ed6; font-weight:bold; border-bottom:2px solid #74c0fc; padding-bottom:5px; display:flex; justify-content:space-between;">
+        <span>🔍 {{ search_date }} 검색결과</span>
+        <a href="/w/{{ access_key }}" style="font-size:0.8rem; text-decoration:none; color:#868e96;">[해제]</a>
+    </div>
+    {% endif %}
+
+    <div class="list-container">
+        {% set target_list = search_schedules if search_date else schedules %}
+        
+        {% if not target_list %}
+            <div style="text-align:center; padding:50px 0; color:#999;">일정이 없습니다.</div>
+        {% endif %}
+
+        {% for s in target_list %}
+            {% set type_cls = "bg-req" %}
+            {% if "AS" in s.type %}{% set type_cls = "bg-as" %}
+            {% elif "방문" in s.type %}{% set type_cls = "bg-visit" %}
+            {% elif "시공" in s.type or "주문" in s.type or "수령" in s.type %}{% set type_cls = "bg-const" %}
+            {% elif "완료" in s.type %}{% set type_cls = "bg-done" %}
+            {% endif %}
+
+            <div class="swipe-wrapper">
+                <div class="swipe-bg bg-call">
+                    <i class="fas fa-phone-alt" style="margin-right:10px;"></i> 전화
+                </div>
+                <div class="swipe-bg bg-sms">
+                    문자 <i class="fas fa-comment-dots" style="margin-left:10px;"></i>
+                </div>
+
+                <div class="card" 
+                    ontouchstart="handleTouchStart(event, this, '{{ s.phone }}', '{{ s.date_str }}', '{{ s.time_str }}')" 
+                    ontouchmove="handleTouchMove(event)" 
+                    ontouchend="handleTouchEnd(event)"
+                    onclick="goView('{{ s.order_id }}')">
+                    
+                    <div class="c-header">
+                        <div class="date-badge-group">
+                            <span class="date-box">{{ s.date_str }}</span>
+                            <span class="time-box">{{ s.time_str }}</span>
+                        </div>
+                        <div class="status-area">
+                        {% if s.is_hold == 'Y' %}
+                            <span class="s-bdg sb-hold">보류</span>
+                        {% endif %}
+
+                        {% if s.is_waiting == 'Y' %}
+                            <span class="s-bdg sb-wait">대기</span>
+                        {% endif %}
+
+                        {% if s.is_ordered == 'Y' %}
+                            <span class="s-bdg sb-order">주문</span>
+                        {% endif %}
+
+                        {% if s.is_received == 'Y' %}
+                            <span class="s-bdg sb-recv">수령</span>
+                        {% endif %}
+
+                        {% if s.pay_stat == '입금완료' %}
+                            <span class="s-bdg sb-pay">입금</span>
+                        {% endif %}
+                        
+                        <span class="badge {{ type_cls }}">{{ s.type }}</span>
+                    </div>
+                    </div>
+
+                    <div class="c-body">
+                        <div class="info-row">
+                            <div class="c-name-wrap">
+                                <i class="fas fa-user" style="color:#adb5bd; margin-right:4px;"></i>
+                                <span class="c-name">{{ s.name }}</span>
+                            </div>
+                            <span class="c-addr" onclick="event.stopPropagation(); window.open('https://map.naver.com/v5/search/{{ s.addr }}', '_blank')">
+                                <i class="fas fa-map-marker-alt" style="color:#ff6b6b; font-size:0.85rem;"></i> {{ s.addr }}
+                            </span>
+                        </div>
+
+                        <div class="item-row">
+                            <i class="fas fa-box" style="color:#adb5bd; margin-top:4px;"></i>
+                            {% if s.item_summary and s.item_summary != '품목 미기재' %}
+                                {% for item_txt in s.item_summary.split(',') %}
+                                    <span class="item-tag">{{ item_txt.strip() }}</span>
+                                {% endfor %}
+                            {% else %}
+                                <span style="color:#ccc; font-size:0.8rem;">품목 없음</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="manager-row">
+                            <i class="fas fa-user-friends man-icon"></i>
+                            <span style="font-weight:bold;">{{ s.manager_names or '담당자 미지정' }}</span>
+                        </div>
+
+                        {% if s.total_amount %}
+                        <div class="price-row">
+                            {{ s.total_amount }}
+                        </div>
+                        {% endif %}
+
+                        <div class="block-group">
+                            
+                            {% if s.memo %}
+                            <div class="info-block ib-memo">
+                                <i class="fas fa-exclamation-circle" style="margin-top:2px;"></i>
+                                <div><b style="color:#e67700;">참고:</b> {{ s.memo }}</div>
+                            </div>
+                            {% endif %}
+
+                            {% if s.site_check %}
+                            <div class="info-block ib-site">
+                                <i class="fas fa-ruler-combined" style="margin-top:2px;"></i>
+                                <div><b style="color:#0ca678;">현장:</b> {{ s.site_check }}</div>
+                            </div>
+                            {% endif %}
+
+                            {% if s.history_list and s.history_list|length > 0 %}
+                            <div class="info-block ib-history" onclick="toggleHistory(event, this)">
+                                <div class="h-header">
+                                    <div class="h-latest">
+                                        <i class="fas fa-history" style="color:#888;"></i>
+                                        <b>기록:</b> {{ s.history_list[0].split('|')[-1] if '|' in s.history_list[0] else s.history_list[0] }}
+                                    </div>
+                                    {% if s.history_list|length > 1 %}
+                                        <span class="h-count">+{{ s.history_list|length - 1 }}</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="h-full">
+                                    {% for log in s.history_list %}
+                                        <div class="h-row">
+                                            {% if '|' in log %}
+                                                {% set log_parts = log.split('|', 1) %}
+                                                <span class="h-date">{{ log_parts[0] }}</span> 
+                                                <span class="h-txt">{{ log_parts[1] }}</span>  
+                                            {% else %}
+                                                <span class="h-date">-</span>
+                                                <span class="h-txt">{{ log }}</span>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+<script>
+    var calendarEvents = [
+        {% for s in schedules %}
+            {
+                title: '{{ s.name }}',
+                start: '{{ s.sort_key.strftime("%Y-%m-%d") }}',
+                className: '{{ s.type_class }}',
+                extendedProps: {
+                    oid: '{{ s.order_id }}',
+                    phone: '{{ s.phone }}'
+                }
+            }{{ "," if not loop.last else "" }}
+        {% endfor %}
+    ];
+</script>
+
+{% include 'includes/calendar_modal.html' %}
+
+<script>
+        function openExternalCalendar() {
+            if (typeof openCommonCalendar === 'function') {
+                openCommonCalendar(function(info) {
+                    var key = document.getElementById('extAccessKey').value;
+                    location.href = "/w/" + key + "?search_date=" + info.dateStr;
+                });
+            } else { alert('캘린더 로딩 중...'); }
+        }
+
+        function goView(oid) {
+            var key = document.getElementById('extAccessKey').value;
+            location.href = '/w/view/' + oid + '?key=' + key;
+        }
+
+        function toggleHistory(e, el) {
+            e.stopPropagation();
+            var full = el.querySelector('.h-full');
+            var count = el.querySelector('.h-count');
+            if(full.style.display === 'block') {
+                full.style.display = 'none';
+                if(count) count.style.display = 'inline-block';
+            } else {
+                full.style.display = 'block';
+                if(count) count.style.display = 'none';
+            }
+        }
+
+        // ============================================================
+        // [업그레이드 V2] 갤럭시 스타일 스와이프 로직
+        // ============================================================
+        var touchStartX = 0;
+        var touchStartY = 0;
+        var swipeEl = null;     // 움직이는 카드
+        var wrapperEl = null;   // 배경을 포함하는 부모
+        
+        var targetPhone = "";
+        var targetDate = "";
+        var targetTime = "";
+        
+        var isScrolling = false;
+        var isSwiping = false;
+
+        function handleTouchStart(e, el, phone, dateStr, timeStr) {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            
+            swipeEl = el;
+            wrapperEl = el.parentElement; // .swipe-wrapper
+
+            targetPhone = phone;
+            targetDate = dateStr;
+            targetTime = timeStr;
+            
+            isScrolling = false;
+            isSwiping = false;
+            
+            // 터치 즉시 반응을 위해 transition 제거
+            swipeEl.style.transition = 'none';
+        }
+
+        function handleTouchMove(e) {
+            if(!swipeEl || isScrolling) return;
+            
+            var touchCurrentX = e.touches[0].clientX;
+            var touchCurrentY = e.touches[0].clientY;
+            var diffX = touchCurrentX - touchStartX;
+            var diffY = touchCurrentY - touchStartY;
+
+            // 수직 스크롤 의도가 더 크면 스와이프 취소
+            if(!isSwiping && Math.abs(diffY) > Math.abs(diffX) + 5) { 
+                isScrolling = true; 
+                return; 
+            }
+            isSwiping = true;
+
+            // 브라우저 기본 동작 방지 (가로 스크롤 등)
+            if (e.cancelable) e.preventDefault();
+
+            // [물리 효과] 탄성(Resistance) 적용 (0.4배)
+            var resistance = 0.4;
+            var translate = diffX * resistance;
+
+            // 최대 이동 거리 제한 (시각적 제한)
+            translate = Math.max(Math.min(translate, 150), -150);
+            
+            // 카드 이동
+            swipeEl.style.transform = `translateX(${translate}px)`;
+
+            // [비주얼] 카드 투명화 (멀어질수록 투명)
+            var opacity = 1 - (Math.abs(translate) / 200); 
+            swipeEl.style.opacity = Math.max(opacity, 0.2); // 최소 0.2 유지
+
+            // [비주얼] 배경 레이어 제어
+            var bgCall = wrapperEl.querySelector('.bg-call');
+            var bgSms = wrapperEl.querySelector('.bg-sms');
+            
+            // 배경 불투명도 계산 (빠르게 나타나도록)
+            var bgOpacity = Math.min(Math.abs(translate) / 50, 1);
+
+            if (translate > 0) { 
+                // 오른쪽 이동 -> 전화(파랑) 노출
+                if(bgCall) bgCall.style.opacity = bgOpacity;
+                if(bgSms) bgSms.style.opacity = 0;
+            } else { 
+                // 왼쪽 이동 -> 문자(주황) 노출
+                if(bgCall) bgCall.style.opacity = 0;
+                if(bgSms) bgSms.style.opacity = bgOpacity;
+            }
+        }
+
+        function handleTouchEnd(e) {
+            if(!swipeEl || isScrolling) { resetSwipe(); return; }
+            
+            var touchEndX = e.changedTouches[0].clientX;
+            var diffX = touchEndX - touchStartX;
+            var threshold = 80; // 동작 트리거 임계값
+
+            if (diffX > threshold) {
+                // [오른쪽] 전화 걸기
+                if(targetPhone) location.href = 'tel:' + targetPhone;
+                else alert('전화번호가 없습니다.');
+            } 
+            else if (diffX < -threshold) {
+                // [왼쪽] 문자 보내기
+                if(targetPhone) {
+                    var fmtDate = targetDate.replace(" (", "일(");
+                    var compName = document.getElementById('extCompanyName').value || "알림";
+                    var msgBody = `[${compName}] ${fmtDate} ${targetTime}에 방문드리겠습니다.`;
+                    
+                    location.href = 'sms:' + targetPhone + (navigator.userAgent.match(/iPhone|iPad/i) ? '&' : '?') + 'body=' + encodeURIComponent(msgBody);
+                }
+                else {
+                    alert('전화번호가 없습니다.');
+                }
+            }
+
+            resetSwipe();
+        }
+
+        function resetSwipe() {
+            if(!swipeEl) return;
+
+            // [CSS 복원] 부드럽게 되돌아가기 (cubic-bezier)
+            swipeEl.style.transition = 'transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease-out';
+            swipeEl.style.transform = 'translateX(0px)';
+            swipeEl.style.opacity = '1';
+            
+            if(wrapperEl) {
+                var bgCall = wrapperEl.querySelector('.bg-call');
+                var bgSms = wrapperEl.querySelector('.bg-sms');
+                if(bgCall) bgCall.style.opacity = 0;
+                if(bgSms) bgSms.style.opacity = 0;
+            }
+
+            swipeEl = null;
+            wrapperEl = null;
+            isScrolling = false;
+            isSwiping = false;
+        }
+    </script>
+</body>
+</html>
