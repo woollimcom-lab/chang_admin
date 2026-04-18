@@ -151,36 +151,51 @@
         const normalized = text(message).replace(/\s+/g, " ").trim();
         if (!normalized) {
             return {
-                lead: "이런 뜻으로 이해했습니다.",
+                lead: "이렇게 이해했습니다.",
                 summary: "새 작업을 시작하려는 요청입니다.",
-                next: "맞으면 바로 작업으로 등록하고 다음 행동까지 이어갑니다.",
+                plan: "진행 방식: 먼저 요청 범위를 확인하고, 필요한 최소 작업만 수행한 뒤 결과를 보고합니다.",
+                next: "맞으면 [맞아요, 진행]을 눌러 실행해 주세요. 다르면 [다시 설명]으로 지시를 고쳐 주세요.",
             };
         }
-        let action = "새 작업을 시작하려는 요청입니다.";
-        if (/(수정|고쳐|해결|복구|디버그|막힘)/.test(normalized)) {
-            action = "문제를 고치거나 막힌 지점을 푸는 요청입니다.";
+        let action = "새 작업을 시작하려는 요청";
+        if (/(요지|이해|판독|앵무새|그대로|승인).*(진행|실행|처리|작업)|(?:진행|실행|처리|작업).*(요지|이해|판독|승인)/.test(normalized)) {
+            action = "지시를 해석한 뒤 승인 후 실행하는 흐름으로 바꾸려는 요청";
+        } else if (/(수정|고쳐|해결|복구|디버그|막힘)/.test(normalized)) {
+            action = "문제를 고치거나 막힌 지점을 푸는 요청";
         } else if (/(확인|체크|점검|검토|판단)/.test(normalized)) {
-            action = "현재 상태를 확인하고 바로 판단하려는 요청입니다.";
+            action = "현재 상태를 확인하고 판단하는 요청";
         } else if (/(계획|플랜|순서|단계|로드맵)/.test(normalized)) {
-            action = "실행 계획부터 먼저 잡으려는 요청입니다.";
+            action = "실행 계획부터 정리하는 요청";
         } else if (/(요약|정리|압축)/.test(normalized)) {
-            action = "핵심만 짧게 정리하려는 요청입니다.";
+            action = "핵심만 짧게 정리하는 요청";
         } else if (/(설명|뜻|이유|왜|알려줘|말해줘)/.test(normalized)) {
-            action = "의미와 이유를 짧게 설명받으려는 요청입니다.";
+            action = "의미와 이유를 설명받는 요청";
         } else if (/(구현|만들|추가|연결|붙여|적용)/.test(normalized)) {
-            action = "기능을 만들거나 연결하려는 요청입니다.";
+            action = "기능을 만들거나 연결하는 요청";
         }
         const scopes = [];
         if (/codex-chat/i.test(normalized)) scopes.push("codex-chat");
+        if (/모바일|화면|UI|UX|채팅|버블/.test(normalized)) scopes.push("모바일 채팅 화면");
+        if (/요지|이해|판독|승인|계획/.test(normalized)) scopes.push("지시 이해/승인 흐름");
+        if (/결과|요약|반영/.test(normalized)) scopes.push("결과 표시");
+        if (/서버|API|SSE|WebSocket|실시간/.test(normalized)) scopes.push("서버/실시간 반영");
+        if (/문맥|프롬프트|이전 대화/.test(normalized)) scopes.push("대화 문맥");
         if (/프로젝트/.test(normalized)) scopes.push("프로젝트");
         if (/업로드|배포/.test(normalized)) scopes.push("반영 흐름");
         if (/로그|메시지|문구/.test(normalized)) scopes.push("화면 문구");
         if (/검증|테스트/.test(normalized)) scopes.push("검증");
-        const scopeText = scopes.length ? `${scopes.join(" / ")} 기준으로 ` : "";
+        const uniqueScopes = [...new Set(scopes)].slice(0, 3);
+        const scopeText = uniqueScopes.length ? `${uniqueScopes.join(" / ")}에 대해 ` : "";
+        const constraints = [];
+        if (/(그대로|유지|깨지지|바꾸지|추가.*금지|금지)/.test(normalized)) constraints.push("기존 흐름은 최대한 유지");
+        if (/(최소|간단|단순|얇은|브리지)/.test(normalized)) constraints.push("최소 변경 우선");
+        if (/(승인|확인 후|먼저.*보고|계획)/.test(normalized)) constraints.push("실행 전 확인 필요");
+        const constraintText = constraints.length ? ` 조건: ${[...new Set(constraints)].join(", ")}.` : "";
         return {
-            lead: "이런 뜻으로 이해했습니다.",
-            summary: `${scopeText}${action}`,
-            next: "맞으면 바로 작업으로 등록하고 다음 행동까지 이어갑니다.",
+            lead: "이렇게 이해했습니다.",
+            summary: `요지: ${scopeText}${action}입니다.${constraintText}`,
+            plan: "진행 방식: 1) 현재 상태를 확인하고 2) 필요한 최소 변경만 적용한 뒤 3) 검증 결과를 보고합니다.",
+            next: "승인 안내: 맞으면 [맞아요, 진행]을 눌러 실행해 주세요. 다르면 [다시 설명]으로 지시를 고쳐 주세요.",
         };
     }
 
@@ -261,7 +276,7 @@
     }
 
     function buildThinBridgeTimelineRows() {
-        if (hasPendingConfirmation() && !currentView.current_task) {
+        if (hasPendingConfirmation()) {
             const interpretation = interpretPendingIntent(pendingConfirmationMessage());
             return [
                 {
@@ -274,7 +289,7 @@
                     role: "system",
                     label: "이해 확인",
                     created_at: "",
-                    body: `${interpretation.lead} ${interpretation.summary} ${interpretation.next}`,
+                    body: [interpretation.lead, interpretation.summary, interpretation.plan, interpretation.next].filter(Boolean).join("\n"),
                     actions: [
                         { kind: "run", label: "맞아요, 진행", tone: "primary" },
                         { kind: "edit", label: "다시 설명", tone: "outline" },
@@ -1378,13 +1393,13 @@
                 stopBannerTicker();
             }
         };
-        if (!task && hasPendingConfirmation()) {
+        if (hasPendingConfirmation()) {
             const interpretation = interpretPendingIntent(pendingConfirmationMessage());
             bannerEl.dataset.tone = "action";
             badgeEl.textContent = "이해 확인";
             headlineEl.textContent = interpretation.summary;
             if (thinBridge) {
-                copyEl.textContent = interpretation.next;
+                copyEl.textContent = `${interpretation.plan} ${interpretation.next}`;
                 copyEl.hidden = false;
                 metaEl.textContent = "";
                 metaEl.hidden = true;
@@ -2005,7 +2020,7 @@
         }
         const selectedProject = currentView.selected_project || null;
         const projectCopy = projectConversationCopy(selectedProject, currentView.current_task || null);
-        let rows = hasPendingConfirmation() && !currentView.current_task
+        let rows = hasPendingConfirmation()
             ? (() => {
                 const interpretation = interpretPendingIntent(pendingConfirmationMessage());
                 return [
@@ -2019,7 +2034,7 @@
                     role: "system",
                     label: "Codex",
                     created_at: "",
-                    body: `${interpretation.lead} ${interpretation.summary} ${interpretation.next}`,
+                    body: [interpretation.lead, interpretation.summary, interpretation.plan, interpretation.next].filter(Boolean).join("\n"),
                     actions: [
                         { kind: "run", label: "맞아요, 진행", tone: "primary" },
                         { kind: "edit", label: "다시 설명", tone: "outline" },
@@ -2593,7 +2608,14 @@
             inputEl?.focus();
             return;
         }
-        if (!currentView.current_task && text(selectedComposerMode, "new-task") === "new-task" && !hasPendingConfirmation()) {
+        if (hasPendingConfirmation()) {
+            setNotice("먼저 이해 확인 내용을 보고 [맞아요, 진행]을 눌러 주세요.");
+            inputEl?.focus();
+            return;
+        }
+        const shouldConfirmBeforeRun = isThinBridgeMode()
+            || (!currentView.current_task && text(selectedComposerMode, "new-task") === "new-task");
+        if (shouldConfirmBeforeRun) {
             pendingCommandConfirmation = { message };
             setNotice("");
             renderView(currentView);

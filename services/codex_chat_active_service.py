@@ -849,12 +849,54 @@ def _mc_task_context_included(task):
     return CODEX_CHAT_CONTEXT_MARKER in _mc_text(followup_bundle.get("instruction"))
 
 
-def _mc_pre_execution_check_text(command, context_included):
-    command_text = _mc_compact_text(command, 120)
+def _mc_command_intent_summary(command):
+    command_text = _mc_text(command)
     if not command_text:
+        return "아직 받은 지시가 없습니다."
+
+    checks = [
+        ("지시를 해석한 뒤 승인 후 실행하는 흐름으로 바꾸려는 요청", ("요지", "이해", "판독", "앵무새", "승인")),
+        ("문제를 고치거나 막힌 지점을 푸는 요청", ("수정", "고쳐", "해결", "복구", "디버그", "막힘")),
+        ("현재 상태를 확인하고 판단하는 요청", ("확인", "체크", "점검", "검토", "판단")),
+        ("실행 계획부터 정리하는 요청", ("계획", "플랜", "순서", "단계", "로드맵")),
+        ("핵심만 짧게 정리하는 요청", ("요약", "정리", "압축")),
+        ("의미와 이유를 설명받는 요청", ("설명", "뜻", "이유", "왜", "알려줘", "말해줘")),
+        ("기능을 만들거나 연결하는 요청", ("구현", "만들", "추가", "연결", "붙여", "적용")),
+    ]
+    action = "새 작업을 시작하려는 요청"
+    for label, keywords in checks:
+        if any(keyword.lower() in command_text.lower() for keyword in keywords):
+            action = label
+            break
+
+    scope_checks = [
+        ("codex-chat", ("codex-chat", "Codex Chat")),
+        ("모바일 채팅 화면", ("모바일", "화면", "UI", "UX", "채팅", "버블")),
+        ("지시 이해/승인 흐름", ("요지", "이해", "판독", "승인", "계획")),
+        ("결과 표시", ("결과", "요약", "반영")),
+        ("서버/실시간 반영", ("서버", "API", "SSE", "WebSocket", "실시간")),
+        ("대화 문맥", ("문맥", "프롬프트", "이전 대화")),
+        ("프로젝트", ("프로젝트",)),
+        ("검증", ("검증", "테스트")),
+    ]
+    scopes = []
+    lowered = command_text.lower()
+    for label, keywords in scope_checks:
+        if any(keyword.lower() in lowered for keyword in keywords):
+            scopes.append(label)
+        if len(scopes) >= 3:
+            break
+
+    scope_text = f"{' / '.join(scopes)}에 대해 " if scopes else ""
+    return f"{scope_text}{action}입니다."
+
+
+def _mc_pre_execution_check_text(command, context_included):
+    intent_summary = _mc_command_intent_summary(command)
+    if intent_summary == "아직 받은 지시가 없습니다.":
         return "실행 전 요지 확인: 아직 받은 지시가 없습니다."
     context_label = "최근 대화와 직전 결과 요약을 함께 포함했습니다." if context_included else "추가 문맥 없이 원문 지시만 전달했습니다."
-    return f"실행 전 요지 확인: '{command_text}' 작업으로 이해했습니다. {context_label}"
+    return f"실행 전 요지 확인: {intent_summary} {context_label}"
 
 
 def _mc_bridge_user_copy(run_state, current_task, command, summary, last_error, context_included=False):
