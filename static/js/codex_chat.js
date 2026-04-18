@@ -2169,7 +2169,14 @@
     }
 
     async function requestJson(url, options) {
-        const response = await window.fetch(url, options);
+        const response = await window.fetch(url, {
+            cache: "no-store",
+            ...(options || {}),
+            headers: {
+                "Cache-Control": "no-cache",
+                ...((options && options.headers) || {}),
+            },
+        });
         const textBody = await response.text();
         let payload = null;
         try {
