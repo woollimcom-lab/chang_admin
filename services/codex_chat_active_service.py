@@ -715,32 +715,38 @@ def _mc_recent_context_entries(tasks, limit=CODEX_CHAT_CONTEXT_ENTRY_LIMIT):
 def _mc_build_contextual_command(command, tasks):
     clean_command = _mc_text(command)
     entries = _mc_recent_context_entries(tasks)
-    if not clean_command or not entries:
+    if not clean_command:
         return clean_command
 
     lines = [
         clean_command,
         CODEX_CHAT_CONTEXT_MARKER.strip(),
-        "아래 문맥은 최근 모바일 대화와 직전 결과 요약입니다. 참고만 하고, 이번 실행의 최우선 지시는 위 한 줄 명령입니다.",
+        "모바일 Codex Chat에서 사용자가 '맞아요, 진행'으로 실행을 승인한 지시입니다.",
+        "이 승인은 코드 분석/수정/검증 진행 승인으로 취급합니다.",
+        "다만 배포, DB 스키마 변경, 서비스 재시작, 파괴적 작업은 별도 승인이 필요합니다.",
+        "사용자가 '수정하지 말고 확인만'처럼 제한한 경우에는 그 제한을 최우선으로 지킵니다.",
         "",
-        "[최근 대화 3~5개]",
+        "아래 문맥은 최근 모바일 대화와 직전 결과 요약입니다. 참고만 하고, 이번 실행의 최우선 지시는 위 한 줄 명령입니다.",
     ]
-    for index, entry in enumerate(entries, start=1):
-        lines.append(
-            f"{index}. {entry['updated_at'] or '-'} | 지시: {entry['command'] or '-'} | 상태: {entry['status'] or '-'}"
-        )
-        if entry["result"]:
-            lines.append(f"   결과 요약: {entry['result']}")
+    if entries:
+        lines.extend(["", "[최근 대화 3~5개]"])
+        for index, entry in enumerate(entries, start=1):
+            lines.append(
+                f"{index}. {entry['updated_at'] or '-'} | 지시: {entry['command'] or '-'} | 상태: {entry['status'] or '-'}"
+            )
+            if entry["result"]:
+                lines.append(f"   결과 요약: {entry['result']}")
 
-    previous_result = next((entry["result"] for entry in entries if entry.get("result")), "")
-    if previous_result:
-        lines.extend(["", "[직전 결과 요약]", previous_result])
+        previous_result = next((entry["result"] for entry in entries if entry.get("result")), "")
+        if previous_result:
+            lines.extend(["", "[직전 결과 요약]", previous_result])
     lines.extend(
         [
             "",
             "[실행 규칙]",
             "- 위 문맥은 이어받기용 참고 자료입니다.",
             "- 이번 사용자 명령과 충돌하면 이번 사용자 명령을 우선합니다.",
+            "- 이미 승인된 실행이므로 계획만 만들고 멈추지 말고, 사용자 제한 안에서 실제 작업을 수행합니다.",
             "- 완료/실패/질문 필요 여부를 짧게 요약할 수 있게 결과를 정리합니다.",
         ]
     )
@@ -1248,6 +1254,25 @@ def _mc_build_codex_max_view_model(conversation_task_id="", server_notice="", co
     else:
         effective_task_id = _mc_text(conversation_task_id, selected_project_task_id)
     current_task = _mc_pick_task(tasks, conversation_task_id=effective_task_id)
+    if (
+        bridge_mode == "thin-bridge"
+        and current_task
+        and _mc_text(current_task.get("status")).upper() == "WAITING_APPROVAL"
+        and _mc_task_context_included(current_task)
+    ):
+        task_id = _mc_text(current_task.get("id"))
+        try:
+            _mc_update_task_action(
+                task_id,
+                "codex-chat",
+                "execute_now",
+                "",
+                command_text="Codex Chat · 이해 확인 승인 후 자동 실행",
+            )
+            current_task = _mc_get_task(task_id) or current_task
+            server_notice = _mc_text(server_notice, "이해 확인 승인에 따라 실행을 시작했습니다.")
+        except Exception as exc:
+            server_notice = _mc_text(server_notice, f"자동 실행 전환 실패: {exc}")
     primary_action = _mc_task_primary_action(current_task)
     bridge_payload = _mc_bridge_payload(current_task, primary_action, selected_project)
     ops_console = _mc_ops_console_bundle(current_task, primary_action)

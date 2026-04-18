@@ -2463,14 +2463,14 @@
         return payload;
     }
 
-    async function waitForRunnablePrimaryAction(conversationTaskId, composerMode = "followup", attempts = 4) {
+    async function waitForRunnablePrimaryAction(conversationTaskId, composerMode = "followup", attempts = 60) {
         const taskId = text(conversationTaskId);
         if (!taskId) {
             return null;
         }
         let latestPayload = null;
         for (let index = 0; index < attempts; index += 1) {
-            await new Promise((resolve) => window.setTimeout(resolve, index === 0 ? 250 : 450));
+            await new Promise((resolve) => window.setTimeout(resolve, index === 0 ? 500 : 1000));
             const params = new URLSearchParams({
                 conversation_task_id: taskId,
                 composer_mode: text(composerMode, "followup"),
@@ -2569,7 +2569,7 @@
                 if (createdTaskId) {
                     runnablePayload = await waitForRunnablePrimaryAction(createdTaskId, "followup") || runnablePayload;
                     try {
-                        autoRunPayload = await requestJson(`/api/codex-chat/tasks/${encodeURIComponent(text(runnablePayload.conversation_task_id || runnablePayload.current_task?.id || createdTaskId))}/primary-action`, {
+                        autoRunPayload = await requestJson(`/api/codex-chat/tasks/${encodeURIComponent(createdTaskId)}/primary-action`, {
                             method: "POST",
                             credentials: "same-origin",
                             headers: { "Content-Type": "application/json" },
@@ -2583,7 +2583,7 @@
                     renderView(autoRunPayload);
                     setNotice(`${text(runnablePayload.current_task?.title || message, "작업")} 실행을 시작했습니다.`);
                 } else if (canAutoRunPrimaryAction(runnablePayload)) {
-                    const fallbackAutoRunPayload = await requestJson(`/api/codex-chat/tasks/${encodeURIComponent(text(runnablePayload.conversation_task_id || runnablePayload.current_task?.id || createdTaskId))}/primary-action`, {
+                    const fallbackAutoRunPayload = await requestJson(`/api/codex-chat/tasks/${encodeURIComponent(createdTaskId)}/primary-action`, {
                         method: "POST",
                         credentials: "same-origin",
                         headers: { "Content-Type": "application/json" },
@@ -2591,6 +2591,8 @@
                     });
                     renderView(fallbackAutoRunPayload);
                     setNotice(`${text(runnablePayload.current_task?.title || message, "작업")} 실행을 시작했습니다.`);
+                } else {
+                    setNotice("실행 준비가 늦어지고 있습니다. 상태가 바뀌면 자동 갱신됩니다.");
                 }
             }
             focusBestNextAction();

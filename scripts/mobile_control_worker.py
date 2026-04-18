@@ -48,6 +48,7 @@ LOCAL_MOBILE_CONTROL_DIR = BASE_DIR / "mobile_control_local"
 REFRESH_LINK_SCRIPT = LOCAL_MOBILE_CONTROL_DIR / "refresh_mobile_control_link.ps1"
 SFTP_CONFIG = BASE_DIR / ".vscode" / "sftp.json"
 CODEX_PROFILE = (os.environ.get("MOBILE_CONTROL_CODEX_PROFILE") or "mobile_worker").strip() or "mobile_worker"
+CODEX_RUNTIME_HOME = OUTPUT_DIR / "mobile_control" / "runtime" / "codex_home"
 REMOTE_BASE_URL = (os.environ.get("MOBILE_CONTROL_REMOTE_BASE_URL") or "").strip().rstrip("/")
 REMOTE_WORKER_KEY = (os.environ.get("MOBILE_CONTROL_REMOTE_WORKER_KEY") or "").strip()
 REMOTE_MODE = bool(REMOTE_BASE_URL)
@@ -905,6 +906,7 @@ def run_codex_command(task_id, text, heartbeat):
         process = subprocess.Popen(
             ["codex", "exec", "-s", "workspace-write", "-C", str(BASE_DIR), "-o", str(output_file), prompt],
             cwd=str(BASE_DIR),
+            env=codex_subprocess_env(),
             stdout=stdout_handle,
             stderr=stderr_handle,
             text=True,
@@ -1151,6 +1153,13 @@ PLANNING_INSPECTION_KEYWORDS = (
     "상태 확인",
     "헬스 체크",
 )
+
+
+def codex_subprocess_env():
+    env = os.environ.copy()
+    env.setdefault("CODEX_HOME", str(CODEX_RUNTIME_HOME))
+    CODEX_RUNTIME_HOME.mkdir(parents=True, exist_ok=True)
+    return env
 
 PLANNING_CHANGE_KEYWORDS = (
     "수정",
@@ -1482,6 +1491,7 @@ def run_codex_command(task_id, task, heartbeat):
             process = subprocess.Popen(
                 command,
                 cwd=str(BASE_DIR),
+                env=codex_subprocess_env(),
                 stdout=stdout_handle,
                 stderr=stderr_handle,
                 text=True,
@@ -1590,6 +1600,7 @@ def run_codex_planning(task_id, task, heartbeat):
             process = subprocess.Popen(
                 codex_command,
                 cwd=str(BASE_DIR),
+                env=codex_subprocess_env(),
                 stdout=stdout_handle,
                 stderr=stderr_handle,
                 text=True,
