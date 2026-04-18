@@ -19,6 +19,7 @@ SUPPORT_ACTION_FILE = RUNTIME_DIR / "local-server-support-action.json"
 SUPPORT_ACTION_SCRIPT = BASE_DIR / "scripts" / "run_local_server_support_action.ps1"
 LEGACY_COMMANDS_FILE = MOBILE_DIR / "commands.json"
 LEGACY_AUTO_IMPORT_ENABLED = False
+CODEX_CHAT_CONTEXT_MARKER = "[Codex Chat Context]"
 
 TASK_STATUS_LABELS = {
     "QUEUED": "대기",
@@ -376,8 +377,19 @@ def _append_task_message(conn, task_id, role, message_type, content):
     )
 
 
-def _append_user_command_message(conn, task_id, command_text):
+def _strip_codex_chat_context(command_text):
     message = str(command_text or "").strip()
+    if CODEX_CHAT_CONTEXT_MARKER in message:
+        message = message.split(CODEX_CHAT_CONTEXT_MARKER, 1)[0].strip()
+    return message
+
+
+def _is_codex_chat_context_prompt(command_text):
+    return CODEX_CHAT_CONTEXT_MARKER in str(command_text or "")
+
+
+def _append_user_command_message(conn, task_id, command_text):
+    message = _strip_codex_chat_context(command_text)
     if not message:
         return
     _append_task_message(conn, task_id, "user", "chat", message)
@@ -3729,6 +3741,13 @@ def update_task_action(task_id, actor, action, summary="", command_text=""):
             next_step_label = "대기"
             next_action = "Codex 작업 대기"
             final_decision = ""
+            if _is_codex_chat_context_prompt(command_text):
+                followup_bundle = dict(followup_bundle or {})
+                followup_bundle["status"] = "READY"
+                followup_bundle["instruction"] = str(command_text or "").strip()
+                followup_bundle["items"] = followup_bundle.get("items") or []
+                followup_bundle["comments"] = followup_bundle.get("comments") or []
+                followup_bundle["created_at"] = _now()
         elif action == "request_redebug":
             followup_bundle = _build_followup_bundle(task_row, check_items, comments)
             if (not cleaned_summary) and str(task_row["status"] or "").strip().upper() == "UPLOAD_VERIFY_FAILED":

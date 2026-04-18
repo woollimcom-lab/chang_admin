@@ -842,18 +842,28 @@ def _mc_bridge_run_state(task, primary_action):
     return "RUNNING"
 
 
-def _mc_bridge_user_copy(run_state, current_task, command, summary, last_error):
+def _mc_task_context_included(task):
+    followup_bundle = (task or {}).get("followup_bundle") or {}
+    if not isinstance(followup_bundle, dict):
+        return False
+    return CODEX_CHAT_CONTEXT_MARKER in _mc_text(followup_bundle.get("instruction"))
+
+
+def _mc_pre_execution_check_text(command, context_included):
+    command_text = _mc_compact_text(command, 120)
+    if not command_text:
+        return "실행 전 요지 확인: 아직 받은 지시가 없습니다."
+    context_label = "최근 대화와 직전 결과 요약을 함께 포함했습니다." if context_included else "추가 문맥 없이 원문 지시만 전달했습니다."
+    return f"실행 전 요지 확인: '{command_text}' 작업으로 이해했습니다. {context_label}"
+
+
+def _mc_bridge_user_copy(run_state, current_task, command, summary, last_error, context_included=False):
     status = _mc_text(current_task.get("status")).upper()
     status_label = _mc_text(current_task.get("status_label") or current_task.get("user_status"))
     step_label = _mc_text(current_task.get("current_step_label"))
     next_action = _mc_text(current_task.get("next_action"))
     progress_percent = max(0, min(100, int(current_task.get("progress_percent") or 0))) if current_task else 0
-    command_text = _mc_compact_text(command)
-
-    if command_text:
-        understanding = f"이 지시는 '{command_text}' 작업으로 이해했습니다."
-    else:
-        understanding = "아직 받은 지시가 없습니다."
+    understanding = _mc_pre_execution_check_text(command, context_included)
 
     if run_state == "IDLE":
         return {
@@ -925,7 +935,15 @@ def _mc_bridge_payload(task, primary_action, selected_project):
         current_task.get("updated_at") or current_task.get("created_at"),
         _mc_text(project.get("updated_at")),
     )
-    user_copy = _mc_bridge_user_copy(run_state, current_task, command, summary, last_error)
+    context_included = _mc_task_context_included(current_task)
+    user_copy = _mc_bridge_user_copy(
+        run_state,
+        current_task,
+        command,
+        summary,
+        last_error,
+        context_included=context_included,
+    )
     return {
         "command": command,
         "run_state": run_state,
@@ -933,6 +951,8 @@ def _mc_bridge_payload(task, primary_action, selected_project):
         "summary": summary,
         "last_error": last_error,
         "updated_at": updated_at,
+        "pre_execution_check": _mc_pre_execution_check_text(command, context_included),
+        "context_included": context_included,
         **user_copy,
     }
 
@@ -1388,7 +1408,7 @@ def dispatch_codex_chat_command(
     execution_message = _mc_build_contextual_command(clean_message, context_tasks)
 
     created_task = _mc_create_task(
-        execution_message,
+        clean_message,
         clean_actor,
         target_env=target_env,
         task_type="FREEFORM",
@@ -1400,7 +1420,7 @@ def dispatch_codex_chat_command(
     if _mc_text(project_id):
         _mc_plan_task(created_task_id, clean_actor)
     if CODEX_CHAT_BRIDGE_MODE == "thin-bridge":
-        created_task = _mc_start_task(created_task_id, clean_actor, command_text=clean_message)
+        created_task = _mc_start_task(created_task_id, clean_actor, command_text=execution_message)
     return _mc_build_codex_max_view_model(
         conversation_task_id=_mc_text(created_task.get("id"), created_task_id),
         server_notice="명령을 로컬 Codex 실행기로 전달했습니다.",
