@@ -269,6 +269,8 @@ if (-not [string]::IsNullOrWhiteSpace($codexPath)) {
     $env:MOBILE_CONTROL_CODEX_PATH = $codexPath
 }
 $powershellExe = (Get-Command powershell.exe | Select-Object -ExpandProperty Source)
+$currentSessionId = (Get-Process -Id $PID -ErrorAction SilentlyContinue).SessionId
+$skipWorkerStart = ($null -ne $currentSessionId -and [int]$currentSessionId -eq 0)
 $cloudflaredCandidate = Resolve-CloudflaredCandidate
 $cloudflaredPath = [string]$cloudflaredCandidate.Path
 $cloudflaredError = [string]$cloudflaredCandidate.Error
@@ -288,7 +290,7 @@ if (-not $appProc) {
 }
 
 $workerProc = Get-WorkerProcess
-if (-not $workerProc) {
+if ((-not $workerProc) -and (-not $skipWorkerStart)) {
     $workerProc = Start-ManagedProcess `
         -FilePath $pythonExe `
         -ArgumentList @('-X', 'utf8', 'scripts/mobile_control_worker.py') `
