@@ -25,6 +25,10 @@ CODEX_CHAT_ACTIVE_SERVICE_MODULE = "services.codex_chat_active_service"
 CODEX_CHAT_ACTIVE_SERVICE_BOUNDARY = "active-service-owns-mobile-control-adapter"
 CODEX_CHAT_BRIDGE_MODE = "thin-bridge"
 CODEX_CHAT_BRIDGE_GOAL = "mobile-one-line-command-to-local-codex-last-result"
+CODEX_CHAT_CONTEXT_MARKER = "[Codex Chat Context]"
+CODEX_CHAT_CONTEXT_ENTRY_LIMIT = 5
+CODEX_CHAT_CONTEXT_ENTRY_TEXT_LIMIT = 260
+CODEX_CHAT_CONTEXT_TOTAL_LIMIT = 2800
 BASE_DIR = Path(__file__).resolve().parents[1]
 CODEX_PROJECTS_FILE = BASE_DIR / "output" / "mobile_control" / "runtime" / "codex_chat_projects.json"
 
@@ -39,6 +43,15 @@ def _mc_compact_text(value, max_length=140):
     if len(rendered) <= max_length:
         return rendered
     return f"{rendered[:max_length].rstrip()}..."
+
+
+def _mc_display_command_text(value):
+    text = _mc_text(value)
+    if not text:
+        return ""
+    if CODEX_CHAT_CONTEXT_MARKER in text:
+        text = text.split(CODEX_CHAT_CONTEXT_MARKER, 1)[0]
+    return _mc_text(text)
 
 
 def _mc_role_label(role: str, message_type: str = ""):
@@ -616,12 +629,15 @@ def _mc_task_log_entries(task, limit=12):
         return []
     rows = []
     for message in task.get("messages") or []:
+        body = _mc_text(message.get("content"), "-")
+        if _mc_text(message.get("role")).lower() == "user":
+            body = _mc_display_command_text(body) or body
         rows.append(
             {
                 "role": _mc_text(message.get("role"), "system").lower(),
                 "label": _mc_role_label(message.get("role"), message.get("message_type")),
                 "message_type": _mc_text(message.get("message_type"), "status"),
-                "body": _mc_text(message.get("content"), "-"),
+                "body": body,
                 "created_at": _mc_text(message.get("created_at")),
                 "sort_key": _mc_text(message.get("created_at")),
             }
@@ -651,6 +667,87 @@ def _mc_task_log_entries(task, limit=12):
             "sort_key": _mc_text(task.get("updated_at") or task.get("created_at")),
         }
     ]
+
+
+def _mc_context_result_text(task):
+    if not task:
+        return ""
+    result_payload = task.get("result_payload") or {}
+    if not isinstance(result_payload, dict):
+        result_payload = {}
+    return _mc_compact_text(
+        task.get("latest_summary")
+        or result_payload.get("latest_summary")
+        or task.get("summary")
+        or task.get("next_action"),
+        CODEX_CHAT_CONTEXT_ENTRY_TEXT_LIMIT,
+    )
+
+
+def _mc_context_entry(task):
+    if not task:
+        return None
+    command = _mc_display_command_text(task.get("text") or task.get("title"))
+    result = _mc_context_result_text(task)
+    status = _mc_text(task.get("status_label") or task.get("user_status") or task.get("status"))
+    updated_at = _mc_text(task.get("updated_at") or task.get("created_at"))
+    if not (command or result):
+        return None
+    return {
+        "command": _mc_compact_text(command, CODEX_CHAT_CONTEXT_ENTRY_TEXT_LIMIT),
+        "status": _mc_compact_text(status, 80),
+        "result": result,
+        "updated_at": updated_at,
+    }
+
+
+def _mc_recent_context_entries(tasks, limit=CODEX_CHAT_CONTEXT_ENTRY_LIMIT):
+    entries = []
+    for task in tasks or []:
+        entry = _mc_context_entry(task)
+        if entry:
+            entries.append(entry)
+        if len(entries) >= limit:
+            break
+    return entries
+
+
+def _mc_build_contextual_command(command, tasks):
+    clean_command = _mc_text(command)
+    entries = _mc_recent_context_entries(tasks)
+    if not clean_command or not entries:
+        return clean_command
+
+    lines = [
+        clean_command,
+        CODEX_CHAT_CONTEXT_MARKER.strip(),
+        "아래 문맥은 최근 모바일 대화와 직전 결과 요약입니다. 참고만 하고, 이번 실행의 최우선 지시는 위 한 줄 명령입니다.",
+        "",
+        "[최근 대화 3~5개]",
+    ]
+    for index, entry in enumerate(entries, start=1):
+        lines.append(
+            f"{index}. {entry['updated_at'] or '-'} | 지시: {entry['command'] or '-'} | 상태: {entry['status'] or '-'}"
+        )
+        if entry["result"]:
+            lines.append(f"   결과 요약: {entry['result']}")
+
+    previous_result = next((entry["result"] for entry in entries if entry.get("result")), "")
+    if previous_result:
+        lines.extend(["", "[직전 결과 요약]", previous_result])
+    lines.extend(
+        [
+            "",
+            "[실행 규칙]",
+            "- 위 문맥은 이어받기용 참고 자료입니다.",
+            "- 이번 사용자 명령과 충돌하면 이번 사용자 명령을 우선합니다.",
+            "- 완료/실패/질문 필요 여부를 짧게 요약할 수 있게 결과를 정리합니다.",
+        ]
+    )
+    contextual = "\n".join(lines).strip()
+    if len(contextual) <= CODEX_CHAT_CONTEXT_TOTAL_LIMIT:
+        return contextual
+    return contextual[:CODEX_CHAT_CONTEXT_TOTAL_LIMIT].rstrip() + "\n[문맥 일부 생략]"
 
 
 def _mc_task_progress_bundle(task):
@@ -812,7 +909,7 @@ def _mc_bridge_payload(task, primary_action, selected_project):
     run_state = _mc_bridge_run_state(task, primary_action)
     project = selected_project or {}
     current_task = task or {}
-    command = _mc_text(current_task.get("text"), _mc_text(current_task.get("title")))
+    command = _mc_display_command_text(current_task.get("text")) or _mc_text(current_task.get("title"))
     summary = _mc_text(
         current_task.get("latest_summary") or current_task.get("summary"),
         _mc_text(project.get("latest_summary") or project.get("workspace_brief"), "아직 실행 결과가 없습니다."),
@@ -1285,8 +1382,13 @@ def dispatch_codex_chat_command(
             project_id=project_id,
         )
 
+    context_tasks = []
+    if CODEX_CHAT_BRIDGE_MODE == "thin-bridge":
+        context_tasks = (_mc_get_state_bundle(limit=20) or {}).get("tasks") or []
+    execution_message = _mc_build_contextual_command(clean_message, context_tasks)
+
     created_task = _mc_create_task(
-        clean_message,
+        execution_message,
         clean_actor,
         target_env=target_env,
         task_type="FREEFORM",
