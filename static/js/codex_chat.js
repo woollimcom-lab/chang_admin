@@ -7,6 +7,7 @@
     const DRAFT_STORAGE_KEY = "codex-max-draft";
     const PANEL_STORAGE_KEY = "codex-max-panel-state";
     const SECTION_STORAGE_KEY = "codex-max-section-state";
+    const CHAT_TIMELINE_STORAGE_KEY = "codex-max-chat-timeline";
     const ACTIVE_POLL_MS = 7000;
     const IDLE_POLL_MS = 15000;
     const BANNER_TICK_MS = 2400;
@@ -204,6 +205,13 @@
         return `${normalized.slice(0, maxLength).trim()}…`;
     }
 
+    function compactChatText(value, maxLength = 520) {
+        const rendered = text(value).replace(/\s+/g, " ").trim();
+        if (!rendered) return "";
+        if (rendered.length <= maxLength) return rendered;
+        return `${rendered.slice(0, maxLength).trim()}…`;
+    }
+
     function bridgeRunStateLabel(viewModel) {
         const key = text(viewModel?.run_state).toUpperCase();
         if (key === "RUNNING") return "실행중";
@@ -223,6 +231,92 @@
             result: text(viewModel?.result_message || viewModel?.summary || task?.summary),
             progressText: progress > 0 ? `${Math.max(0, Math.min(100, progress))}%` : "",
         };
+    }
+
+    function readChatTimeline() {
+        try {
+            const rows = JSON.parse(window.localStorage.getItem(CHAT_TIMELINE_STORAGE_KEY) || "[]");
+            return Array.isArray(rows) ? rows.filter((row) => text(row?.body)).slice(-90) : [];
+        } catch (_error) {
+            return [];
+        }
+    }
+
+    function writeChatTimeline(rows) {
+        try {
+            window.localStorage.setItem(CHAT_TIMELINE_STORAGE_KEY, JSON.stringify((rows || []).slice(-90)));
+        } catch (_error) {}
+    }
+
+    function mergeChatTimeline(nextRows) {
+        const existing = readChatTimeline();
+        const nextKeys = new Set((nextRows || []).map((row) => text(row.key)).filter(Boolean));
+        const kept = existing.filter((row) => !nextKeys.has(text(row.key)));
+        const merged = [...kept, ...(nextRows || [])].filter((row) => text(row.body)).slice(-90);
+        writeChatTimeline(merged);
+        return merged;
+    }
+
+    function buildThinBridgeTimelineRows() {
+        if (hasPendingConfirmation() && !currentView.current_task) {
+            const interpretation = interpretPendingIntent(pendingConfirmationMessage());
+            return [
+                {
+                    role: "user",
+                    label: "나",
+                    created_at: "",
+                    body: pendingConfirmationMessage(),
+                },
+                {
+                    role: "system",
+                    label: "이해 확인",
+                    created_at: "",
+                    body: `${interpretation.lead} ${interpretation.summary} ${interpretation.next}`,
+                    actions: [
+                        { kind: "run", label: "맞아요, 진행", tone: "primary" },
+                        { kind: "edit", label: "다시 설명", tone: "outline" },
+                    ],
+                },
+            ];
+        }
+
+        const task = currentView.current_task || null;
+        const bridgeCopy = bridgeStatusCopy(currentView, task);
+        const taskKey = text(currentView.conversation_task_id || task?.id || currentView.updated_at || currentView.command, "latest");
+        const updatedAt = text(currentView.updated_at || task?.updated_at);
+        const command = compactChatText(currentView.command || task?.title);
+        const statusBody = compactChatText([bridgeCopy.headline, bridgeCopy.waitHint].filter(Boolean).join("\n"));
+        const resultBody = compactChatText(bridgeCopy.result || currentView.summary || task?.summary);
+        const rows = [];
+
+        if (command) {
+            rows.push({
+                key: `${taskKey}:command`,
+                role: "user",
+                label: "나",
+                created_at: updatedAt ? compactTimestamp(updatedAt) : "",
+                body: command,
+            });
+        }
+        if (statusBody) {
+            rows.push({
+                key: `${taskKey}:status`,
+                role: "system",
+                label: bridgeRunStateLabel(currentView),
+                created_at: updatedAt ? compactTimestamp(updatedAt) : "",
+                body: statusBody,
+            });
+        }
+        if (resultBody && text(currentView.run_state).toUpperCase() !== "IDLE") {
+            rows.push({
+                key: `${taskKey}:result`,
+                role: "result",
+                label: "결과",
+                created_at: updatedAt ? compactTimestamp(updatedAt) : "",
+                body: resultBody,
+            });
+        }
+        return rows.length ? mergeChatTimeline(rows) : readChatTimeline();
     }
 
     function isThinBridgeMode(viewModel = currentView) {
@@ -1867,8 +1961,43 @@
     function renderLogEntries(entries) {
         const logListEl = byId("logList");
         if (!logListEl) return;
-        if (isThinBridgeMode() && !hasPendingConfirmation()) {
-            logListEl.innerHTML = "";
+        const thinBridge = isThinBridgeMode();
+        if (thinBridge) {
+            const rows = buildThinBridgeTimelineRows();
+            if (!rows.length) {
+                logListEl.innerHTML = `
+                    <article class="message" data-role="system">
+                        <div class="message-meta"><span>시스템</span><span>-</span></div>
+                        <div class="message-body">아직 대화가 없습니다. 아래 입력창에서 한 줄 지시를 보내면 여기에 쌓입니다.</div>
+                    </article>
+                `;
+                return;
+            }
+            logListEl.innerHTML = rows
+                .map((entry) => `
+                    <article class="message" data-role="${escapeHtml(entry.role || "system")}">
+                        <div class="message-meta">
+                            <span>${escapeHtml(entry.label || "로그")}</span>
+                            <span>${escapeHtml(entry.created_at || "")}</span>
+                        </div>
+                        <div class="message-body">${escapeHtml(entry.body || "-")}</div>
+                        ${Array.isArray(entry.actions) && entry.actions.length
+                            ? `
+                                <div class="message-actions">
+                                    ${entry.actions.map((action) => `
+                                        <button
+                                            type="button"
+                                            class="${action.tone === "primary" ? "primary-button" : "outline-button"}"
+                                            data-confirm-command="${escapeHtml(action.kind || "")}"
+                                        >${escapeHtml(action.label || "")}</button>
+                                    `).join("")}
+                                </div>
+                            `
+                            : ""}
+                    </article>
+                `)
+                .join("");
+            logListEl.scrollTop = logListEl.scrollHeight;
             return;
         }
         const selectedProject = currentView.selected_project || null;
@@ -2102,7 +2231,8 @@
         }
 
         if (taskWorkspacePanelEl) {
-            taskWorkspacePanelEl.hidden = false;
+            taskWorkspacePanelEl.hidden = thinBridge;
+            taskWorkspacePanelEl.setAttribute("aria-hidden", thinBridge ? "true" : "false");
             taskWorkspacePanelEl.classList.toggle("task-panel-muted", stalledCurrentTask);
             taskWorkspacePanelEl.classList.remove("task-panel-compact");
             taskWorkspacePanelEl.classList.add("task-panel-minimal");
@@ -2115,11 +2245,13 @@
             composerContextCardEl.innerHTML = "";
         }
         if (logWorkspacePanelEl) {
-            logWorkspacePanelEl.hidden = !pendingConfirmation;
+            logWorkspacePanelEl.hidden = thinBridge ? false : !pendingConfirmation;
         }
         const logSubtitleEl = byId("logSubtitle");
         if (logSubtitleEl) {
-            logSubtitleEl.textContent = pendingConfirmation ? "최초 입력의 뜻이 맞는지만 확인합니다." : "흐름이 여기 이어집니다.";
+            logSubtitleEl.textContent = thinBridge
+                ? "명령, 실행 상태, 마지막 결과가 아래에서 계속 쌓입니다."
+                : pendingConfirmation ? "최초 입력의 뜻이 맞는지만 확인합니다." : "흐름이 여기 이어집니다.";
         }
         if (recentTitleEl) {
             recentTitleEl.textContent = "이어서 볼 작업";

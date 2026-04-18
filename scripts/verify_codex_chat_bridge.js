@@ -70,6 +70,9 @@ async function main() {
     statusDetailsHidden: false,
     resultVisible: false,
     resultLabels: [],
+    chatVisible: false,
+    chatRoles: [],
+    composerBelowChat: false,
     goalCriteria: {
       oneLineInput: false,
       minimalStatus: false,
@@ -174,6 +177,19 @@ async function main() {
       .locator("#taskCard .task-card-label")
       .evaluateAll((els) => els.map((el) => String(el.textContent || "").trim()).filter(Boolean))
       .catch(() => []);
+    result.chatVisible = await page.locator("#logWorkspacePanel").isVisible().catch(() => false);
+    result.chatRoles = await page
+      .locator("#logList .message")
+      .evaluateAll((els) => els.map((el) => String(el.getAttribute("data-role") || "").trim()).filter(Boolean))
+      .catch(() => []);
+    result.composerBelowChat = await page
+      .evaluate(() => {
+        const chat = document.querySelector("#logWorkspacePanel");
+        const composer = document.querySelector(".composer");
+        if (!chat || !composer) return false;
+        return composer.getBoundingClientRect().top >= chat.getBoundingClientRect().top;
+      })
+      .catch(() => false);
 
     const legacyKeys = [
       "summary",
@@ -213,14 +229,15 @@ async function main() {
       result.visibleTextareaCount === 1 &&
       result.visibleCommandButtonCount === 1
     );
-    result.goalCriteria.minimalStatus = Boolean(result.statusVisible);
+    result.goalCriteria.minimalStatus = Boolean(
+      result.chatVisible &&
+      result.chatRoles.includes("system") &&
+      result.composerBelowChat
+    );
     result.goalCriteria.lastResult = Boolean(
-      result.resultVisible &&
-      result.resultLabels.includes("상태") &&
-      result.resultLabels.includes("이해") &&
-      result.resultLabels.includes("기다림") &&
-      result.resultLabels.includes("결과") &&
-      result.resultLabels.every((label) => ["상태", "이해", "기다림", "결과", "오류"].includes(label))
+      result.chatVisible &&
+      result.chatRoles.includes("user") &&
+      result.chatRoles.includes("result")
     );
     result.goalCriteria.localCodexBridge = Boolean(
       result.stateApiStatus === 200 &&
