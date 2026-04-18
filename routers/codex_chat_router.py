@@ -1,6 +1,9 @@
+import asyncio
+import json
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from fastapi.templating import Jinja2Templates
 
@@ -19,6 +22,27 @@ from services.codex_chat_active_service import (
 BASE_DIR = Path(__file__).resolve().parents[1]
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 router = APIRouter()
+
+
+def _codex_chat_state_signature(payload):
+    task = (payload or {}).get("current_task") or {}
+    return "|".join(
+        [
+            str((payload or {}).get("conversation_task_id") or ""),
+            str((payload or {}).get("run_state") or ""),
+            str((payload or {}).get("updated_at") or ""),
+            str((payload or {}).get("summary") or ""),
+            str((payload or {}).get("result_message") or ""),
+            str(task.get("status") or ""),
+            str(task.get("progress_percent") or ""),
+            str(task.get("updated_at") or ""),
+        ]
+    )
+
+
+def _sse_payload(event_name, payload):
+    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    return f"event: {event_name}\ndata: {body}\n\n"
 
 
 async def _ensure_codex_chat_user(request: Request, db: Session):
@@ -52,6 +76,38 @@ async def codex_chat_page(request: Request, conversation_task_id: str = "", comp
 async def codex_chat_state(request: Request, conversation_task_id: str = "", composer_mode: str = "", project_id: str = "", db: Session = Depends(get_db)):
     await _ensure_codex_chat_user(request, db)
     return get_codex_chat_active_initial_view_model(conversation_task_id=conversation_task_id, composer_mode=composer_mode, project_id=project_id)
+
+
+@router.get("/api/codex-chat/events")
+async def codex_chat_events(request: Request, conversation_task_id: str = "", composer_mode: str = "", project_id: str = "", db: Session = Depends(get_db)):
+    await _ensure_codex_chat_user(request, db)
+
+    async def event_stream():
+        last_signature = ""
+        while True:
+            if await request.is_disconnected():
+                break
+            payload = get_codex_chat_active_run_state(
+                conversation_task_id=conversation_task_id,
+                composer_mode=composer_mode,
+                project_id=project_id,
+            )
+            signature = _codex_chat_state_signature(payload)
+            if signature != last_signature:
+                last_signature = signature
+                yield _sse_payload("state", payload)
+            else:
+                yield ": keep-alive\n\n"
+            await asyncio.sleep(2)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.post("/api/codex-chat/command")

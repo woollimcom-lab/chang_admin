@@ -17,6 +17,8 @@
     let pendingRequest = false;
     let selectedComposerMode = "";
     let pollTimer = 0;
+    let stateEventSource = null;
+    let stateEventKey = "";
     let bannerTickerTimer = 0;
     let toastTimer = 0;
     let lastCompletionTaskId = "";
@@ -2110,6 +2112,59 @@
         pollTimer = 0;
     }
 
+    function stopStateEvents() {
+        if (stateEventSource) {
+            stateEventSource.close();
+        }
+        stateEventSource = null;
+        stateEventKey = "";
+    }
+
+    function stateEventsUrl(taskId, composerMode, projectId) {
+        const params = new URLSearchParams();
+        params.set("conversation_task_id", taskId);
+        if (composerMode) {
+            params.set("composer_mode", composerMode);
+        }
+        if (projectId) {
+            params.set("project_id", projectId);
+        }
+        return `/api/codex-chat/events?${params.toString()}`;
+    }
+
+    function scheduleStateEvents() {
+        if (!window.EventSource || pendingRequest) {
+            stopStateEvents();
+            return;
+        }
+        const taskId = text(currentView?.conversation_task_id || currentView?.current_task?.id);
+        if (!taskId) {
+            stopStateEvents();
+            return;
+        }
+        const composerMode = text(selectedComposerMode);
+        const projectId = text(selectedProjectId);
+        const nextKey = [taskId, composerMode, projectId].join("|");
+        if (stateEventSource && stateEventKey === nextKey) {
+            return;
+        }
+        stopStateEvents();
+        stateEventKey = nextKey;
+        stateEventSource = new window.EventSource(stateEventsUrl(taskId, composerMode, projectId));
+        stateEventSource.addEventListener("state", (event) => {
+            if (pendingRequest || document.hidden) {
+                return;
+            }
+            try {
+                renderView(JSON.parse(event.data || "{}"));
+            } catch (_error) {
+            }
+        });
+        stateEventSource.onerror = () => {
+            // Keep polling as the fallback if the SSE connection is interrupted.
+        };
+    }
+
     function scheduleStatePolling() {
         stopStatePolling();
         if (pendingRequest) {
@@ -2344,6 +2399,7 @@
                 : text(currentView.new_task_label, "새 작업 시작");
         }
         syncInputWithDraft();
+        scheduleStateEvents();
         scheduleStatePolling();
     }
 
