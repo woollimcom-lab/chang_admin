@@ -754,11 +754,6 @@ def _mc_bridge_payload(task, primary_action, selected_project):
         )
     else:
         last_error = ""
-    if run_state == "NEEDS_USER_INPUT":
-        summary = _mc_text(
-            current_task.get("next_action") or current_task.get("status_label"),
-            summary,
-        )
     updated_at = _mc_text(
         current_task.get("updated_at") or current_task.get("created_at"),
         _mc_text(project.get("updated_at")),
@@ -775,10 +770,10 @@ def _mc_bridge_payload(task, primary_action, selected_project):
 
 def _mc_pick_task(tasks, conversation_task_id=""):
     clean_id = _mc_text(conversation_task_id)
-    if not clean_id:
-        return None
     for item in tasks or []:
-        if _mc_text(item.get("id")) == clean_id:
+        if clean_id and _mc_text(item.get("id")) == clean_id:
+            return item
+        if not clean_id and _mc_text(item.get("id")):
             return item
     return None
 
@@ -1016,7 +1011,10 @@ def _mc_build_codex_max_view_model(conversation_task_id="", server_notice="", co
     bridge_mode = CODEX_CHAT_BRIDGE_MODE
     selected_project = project_bundle.get("selected") or {}
     selected_project_task_id = _mc_text(selected_project.get("current_task_id"))
-    effective_task_id = _mc_text(conversation_task_id, selected_project_task_id)
+    if bridge_mode == "thin-bridge":
+        effective_task_id = _mc_text(conversation_task_id)
+    else:
+        effective_task_id = _mc_text(conversation_task_id, selected_project_task_id)
     current_task = _mc_pick_task(tasks, conversation_task_id=effective_task_id)
     primary_action = _mc_task_primary_action(current_task)
     bridge_payload = _mc_bridge_payload(current_task, primary_action, selected_project)
