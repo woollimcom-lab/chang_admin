@@ -226,6 +226,7 @@
         const stateLabel = bridgeRunStateLabel(viewModel);
         return {
             headline: text(viewModel?.status_message, stateLabel),
+            preExecution: text(viewModel?.pre_execution_check || viewModel?.understanding),
             understanding: text(viewModel?.understanding),
             waitHint: text(viewModel?.wait_hint),
             result: text(viewModel?.result_message || viewModel?.summary || task?.summary),
@@ -285,7 +286,7 @@
         const taskKey = text(currentView.conversation_task_id || task?.id || currentView.updated_at || currentView.command, "latest");
         const updatedAt = text(currentView.updated_at || task?.updated_at);
         const command = compactChatText(currentView.command || task?.title);
-        const statusBody = compactChatText([bridgeCopy.headline, bridgeCopy.waitHint].filter(Boolean).join("\n"));
+        const statusBody = compactChatText([bridgeCopy.preExecution, bridgeCopy.headline, bridgeCopy.waitHint].filter(Boolean).join("\n"));
         const resultBody = compactChatText(bridgeCopy.result || currentView.summary || task?.summary);
         const rows = [];
 
