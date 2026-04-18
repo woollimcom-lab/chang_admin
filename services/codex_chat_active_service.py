@@ -34,6 +34,13 @@ def _mc_text(value, fallback=""):
     return text or fallback
 
 
+def _mc_compact_text(value, max_length=140):
+    rendered = " ".join(_mc_text(value).split())
+    if len(rendered) <= max_length:
+        return rendered
+    return f"{rendered[:max_length].rstrip()}..."
+
+
 def _mc_role_label(role: str, message_type: str = ""):
     role_key = str(role or "").strip().lower()
     type_key = str(message_type or "").strip().lower()
@@ -738,6 +745,69 @@ def _mc_bridge_run_state(task, primary_action):
     return "RUNNING"
 
 
+def _mc_bridge_user_copy(run_state, current_task, command, summary, last_error):
+    status = _mc_text(current_task.get("status")).upper()
+    status_label = _mc_text(current_task.get("status_label") or current_task.get("user_status"))
+    step_label = _mc_text(current_task.get("current_step_label"))
+    next_action = _mc_text(current_task.get("next_action"))
+    progress_percent = max(0, min(100, int(current_task.get("progress_percent") or 0))) if current_task else 0
+    command_text = _mc_compact_text(command)
+
+    if command_text:
+        understanding = f"이 지시는 '{command_text}' 작업으로 이해했습니다."
+    else:
+        understanding = "아직 받은 지시가 없습니다."
+
+    if run_state == "IDLE":
+        return {
+            "understanding": understanding,
+            "status_message": "지시를 보내면 회사 PC의 Codex 실행기로 전달합니다.",
+            "wait_hint": "아직 기다릴 작업은 없습니다.",
+            "result_message": _mc_text(summary, "아직 실행 결과가 없습니다."),
+            "progress_percent": 0,
+        }
+    if run_state == "RUNNING":
+        active_label = _mc_text(step_label, _mc_text(status_label, "로컬 Codex 실행"))
+        return {
+            "understanding": understanding,
+            "status_message": f"{active_label} 진행 중입니다.",
+            "wait_hint": f"기다리면 됩니다. 현재 진행률은 {progress_percent}%로 기록되어 있습니다.",
+            "result_message": _mc_text(summary, "작업이 끝나면 결과 요약이 여기에 표시됩니다."),
+            "progress_percent": progress_percent,
+        }
+    if run_state == "NEEDS_USER_INPUT":
+        return {
+            "understanding": understanding,
+            "status_message": _mc_text(status_label, "사용자 확인이 필요한 상태입니다."),
+            "wait_hint": _mc_text(next_action, "결과를 확인한 뒤 필요하면 다음 지시를 보내면 됩니다."),
+            "result_message": _mc_text(summary, "확인할 결과 요약이 아직 비어 있습니다."),
+            "progress_percent": progress_percent,
+        }
+    if run_state == "DONE":
+        return {
+            "understanding": understanding,
+            "status_message": "Codex 실행이 완료되었습니다.",
+            "wait_hint": "이제 기다릴 필요 없이 결과만 확인하면 됩니다.",
+            "result_message": _mc_text(summary, "완료되었지만 결과 요약이 비어 있습니다."),
+            "progress_percent": 100,
+        }
+    if run_state == "FAILED":
+        return {
+            "understanding": understanding,
+            "status_message": "Codex 실행이 실패하거나 멈췄습니다.",
+            "wait_hint": _mc_text(last_error, "원인을 확인한 뒤 재시도 지시가 필요합니다."),
+            "result_message": _mc_text(summary, "실패 결과 요약이 아직 비어 있습니다."),
+            "progress_percent": progress_percent,
+        }
+    return {
+        "understanding": understanding,
+        "status_message": _mc_text(status_label, "상태를 확인하는 중입니다."),
+        "wait_hint": _mc_text(next_action, "잠시 뒤 상태를 다시 확인하면 됩니다."),
+        "result_message": _mc_text(summary, "아직 실행 결과가 없습니다."),
+        "progress_percent": progress_percent,
+    }
+
+
 def _mc_bridge_payload(task, primary_action, selected_project):
     run_state = _mc_bridge_run_state(task, primary_action)
     project = selected_project or {}
@@ -758,6 +828,7 @@ def _mc_bridge_payload(task, primary_action, selected_project):
         current_task.get("updated_at") or current_task.get("created_at"),
         _mc_text(project.get("updated_at")),
     )
+    user_copy = _mc_bridge_user_copy(run_state, current_task, command, summary, last_error)
     return {
         "command": command,
         "run_state": run_state,
@@ -765,6 +836,7 @@ def _mc_bridge_payload(task, primary_action, selected_project):
         "summary": summary,
         "last_error": last_error,
         "updated_at": updated_at,
+        **user_copy,
     }
 
 

@@ -213,13 +213,14 @@ async function main() {
       result.visibleTextareaCount === 1 &&
       result.visibleCommandButtonCount === 1
     );
-    result.goalCriteria.minimalStatus = Boolean(result.statusVisible && result.statusDetailsHidden);
+    result.goalCriteria.minimalStatus = Boolean(result.statusVisible);
     result.goalCriteria.lastResult = Boolean(
       result.resultVisible &&
       result.resultLabels.includes("상태") &&
-      result.resultLabels.includes("명령") &&
-      result.resultLabels.includes("요약") &&
-      result.resultLabels.every((label) => ["상태", "명령", "요약", "오류"].includes(label))
+      result.resultLabels.includes("이해") &&
+      result.resultLabels.includes("기다림") &&
+      result.resultLabels.includes("결과") &&
+      result.resultLabels.every((label) => ["상태", "이해", "기다림", "결과", "오류"].includes(label))
     );
     result.goalCriteria.localCodexBridge = Boolean(
       result.stateApiStatus === 200 &&
@@ -245,7 +246,7 @@ async function main() {
     const bridgeModeOk = result.bridgeMode === "thin-bridge" || result.viewKind === "codex-max-minimal";
     const bridgeFieldsOk = result.bridgeMode === "thin-bridge"
       ? (result.runStatePresent && result.summaryPresent)
-      : (result.resultLabels.includes("상태") && result.resultLabels.includes("명령") && result.resultLabels.includes("요약"));
+      : (result.resultLabels.includes("상태") && result.resultLabels.includes("이해") && result.resultLabels.includes("결과"));
     const publicDataOk = result.bridgeMode === "thin-bridge"
       ? (
         result.publicProjectsEmpty &&

@@ -213,6 +213,18 @@
         return "대기";
     }
 
+    function bridgeStatusCopy(viewModel, task) {
+        const progress = Number(viewModel?.progress_percent ?? task?.progress_percent ?? 0);
+        const stateLabel = bridgeRunStateLabel(viewModel);
+        return {
+            headline: text(viewModel?.status_message, stateLabel),
+            understanding: text(viewModel?.understanding),
+            waitHint: text(viewModel?.wait_hint),
+            result: text(viewModel?.result_message || viewModel?.summary || task?.summary),
+            progressText: progress > 0 ? `${Math.max(0, Math.min(100, progress))}%` : "",
+        };
+    }
+
     function isThinBridgeMode(viewModel = currentView) {
         return text(viewModel?.bridge_mode) === "thin-bridge" || text(viewModel?.view_kind) === "codex-max-minimal";
     }
@@ -1256,13 +1268,30 @@
                 stopBannerTicker();
             }
         };
+        const hideBridgeProgressOnly = () => {
+            if (statusRowEl && spinnerEl && tickerEl && percentEl && progressTrackEl && progressBarEl) {
+                statusRowEl.hidden = true;
+                spinnerEl.hidden = true;
+                tickerEl.textContent = "";
+                percentEl.textContent = "";
+                progressTrackEl.hidden = true;
+                progressBarEl.style.width = "0%";
+                progressBarEl.classList.remove("animated", "stalled");
+                bannerEl.dataset.progressHealth = "idle";
+                stopBannerTicker();
+            }
+        };
         if (!task && hasPendingConfirmation()) {
             const interpretation = interpretPendingIntent(pendingConfirmationMessage());
             bannerEl.dataset.tone = "action";
             badgeEl.textContent = "이해 확인";
             headlineEl.textContent = interpretation.summary;
             if (thinBridge) {
-                hideBridgeStatusDetails();
+                copyEl.textContent = interpretation.next;
+                copyEl.hidden = false;
+                metaEl.textContent = "";
+                metaEl.hidden = true;
+                hideBridgeProgressOnly();
                 return;
             }
             copyEl.textContent = interpretation.next;
@@ -1284,11 +1313,16 @@
         }
         const bridgeStateLabel = bridgeRunStateLabel(currentView);
         if (!task) {
+            const bridgeCopy = bridgeStatusCopy(currentView, null);
             bannerEl.dataset.tone = "idle";
             badgeEl.textContent = "현재 상태";
-            headlineEl.textContent = bridgeStateLabel;
+            headlineEl.textContent = bridgeCopy.headline || bridgeStateLabel;
             if (thinBridge) {
-                hideBridgeStatusDetails();
+                copyEl.textContent = bridgeCopy.waitHint || "한 줄 명령을 보내면 상태가 여기 표시됩니다.";
+                copyEl.hidden = !copyEl.textContent;
+                metaEl.textContent = text(currentView.updated_at) ? `최근 업데이트 · ${compactTimestamp(currentView.updated_at)}` : "";
+                metaEl.hidden = !metaEl.textContent;
+                hideBridgeProgressOnly();
                 return;
             }
             copyEl.textContent = text(currentView.summary, "지시를 보내면 여기서 상태를 확인합니다.");
@@ -1310,9 +1344,10 @@
         }
         const banner = autonomyBannerState(task, primaryAction);
         const progress = taskProgressState(task);
-        const headline = bridgeStateLabel || text(banner.headline);
+        const bridgeCopy = bridgeStatusCopy(currentView, task);
+        const headline = bridgeCopy.headline || bridgeStateLabel || text(banner.headline);
         const copy = text(
-            currentView.summary,
+            bridgeCopy.waitHint || currentView.summary,
             progress.running
                 ? "지금은 처리 중입니다."
                 : progress.done
@@ -1324,7 +1359,11 @@
         badgeEl.textContent = "현재 상태";
         headlineEl.textContent = headline;
         if (thinBridge) {
-            hideBridgeStatusDetails();
+            copyEl.textContent = copy;
+            copyEl.hidden = !copy;
+            metaEl.textContent = meta;
+            metaEl.hidden = !metaEl.textContent;
+            hideBridgeProgressOnly();
             return;
         }
         copyEl.textContent = copy;
@@ -1733,11 +1772,14 @@
     function renderTaskCard(task) {
         const taskCardEl = byId("taskCard");
         if (!taskCardEl) return;
-        const summaryText = compactSummaryText(currentView.summary || task?.summary);
+        const bridgeCopy = bridgeStatusCopy(currentView, task);
+        const summaryText = compactSummaryText(bridgeCopy.result || currentView.summary || task?.summary);
         const updatedText = text(currentView.updated_at || task?.updated_at);
         const runStateLabel = bridgeRunStateLabel(currentView);
         const commandText = text(currentView.command || task?.title, "아직 실행한 명령이 없습니다.");
         const lastError = text(currentView.last_error);
+        const understandingText = compactSummaryText(bridgeCopy.understanding || `이 지시는 '${commandText}' 작업으로 이해했습니다.`, 120);
+        const waitHintText = compactSummaryText(bridgeCopy.waitHint || "상태가 바뀌면 여기서 바로 확인됩니다.", 120);
         if (!task && !text(currentView.summary) && !text(currentView.command)) {
             taskCardEl.classList.remove("is-highlighted");
             taskCardEl.innerHTML = `
@@ -1764,11 +1806,15 @@
                     <div class="task-card-value">${escapeHtml(runStateLabel)}</div>
                 </div>
                 <div class="task-card-line">
-                    <div class="task-card-label">명령</div>
-                    <div class="task-card-value">${escapeHtml(commandText)}</div>
+                    <div class="task-card-label">이해</div>
+                    <div class="task-card-value">${escapeHtml(understandingText)}</div>
                 </div>
                 <div class="task-card-line">
-                    <div class="task-card-label">요약</div>
+                    <div class="task-card-label">기다림</div>
+                    <div class="task-card-value">${escapeHtml(waitHintText)}</div>
+                </div>
+                <div class="task-card-line">
+                    <div class="task-card-label">결과</div>
                     <div class="task-card-value">${escapeHtml(summaryText)}</div>
                 </div>
                 ${lastError ? `
